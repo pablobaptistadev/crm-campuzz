@@ -1,0 +1,39 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "twenty-edge",
+  "main": "src/index.ts",
+  // nodejs_compat gives us node:crypto and the pg driver; Hyperdrive requires it.
+  "compatibility_date": "2026-09-12",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  // The SPA build of twenty-front. Every ApiPath prefix is routed to Hono first.
+  "assets": {
+    "directory": "../twenty-front/build",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
+  },
+
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "<hyperdrive-id>",
+      "localConnectionString": "postgres://postgres:postgres@localhost:5432/default"
+    }
+  ],
+
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "twenty-files" }],
+
+  // Metadata cache, versioned by workspace.metadataVersion.
+  "kv_namespaces": [{ "binding": "METADATA_CACHE", "id": "<kv-id>" }],
+
+  "vars": {
+    "SERVER_URL": "http://localhost:8787",
+    "FRONT_DOMAIN": "localhost",
+    "DEFAULT_SUBDOMAIN": "app",
+    "IS_MULTIWORKSPACE_ENABLED": "false",
+    "IS_EMAIL_VERIFICATION_REQUIRED": "false",
+    "SIGN_IN_PREFILLED": "true"
+  }
+}

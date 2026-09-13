@@ -11,9 +11,14 @@ import { METADATA_SDL } from 'src/graphql/metadata-schema';
 const schema = makeExecutableSchema({ typeDefs: METADATA_SDL });
 
 const expectValid = (document: string) => {
-  const errors = validate(schema, parse(document));
+  const errors = validate(schema, parse(document))
+    .map((error) => error.message)
+    // These tests concatenate every auth fragment into each document for
+    // brevity; Apollo only ships the ones a document uses, so an unused
+    // fragment here is an artifact of the test, not a contract break.
+    .filter((message) => !message.includes('is never used'));
 
-  expect(errors.map((error) => error.message)).toEqual([]);
+  expect(errors).toEqual([]);
 };
 
 describe('twenty-front metadata documents', () => {
@@ -107,20 +112,121 @@ describe('twenty-front metadata documents', () => {
     `);
   });
 
-  it('validates the sign-in and sign-up mutations', () => {
+  // Everything below is copied verbatim from
+  // packages/twenty-front/src/modules/auth/graphql/**.
+  const AUTH_FRAGMENTS = `
+    fragment AuthTokenFragment on AuthToken { token expiresAt }
+    fragment AuthTokenPairFragment on AuthTokenPair {
+      accessOrWorkspaceAgnosticToken { ...AuthTokenFragment }
+      refreshToken { ...AuthTokenFragment }
+    }
+    fragment AvailableWorkspaceFragment on AvailableWorkspace {
+      id displayName loginToken inviteHash personalInviteToken
+      workspaceUrls { subdomainUrl customUrl }
+      logo
+      sso { type id issuer name status }
+    }
+    fragment AvailableWorkspacesFragment on AvailableWorkspaces {
+      availableWorkspacesForSignIn { ...AvailableWorkspaceFragment }
+      availableWorkspacesForSignUp { ...AvailableWorkspaceFragment }
+    }
+  `;
+
+  it('validates checkUserExists, the first call the login screen makes', () => {
     expectValid(`
-      mutation SignIn($email: String!, $password: String!) {
-        signIn(email: $email, password: $password) {
-          availableWorkspaces { id displayName subdomain }
-          tokens { loginToken { token expiresAt } }
+      query CheckUserExists($email: String!, $captchaToken: String) {
+        checkUserExists(email: $email, captchaToken: $captchaToken) {
+          exists
+          availableWorkspacesCount
+          isEmailVerified
+        }
+      }
+    `);
+  });
+
+  it('validates signIn', () => {
+    expectValid(`
+      ${AUTH_FRAGMENTS}
+      mutation SignIn($email: String!, $password: String!, $captchaToken: String) {
+        signIn(email: $email, password: $password, captchaToken: $captchaToken) {
+          availableWorkspaces { ...AvailableWorkspacesFragment }
+          tokens { ...AuthTokenPairFragment }
+        }
+      }
+    `);
+  });
+
+  it('validates signUp', () => {
+    expectValid(`
+      ${AUTH_FRAGMENTS}
+      mutation SignUp(
+        $email: String!
+        $password: String!
+        $captchaToken: String
+        $locale: String
+        $verifyEmailRedirectPath: String
+      ) {
+        signUp(
+          email: $email
+          password: $password
+          captchaToken: $captchaToken
+          locale: $locale
+          verifyEmailRedirectPath: $verifyEmailRedirectPath
+        ) {
+          availableWorkspaces { ...AvailableWorkspacesFragment }
+          tokens { ...AuthTokenPairFragment }
+        }
+      }
+    `);
+  });
+
+  it('validates the login-token hand-off', () => {
+    expectValid(`
+      ${AUTH_FRAGMENTS}
+      mutation GetLoginTokenFromCredentials(
+        $email: String!
+        $password: String!
+        $captchaToken: String
+        $origin: String!
+      ) {
+        getLoginTokenFromCredentials(
+          email: $email
+          password: $password
+          captchaToken: $captchaToken
+          origin: $origin
+        ) {
+          loginToken { ...AuthTokenFragment }
         }
       }
     `);
 
     expectValid(`
-      mutation GetAuthTokensFromLoginToken($loginToken: String!) {
-        getAuthTokensFromLoginToken(loginToken: $loginToken) {
-          tokens { loginToken { token expiresAt } }
+      ${AUTH_FRAGMENTS}
+      mutation getAuthTokensFromLoginToken($loginToken: String!, $origin: String!) {
+        getAuthTokensFromLoginToken(loginToken: $loginToken, origin: $origin) {
+          tokens { ...AuthTokenPairFragment }
+        }
+      }
+    `);
+  });
+
+  it('validates signOut and the public workspace lookup', () => {
+    expectValid(`
+      mutation SignOut($refreshToken: String) { signOut(refreshToken: $refreshToken) }
+    `);
+
+    expectValid(`
+      query GetPublicWorkspaceDataByDomain($origin: String!) {
+        getPublicWorkspaceDataByDomain(origin: $origin) {
+          id
+          logo
+          displayName
+          workspaceUrls { subdomainUrl customUrl }
+          authProviders {
+            sso { id name type status issuer }
+            google magicLink password microsoft
+          }
+          authBypassProviders { google password microsoft }
         }
       }
     `);

@@ -62,6 +62,7 @@ export const metadataRoute = new Hono<AppEnv>().all('/', async (context) => {
     const graphqlContext: MetadataContext = {
       client,
       appSecret,
+      serverUrl: context.env.SERVER_URL,
       throttle: async (key, limit, windowMs) => {
         // Without Redis there is no shared counter, so the limiter opens rather
         // than blocking every request.

@@ -24,6 +24,7 @@ import { issueLoginToken, verifyLoginToken } from 'src/auth/login-token';
 export type MetadataContext = {
   client: Client;
   appSecret: string;
+  serverUrl: string;
   throttle: (key: string, limit: number, windowMs: number) => Promise<boolean>;
   sessionUserId: string | null;
   sessionWorkspaceId: string | null;
@@ -220,19 +221,82 @@ type MinimalMetadata {
 
 type CollectionHash { collection: String! hash: String! }
 
-type LoginToken { token: String! expiresAt: DateTime! }
-type AuthTokenPair { loginToken: LoginToken! }
-type AuthTokens { tokens: AuthTokenPair! }
-type UserExists { exists: Boolean! availableWorkspaces: [Workspace!]! }
-type SignUpOutput { loginToken: LoginToken! workspace: Workspace! }
-type AvailableWorkspacesAndAccessTokens {
-  availableWorkspaces: [Workspace!]!
-  tokens: AuthTokenPair
+type AuthToken { token: String! expiresAt: DateTime! }
+
+# Named exactly as twenty-front's fragments expect: AuthTokenPair carries
+# accessOrWorkspaceAgnosticToken and refreshToken, not a loginToken.
+type AuthTokenPair {
+  accessOrWorkspaceAgnosticToken: AuthToken!
+  refreshToken: AuthToken!
+}
+
+type LoginTokenWrapper { loginToken: AuthToken! }
+type AuthTokensWrapper { tokens: AuthTokenPair! }
+
+type WorkspaceUrls { subdomainUrl: String! customUrl: String }
+
+type SsoIdentityProvider {
+  id: UUID!
+  name: String
+  type: String
+  status: String
+  issuer: String
+}
+
+type AvailableWorkspace {
+  id: UUID!
+  displayName: String
+  loginToken: String
+  inviteHash: String
+  personalInviteToken: String
+  workspaceUrls: WorkspaceUrls!
+  logo: String
+  sso: [SsoIdentityProvider!]!
+}
+
+type AvailableWorkspaces {
+  availableWorkspacesForSignIn: [AvailableWorkspace!]!
+  availableWorkspacesForSignUp: [AvailableWorkspace!]!
+}
+
+type UserExists {
+  exists: Boolean!
+  availableWorkspacesCount: Int!
+  isEmailVerified: Boolean!
+}
+
+type AuthProviders {
+  sso: [SsoIdentityProvider!]!
+  google: Boolean!
+  magicLink: Boolean!
+  password: Boolean!
+  microsoft: Boolean!
+}
+
+type AuthBypassProviders {
+  google: Boolean!
+  password: Boolean!
+  microsoft: Boolean!
+}
+
+type PublicWorkspaceData {
+  id: UUID!
+  logo: String
+  displayName: String
+  workspaceUrls: WorkspaceUrls!
+  authProviders: AuthProviders!
+  authBypassProviders: AuthBypassProviders!
+}
+
+type SignInUpOutput {
+  availableWorkspaces: AvailableWorkspaces!
+  tokens: AuthTokenPair!
 }
 
 type Query {
   currentUser: User
-  checkUserExists(email: String!): UserExists!
+  checkUserExists(email: String!, captchaToken: String): UserExists!
+  getPublicWorkspaceDataByDomain(origin: String!): PublicWorkspaceData!
   objects(paging: PagingInput): ObjectConnection!
   object(id: UUID!): Object
   fields(paging: PagingInput): FieldConnection!
@@ -283,13 +347,52 @@ type Mutation {
   createView(data: ViewCreateInput!): View!
   updateView(id: UUID!, data: ViewUpdateInput!): View
   deleteView(id: UUID!): View
-  getLoginTokenFromCredentials(email: String!, password: String!): AuthTokenPair!
-  getAuthTokensFromLoginToken(loginToken: String!): AuthTokens!
-  signIn(email: String!, password: String!): AvailableWorkspacesAndAccessTokens!
-  signUp(email: String!, password: String!, firstName: String, lastName: String, workspaceName: String): SignUpOutput!
-  signOut: Boolean!
+  getLoginTokenFromCredentials(email: String!, password: String!, captchaToken: String, origin: String): LoginTokenWrapper!
+  getAuthTokensFromLoginToken(loginToken: String!, origin: String): AuthTokensWrapper!
+  signIn(email: String!, password: String!, captchaToken: String): SignInUpOutput!
+  signUp(email: String!, password: String!, captchaToken: String, locale: String, verifyEmailRedirectPath: String, firstName: String, lastName: String, workspaceName: String): SignInUpOutput!
+  signOut(refreshToken: String): Boolean!
 }
 `;
+
+// Single-workspace on a single host: the front redirects to subdomainUrl after
+// login, so it has to be the server we are actually served from, not a
+// subdomain that resolves nowhere.
+const buildWorkspaceUrls = (
+  workspace: { subdomain: string; customDomain: string | null },
+  serverUrl: string,
+) => ({
+  subdomainUrl: serverUrl,
+  customUrl: workspace.customDomain,
+});
+
+const toAvailableWorkspace = (
+  workspace: {
+    id: string;
+    displayName: string | null;
+    subdomain: string;
+    customDomain: string | null;
+  },
+  loginToken: string | null,
+  serverUrl: string,
+) => ({
+  id: workspace.id,
+  displayName: workspace.displayName,
+  loginToken,
+  inviteHash: null,
+  personalInviteToken: null,
+  workspaceUrls: buildWorkspaceUrls(workspace, serverUrl),
+  logo: null,
+  sso: [],
+});
+
+// The front always reads both token slots off AuthTokenPair. We issue one
+// opaque session cookie instead of a token pair, so the same short-lived token
+// fills both rather than inventing a second one the server would never accept.
+const toAuthTokenPair = (loginToken: { token: string; expiresAt: string }) => ({
+  accessOrWorkspaceAgnosticToken: loginToken,
+  refreshToken: loginToken,
+});
 
 const toWorkspaceDto = (workspace: {
   id: string;
@@ -442,7 +545,66 @@ export const METADATA_RESOLVERS = {
         email: args.email,
       });
 
-      return { exists: user !== null, availableWorkspaces: [] };
+      if (user === null) {
+        return {
+          exists: false,
+          availableWorkspacesCount: 0,
+          isEmailVerified: false,
+        };
+      }
+
+      const membership = await findFirstWorkspaceForUser({
+        client: context.client,
+        userId: user.id,
+      });
+
+      return {
+        exists: true,
+        availableWorkspacesCount: membership === null ? 0 : 1,
+        isEmailVerified: user.isEmailVerified,
+      };
+    },
+
+    getPublicWorkspaceDataByDomain: async (
+      _parent: unknown,
+      _args: { origin: string },
+      context: MetadataContext,
+    ) => {
+      const { rows } = await context.client.query<{
+        id: string;
+        displayName: string | null;
+        subdomain: string;
+        customDomain: string | null;
+      }>(
+        `SELECT "id","displayName","subdomain","customDomain" FROM core."workspace"
+         WHERE "deletedAt" IS NULL AND "activationStatus" = 'ACTIVE'
+         ORDER BY "createdAt" ASC LIMIT 1`,
+      );
+
+      const workspace = rows[0];
+
+      if (workspace === undefined) {
+        throw new Error('WORKSPACE_NOT_FOUND');
+      }
+
+      return {
+        id: workspace.id,
+        logo: null,
+        displayName: workspace.displayName,
+        workspaceUrls: buildWorkspaceUrls(workspace, context.serverUrl),
+        authProviders: {
+          sso: [],
+          google: false,
+          magicLink: false,
+          password: true,
+          microsoft: false,
+        },
+        authBypassProviders: {
+          google: false,
+          password: false,
+          microsoft: false,
+        },
+      };
     },
 
     objects: async (_parent: unknown, _args: unknown, context: MetadataContext) => {
@@ -603,7 +765,7 @@ export const METADATA_RESOLVERS = {
         userId,
       });
 
-      return { tokens: { loginToken } };
+      return { tokens: toAuthTokenPair(loginToken) };
     },
 
     signIn: async (
@@ -630,10 +792,23 @@ export const METADATA_RESOLVERS = {
         });
       }
 
+      const available =
+        membership === null
+          ? []
+          : [
+              toAvailableWorkspace(
+                membership.workspace,
+                loginToken.token,
+                context.serverUrl,
+              ),
+            ];
+
       return {
-        availableWorkspaces:
-          membership === null ? [] : [toWorkspaceDto(membership.workspace)],
-        tokens: { loginToken },
+        availableWorkspaces: {
+          availableWorkspacesForSignIn: available,
+          availableWorkspacesForSignUp: [],
+        },
+        tokens: toAuthTokenPair(loginToken),
       };
     },
 
@@ -693,13 +868,28 @@ export const METADATA_RESOLVERS = {
         userWorkspaceId: membership?.userWorkspaceId ?? null,
       });
 
+      const loginToken = await issueLoginToken({
+        appSecret: context.appSecret,
+        userId: user.id,
+      });
+
+      const available =
+        membership === null
+          ? []
+          : [
+              toAvailableWorkspace(
+                membership.workspace,
+                loginToken.token,
+                context.serverUrl,
+              ),
+            ];
+
       return {
-        loginToken: await issueLoginToken({
-          appSecret: context.appSecret,
-          userId: user.id,
-        }),
-        workspace:
-          membership === null ? null : toWorkspaceDto(membership.workspace),
+        availableWorkspaces: {
+          availableWorkspacesForSignIn: available,
+          availableWorkspacesForSignUp: [],
+        },
+        tokens: toAuthTokenPair(loginToken),
       };
     },
 

@@ -6,8 +6,8 @@ ser usável no dia a dia, na ordem em que pretendo fazer.
 
 **Feitos:** 0 (sync do metadata padrão), 1 (upload), 4 (views salvas),
 2 (notas e tarefas no registro), 6 (timeline), 7 (CSV), 3 (busca global),
-5 (kanban e agrupamento), 8 (papéis e permissões), 10 (duplicados e merge).
-**Falta:** 9.
+5 (kanban e agrupamento), 8 (papéis e permissões), 10 (duplicados e merge),
+9 (convites). **Falta:** nada do plano — só a key de e-mail, que é do usuário.
 
 ## Decisões tomadas antes de começar
 
@@ -186,7 +186,7 @@ erro: um alvo sem leitura não pode derrubar o documento inteiro.
 Fora daqui, de propósito: predicados de linha (o front marca Enterprise e
 entrega atrás da própria licença), agentes e API keys.
 
-## 9. Convidar usuário (e-mail)
+## 9. Convidar usuário (e-mail) — FEITO
 
 - Provedor com API HTTP — SMTP não existe dentro de um Worker. Resend ou
   Postmark. **Key nova:** `RESEND_API_KEY` (ou equivalente) e um domínio
@@ -196,6 +196,28 @@ entrega atrás da própria licença), agentes e API keys.
   verificação de e-mail, que dependem do mesmo canal.
 
 **Tamanho:** médio. **Depende de:** 8. **Key nova:** sim.
+
+**Como ficou:** o convite existe com ou sem provedor de e-mail. Sem a key, a
+mutation devolve o link junto do erro, para quem convidou mandar por onde
+quiser — falhar a mutation inteira deixaria a função inútil até a key chegar.
+Com `RESEND_API_KEY` e `EMAIL_FROM` o mesmo caminho passa a enviar de verdade.
+SMTP não existe dentro de um Worker (não há socket na 587), então o provedor
+tem que falar HTTP.
+
+Convidar o mesmo endereço duas vezes substitui o convite em pé em vez de criar
+outro; reenviar troca o token e estende o prazo, porque o link antigo já foi
+para algum lugar e deixá-lo vivo seria uma segunda porta.
+
+Quem aceita entra com o e-mail **do convite**, não com o que digitou: um link
+vazado não serve para entrar no lugar de outra pessoa. O papel vem do convite,
+ou o padrão do workspace. O link vale uma vez só.
+
+Criar, reenviar e revogar exigem a permissão de configuração; **listar não**, de
+propósito: a tela de membros mostra os convites pendentes ao lado dos membros, e
+quem já vê a lista de membros não aprende nada novo vendo quem foi convidado.
+
+Ainda não: recuperação de senha e verificação de e-mail — mesmo canal, mesma
+tabela `appToken`, e o caminho está pronto para eles.
 
 ## 10. Duplicados e merge — FEITO
 
@@ -224,8 +246,7 @@ escrita, que é o que a tela mostra enquanto a pessoa ainda está escolhendo.
 ## Ordem
 
 ```
-0 → 1 → 4 → 2 → 6 → 7 → 3 → 5 → 8 → 9 → 10
-        ────────────────────────┘ feitos
+0 → 1 → 4 → 2 → 6 → 7 → 3 → 5 → 8 → 9 → 10   ✓ todos
 ```
 
 Primeiro o que não precisa de infraestrutura nova e o usuário sente todo dia

@@ -62,6 +62,7 @@ export const metadataRoute = new Hono<AppEnv>().all('/', async (context) => {
     const graphqlContext: MetadataContext = {
       client,
       appSecret,
+      bindings: context.env,
       // Derived from the request, not from a fixed env var: a whitelabel
       // deployment answers on many hosts and each must echo its own.
       serverUrl: new URL(context.req.url).origin,

@@ -1,6 +1,6 @@
 # Como testar — fase a fase
 
-Estado em 13/09/2026. 118 testes de unidade passando, typecheck limpo, e a suíte
+Estado em 13/09/2026. 120 testes de unidade passando, typecheck limpo, e a suíte
 de ponta a ponta (`packages/twenty-edge-e2e`) verde — Redis, API, navegador de
 verdade e iPhone.
 
@@ -9,7 +9,7 @@ verdade e iPhone.
 ```bash
 cd packages/twenty-edge
 npm install
-npm test          # 118 testes
+npm test          # 120 testes
 npm run typecheck
 npx wrangler deploy --dry-run --env=""   # prova que empacota para o Worker
 ```
@@ -158,6 +158,31 @@ O que deve acontecer, e aconteceu:
 | `GET /rest/companies` | `403` |
 | Busca global | Não devolve linha nenhuma do objeto escondido |
 | Criar papel sem permissão de configuração | `Not allowed to change settings with your role` |
+
+## Convite — como conferir o caminho inteiro
+
+Sem provedor de e-mail configurado, `sendInvitations` devolve o link junto do
+erro. É com ele que dá para medir a aceitação de ponta a ponta:
+
+```bash
+# 1. convidar, e pegar o link da mensagem de erro
+sendInvitations(emails: ["alguem@example.com"]) { success errors result { ... } }
+
+# 2. aceitar, com o token que está no fim do link
+signUpInWorkspace(email: "qualquer@coisa.com", password: "...",
+                  workspacePersonalInviteToken: "<token>")
+```
+
+O que deve acontecer, e aconteceu:
+
+| Tentativa | Resposta |
+|---|---|
+| Aceitar com um e-mail diferente do convite | Entra com o e-mail **do convite** — um link vazado não serve para entrar no lugar de outra pessoa |
+| Papel de quem entrou | O do convite, ou o padrão do workspace (`Membro`) |
+| Usar o mesmo link de novo | `INVITATION_NOT_FOUND_OR_EXPIRED` |
+| Convidar o mesmo endereço duas vezes | Um convite só na lista |
+
+Depois de medir, apague o usuário de teste: ele fica no workspace de verdade.
 
 ## Suíte de ponta a ponta — `packages/twenty-edge-e2e`
 

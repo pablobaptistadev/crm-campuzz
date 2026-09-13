@@ -1033,4 +1033,74 @@ describe('twenty-front metadata documents', () => {
       }
     `);
   });
+  it('validates the invitation documents the members page sends', () => {
+    expectValid(`
+      query GetWorkspaceInvitations {
+        findWorkspaceInvitations { id email roleId expiresAt }
+      }
+    `);
+
+    expectValid(`
+      mutation SendInvitations($emails: [String!]!, $roleId: UUID) {
+        sendInvitations(emails: $emails, roleId: $roleId) {
+          success
+          errors
+          result {
+            ... on WorkspaceInvitation { id email roleId expiresAt }
+          }
+        }
+      }
+    `);
+
+    expectValid(`
+      mutation ResendWorkspaceInvitation($appTokenId: String!) {
+        resendWorkspaceInvitation(appTokenId: $appTokenId) {
+          success
+          errors
+          result {
+            ... on WorkspaceInvitation { id email roleId expiresAt }
+          }
+        }
+      }
+    `);
+
+    expectValid(`
+      mutation DeleteWorkspaceInvitation($appTokenId: String!) {
+        deleteWorkspaceInvitation(appTokenId: $appTokenId)
+      }
+    `);
+  });
+
+  it('validates the invited sign-up the front sends', () => {
+    expectValid(`
+      fragment AuthTokenFragment on AuthToken { token expiresAt }
+      mutation SignUpInWorkspace(
+        $email: String!
+        $password: String!
+        $workspaceInviteHash: String
+        $workspacePersonalInviteToken: String = null
+        $captchaToken: String
+        $workspaceId: UUID
+        $locale: String
+        $verifyEmailRedirectPath: String
+      ) {
+        signUpInWorkspace(
+          email: $email
+          password: $password
+          workspaceInviteHash: $workspaceInviteHash
+          workspacePersonalInviteToken: $workspacePersonalInviteToken
+          captchaToken: $captchaToken
+          workspaceId: $workspaceId
+          locale: $locale
+          verifyEmailRedirectPath: $verifyEmailRedirectPath
+        ) {
+          loginToken { ...AuthTokenFragment }
+          workspace {
+            id
+            workspaceUrls { subdomainUrl customUrl }
+          }
+        }
+      }
+    `);
+  });
 });

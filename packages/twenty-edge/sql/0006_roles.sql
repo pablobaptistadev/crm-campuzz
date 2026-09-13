@@ -100,10 +100,3 @@ CREATE TABLE IF NOT EXISTS core."rolePermissionFlag" (
 
 CREATE UNIQUE INDEX IF NOT EXISTS "UQ_ROLE_PERMISSION_FLAG"
   ON core."rolePermissionFlag" ("roleId", "flag");
-
--- Which columns make two records the same record. An inner array is a
--- conjunction, the outer one a disjunction: a person matches on first+last name
--- OR on their primary email. NULL means the object has no duplicate detection,
--- which is what every custom object gets.
-ALTER TABLE core."objectMetadata"
-  ADD COLUMN IF NOT EXISTS "duplicateCriteria" jsonb;

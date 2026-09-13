@@ -45,10 +45,13 @@ No ar em `https://crm.campuzz.com.br`, servindo o `twenty-front` sem modificaç�
 - Kanban e agrupamento, com granularidade de data e fuso.
 - Papéis e permissões, aplicados na API — `/graphql`, `/rest/*` e a busca.
 - Duplicados e merge, com `dryRun` e as relações reapontadas antes do delete.
+- Convites: criar, listar, reenviar, revogar e aceitar. O e-mail sai por HTTP
+  (Resend) quando a key existe; sem ela o link volta para quem convidou.
 - REST e um subconjunto do OpenAPI derivados do mesmo metadata.
 
-**Não existe ainda:** convite por e-mail (item 9 — a única key nova do plano
-inteiro). Ver `ROADMAP.md`.
+**A única credencial que falta** é a do provedor de e-mail: `RESEND_API_KEY` e
+`EMAIL_FROM`, por `wrangler secret put`. Sem elas tudo funciona, menos a entrega
+da mensagem — o link do convite volta na resposta para quem convidou.
 
 **Fora do plano, e por quê:** sincronização de e-mail e agenda, workflows,
 webhooks, billing, SSO, 2FA, atualização ao vivo por SSE. Cada um é um projeto

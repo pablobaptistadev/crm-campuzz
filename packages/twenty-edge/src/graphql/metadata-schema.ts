@@ -9,6 +9,7 @@ import {
   type UserRow,
 } from 'src/db/core/auth-repository';
 import { loadWorkspaceMetadata } from 'src/db/core/metadata-repository';
+import { type Bindings } from 'src/env';
 import {
   findViews,
   loadViewChildren,
@@ -69,6 +70,16 @@ import {
   findRoles,
   loadRolePermissions,
 } from 'src/db/core/role-repository';
+import { buildInvitationEmail, sendEmail } from 'src/services/email';
+import {
+  consumeInvitation,
+  createInvitation,
+  findInvitationByToken,
+  findWorkspaceInvitations,
+  revokeInvitation,
+  rotateInvitationToken,
+  type WorkspaceInvitation,
+} from 'src/services/invitations';
 import { loadWorkspacePermissions } from 'src/services/permissions';
 import {
   assignRoleToWorkspaceMember,
@@ -88,6 +99,9 @@ import {
 export type MetadataContext = {
   client: Client;
   appSecret: string;
+  // The whole env, for the resolvers that talk to something outside Postgres —
+  // today only the mail provider.
+  bindings: Bindings;
   // Loaded once per request by the route, so no resolver re-reads the user,
   // the membership or the workspace.
   sessionContext: SessionContext | null;
@@ -569,6 +583,11 @@ type PublicWorkspaceData {
   authBypassProviders: AuthBypassProviders!
 }
 
+type SignUpInWorkspaceOutput {
+  loginToken: AuthToken!
+  workspace: PublicWorkspaceData!
+}
+
 type SignInUpOutput {
   availableWorkspaces: AvailableWorkspaces!
   tokens: AuthTokenPair!
@@ -594,6 +613,24 @@ type Query {
   myMessageChannels(connectedAccountId: UUID): [MessageChannel!]!
   myCalendarChannels(connectedAccountId: UUID): [CalendarChannel!]!
   getRoles: [Role!]!
+  findWorkspaceInvitations: [WorkspaceInvitation!]!
+}
+
+type WorkspaceInvitation {
+  id: UUID!
+  email: String!
+  roleId: UUID
+  expiresAt: DateTime!
+}
+
+# The front unwraps this with an inline fragment on WorkspaceInvitation, so the
+# result has to be a union even though only one member ever comes back today.
+union WorkspaceInvitationResult = WorkspaceInvitation
+
+type SendInvitationsOutput {
+  success: Boolean!
+  errors: [String!]!
+  result: [WorkspaceInvitationResult!]!
 }
 
 type RolePermissionFlag {
@@ -981,6 +1018,7 @@ type Mutation {
   getAuthTokensFromLoginToken(loginToken: String!, origin: String): AuthTokensWrapper!
   signIn(email: String!, password: String!, captchaToken: String): SignInUpOutput!
   signUp(email: String!, password: String!, captchaToken: String, locale: String, verifyEmailRedirectPath: String, firstName: String, lastName: String, workspaceName: String): SignInUpOutput!
+  signUpInWorkspace(email: String!, password: String!, workspaceInviteHash: String, workspacePersonalInviteToken: String, captchaToken: String, workspaceId: UUID, locale: String, verifyEmailRedirectPath: String): SignUpInWorkspaceOutput!
   signOut(refreshToken: String): Boolean!
   trackAnalytics(type: AnalyticsType!, event: String, name: String, properties: JSON): Analytics!
   createFileUpload(filename: String!, size: Float!, fileFolder: FileFolder!, fieldMetadataId: String): FileUploadTarget!
@@ -993,6 +1031,9 @@ type Mutation {
   upsertObjectPermissions(upsertObjectPermissionsInput: UpsertObjectPermissionsInput!): [ObjectPermission!]!
   upsertFieldPermissions(upsertFieldPermissionsInput: UpsertFieldPermissionsInput!): [FieldPermission!]!
   upsertPermissionFlags(upsertPermissionFlagsInput: UpsertPermissionFlagsInput!): [RolePermissionFlag!]!
+  sendInvitations(emails: [String!]!, roleId: UUID): SendInvitationsOutput!
+  resendWorkspaceInvitation(appTokenId: String!): SendInvitationsOutput!
+  deleteWorkspaceInvitation(appTokenId: String!): String!
 }
 
 type SyncStandardMetadataResult {
@@ -1168,6 +1209,97 @@ const requireSettingsAccess = async (
   }
 
   return membership.workspace.id;
+};
+
+// The invitation exists whether or not the mail went out — the link works
+// either way, and failing the mutation would make the feature unusable until
+// the provider key arrives. The error comes back beside the invitation instead.
+const deliverInvitationEmail = async ({
+  context,
+  workspaceId,
+  invitation,
+  token,
+}: {
+  context: MetadataContext;
+  workspaceId: string;
+  invitation: WorkspaceInvitation;
+  token: string;
+}): Promise<string | null> => {
+  const { rows } = await context.client.query<{ displayName: string | null }>(
+    `SELECT "displayName" FROM core."workspace" WHERE "id" = $1`,
+    [workspaceId],
+  );
+
+  const inviter = context.sessionContext?.user ?? null;
+
+  const link = `${context.serverUrl}/invite/${token}`;
+
+  const result = await sendEmail({
+    bindings: context.bindings,
+    message: buildInvitationEmail({
+      to: invitation.email,
+      workspaceName: rows[0]?.displayName ?? 'workspace',
+      inviterName:
+        inviter === null
+          ? null
+          : [inviter.firstName, inviter.lastName]
+              .filter((part) => part !== null && part.length > 0)
+              .join(' ') || inviter.email,
+      link,
+    }),
+  });
+
+  // The link travels back to whoever sent the invitation when we could not
+  // deliver it. They are already allowed to invite this person, and a link they
+  // can paste into a message is the difference between the feature working
+  // today and waiting on a provider key.
+  return result.delivered ? null : `${result.reason}. Link: ${link}`;
+};
+
+const deliverInvitations = async ({
+  context,
+  workspaceId,
+  requests,
+}: {
+  context: MetadataContext;
+  workspaceId: string;
+  requests: { email: string; roleId: string | null }[];
+}): Promise<{
+  success: boolean;
+  errors: string[];
+  result: WorkspaceInvitation[];
+}> => {
+  const errors: string[] = [];
+  const result: WorkspaceInvitation[] = [];
+
+  for (const request of requests) {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(request.email)) {
+      errors.push(`${request.email} não parece um e-mail`);
+      continue;
+    }
+
+    const { invitation, token } = await createInvitation({
+      client: context.client,
+      workspaceId,
+      email: request.email,
+      roleId: request.roleId,
+    });
+
+    result.push(invitation);
+
+    const failure = await deliverInvitationEmail({
+      context,
+      workspaceId,
+      invitation,
+      token,
+    });
+
+    if (failure !== null) {
+      errors.push(failure);
+    }
+  }
+
+  return { success: errors.length === 0, errors, result };
 };
 
 const EMPTY_ROLE_CHILDREN = {
@@ -1547,6 +1679,12 @@ export const METADATA_RESOLVERS = {
   },
   CommandMenuItemPayload: {
     __resolveType: (value: { __type?: string }) => value.__type ?? null,
+  },
+
+  // A union needs a discriminator even with one member: without it every
+  // selection through the inline fragment comes back null.
+  WorkspaceInvitationResult: {
+    __resolveType: () => 'WorkspaceInvitation',
   },
 
   Query: {
@@ -1955,6 +2093,23 @@ export const METADATA_RESOLVERS = {
     myMessageChannels: () => [],
     myCalendarChannels: () => [],
 
+    findWorkspaceInvitations: async (
+      _parent: unknown,
+      _args: unknown,
+      context: MetadataContext,
+    ) => {
+      const membership = context.sessionContext?.membership ?? null;
+
+      if (membership === null) {
+        return [];
+      }
+
+      return findWorkspaceInvitations({
+        client: context.client,
+        workspaceId: membership.workspace.id,
+      });
+    },
+
     getRoles: async (
       _parent: unknown,
       _args: unknown,
@@ -2318,6 +2473,135 @@ export const METADATA_RESOLVERS = {
           availableWorkspacesForSignUp: [],
         },
         tokens: toAuthTokenPair(loginToken),
+      };
+    },
+
+    // Accepting an invitation. The address is not the caller's to choose: it is
+    // whatever the invitation was issued to, so a leaked link cannot be used to
+    // join under someone else's e-mail.
+    signUpInWorkspace: async (
+      _parent: unknown,
+      args: {
+        email: string;
+        password: string;
+        workspacePersonalInviteToken?: string | null;
+      },
+      context: MetadataContext,
+    ) => {
+      const token = args.workspacePersonalInviteToken ?? '';
+
+      if (token.length === 0) {
+        throw new Error('INVITATION_REQUIRED');
+      }
+
+      const invitation = await findInvitationByToken({
+        client: context.client,
+        token,
+      });
+
+      if (invitation === null) {
+        throw new Error('INVITATION_NOT_FOUND_OR_EXPIRED');
+      }
+
+      const existing = await findUserByEmail({
+        client: context.client,
+        email: invitation.email,
+      });
+
+      const user =
+        existing ??
+        (await insertUser({
+          client: context.client,
+          email: invitation.email,
+          firstName: '',
+          lastName: '',
+          passwordHash: await hashPassword(args.password),
+        }));
+
+      const { rows: membershipRows } = await context.client.query<{
+        id: string;
+      }>(
+        `INSERT INTO core."userWorkspace" ("userId","workspaceId")
+         VALUES ($1,$2)
+         ON CONFLICT ("userId","workspaceId") WHERE "deletedAt" IS NULL
+         DO UPDATE SET "updatedAt" = now()
+         RETURNING "id"`,
+        [user.id, invitation.workspaceId],
+      );
+
+      const userWorkspaceId = membershipRows[0].id;
+
+      await seedWorkspaceMember({
+        client: context.client,
+        workspaceId: invitation.workspaceId,
+        userId: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+      });
+
+      // The invitation carries the role; without one the workspace's default
+      // applies, which is what syncRoles set up.
+      await context.client.query(
+        `INSERT INTO core."roleTarget" ("workspaceId","roleId","userWorkspaceId")
+         SELECT $1,
+                COALESCE(
+                  (SELECT "id" FROM core."role" WHERE "workspaceId" = $1 AND "id" = $3),
+                  (SELECT "id" FROM core."role" WHERE "workspaceId" = $1 AND "isDefaultRole" = true LIMIT 1)
+                ),
+                $2
+         ON CONFLICT ("userWorkspaceId") WHERE "userWorkspaceId" IS NOT NULL
+         DO UPDATE SET "roleId" = EXCLUDED."roleId", "updatedAt" = now()`,
+        [invitation.workspaceId, userWorkspaceId, invitation.roleId],
+      );
+
+      await consumeInvitation({
+        client: context.client,
+        appTokenId: invitation.appTokenId,
+      });
+
+      await context.issueSession({
+        userId: user.id,
+        workspaceId: invitation.workspaceId,
+        userWorkspaceId,
+      });
+
+      const loginToken = await issueLoginToken({
+        appSecret: context.appSecret,
+        userId: user.id,
+      });
+
+      const { rows: workspaceRows } = await context.client.query<{
+        id: string;
+        displayName: string | null;
+        logo: string | null;
+      }>(
+        `SELECT "id","displayName","logo" FROM core."workspace" WHERE "id" = $1`,
+        [invitation.workspaceId],
+      );
+
+      return {
+        loginToken: {
+          token: loginToken.token,
+          expiresAt: loginToken.expiresAt,
+        },
+        workspace: {
+          id: workspaceRows[0].id,
+          logo: workspaceRows[0].logo,
+          displayName: workspaceRows[0].displayName,
+          workspaceUrls: {
+            subdomainUrl: context.serverUrl,
+            customUrl: null,
+          },
+          authProviders: {
+            password: true,
+            google: false,
+            microsoft: false,
+            magicLink: false,
+            sso: [],
+          },
+          authBypassProviders: { google: false, microsoft: false },
+        },
       };
     },
 
@@ -2993,6 +3277,78 @@ export const METADATA_RESOLVERS = {
         roleId: args.upsertPermissionFlagsInput.roleId,
         flags: args.upsertPermissionFlagsInput.permissionFlagKeys,
       }),
+
+    sendInvitations: async (
+      _parent: unknown,
+      args: { emails: string[]; roleId?: string | null },
+      context: MetadataContext,
+    ) => {
+      const workspaceId = await requireSettingsAccess(context);
+
+      return deliverInvitations({
+        context,
+        workspaceId,
+        requests: args.emails.map((email) => ({
+          email: email.trim(),
+          roleId: args.roleId ?? null,
+        })),
+      });
+    },
+
+    resendWorkspaceInvitation: async (
+      _parent: unknown,
+      args: { appTokenId: string },
+      context: MetadataContext,
+    ) => {
+      const workspaceId = await requireSettingsAccess(context);
+
+      const rotated = await rotateInvitationToken({
+        client: context.client,
+        workspaceId,
+        appTokenId: args.appTokenId,
+      });
+
+      if (rotated === null) {
+        return {
+          success: false,
+          errors: ['Não encontramos este convite'],
+          result: [],
+        };
+      }
+
+      const delivery = await deliverInvitationEmail({
+        context,
+        workspaceId,
+        invitation: rotated.invitation,
+        token: rotated.token,
+      });
+
+      return {
+        success: delivery === null,
+        errors: delivery === null ? [] : [delivery],
+        result: [rotated.invitation],
+      };
+    },
+
+    deleteWorkspaceInvitation: async (
+      _parent: unknown,
+      args: { appTokenId: string },
+      context: MetadataContext,
+    ) => {
+      const workspaceId = await requireSettingsAccess(context);
+
+      const revoked = await revokeInvitation({
+        client: context.client,
+        workspaceId,
+        appTokenId: args.appTokenId,
+      });
+
+      if (!revoked) {
+        throw new Error('Não encontramos este convite');
+      }
+
+      return args.appTokenId;
+    },
 
     syncStandardMetadata: async (
       _parent: unknown,

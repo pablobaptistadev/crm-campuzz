@@ -2050,6 +2050,155 @@ export const runApiSuite = async (
     return { roleId };
   });
 
+  // The invitation round trip, up to but not including acceptance: accepting
+  // creates a user and a workspace member, and a suite that runs against the
+  // real workspace should not leave people in it.
+  await recorder.step('an invitation is created, listed and revoked', async () => {
+    const email = `convite.${runSuffix}@example.com`;
+
+    const sent = unwrap(
+      (
+        await client.graphql<{
+          sendInvitations: {
+            success: boolean;
+            errors: string[];
+            result: { id: string; email: string }[];
+          };
+        }>({
+          endpoint: '/metadata',
+          query: `mutation SendInvitations($emails: [String!]!, $roleId: UUID) {
+            sendInvitations(emails: $emails, roleId: $roleId) {
+              success
+              errors
+              result {
+                ... on WorkspaceInvitation { id email roleId expiresAt }
+              }
+            }
+          }`,
+          variables: { emails: [email], roleId: null },
+        })
+      ).body,
+      'sendInvitations',
+    );
+
+    assertEqual(sent.sendInvitations.result.length, 1, 'one invitation back');
+    assertEqual(
+      sent.sendInvitations.result[0].email,
+      email,
+      'the invitation carries the address',
+    );
+
+    const invitationId = sent.sendInvitations.result[0].id;
+
+    // Without a mail provider the invitation still exists and its link still
+    // works — the failure is reported beside it rather than instead of it.
+    if (!sent.sendInvitations.success) {
+      assert(
+        sent.sendInvitations.errors.some((error) => error.includes('Link:')),
+        `the link comes back when we cannot deliver: ${JSON.stringify(sent.sendInvitations.errors).slice(0, 200)}`,
+      );
+    }
+
+    const listed = unwrap(
+      (
+        await client.graphql<{
+          findWorkspaceInvitations: { id: string; email: string }[];
+        }>({
+          endpoint: '/metadata',
+          query: `query GetWorkspaceInvitations {
+            findWorkspaceInvitations { id email roleId expiresAt }
+          }`,
+        })
+      ).body,
+      'findWorkspaceInvitations',
+    );
+
+    assert(
+      listed.findWorkspaceInvitations.some(
+        (invitation) => invitation.id === invitationId,
+      ),
+      'the invitation is listed',
+    );
+
+    // Inviting the same address again replaces the live invitation instead of
+    // adding a second row the settings page would list twice.
+    unwrap(
+      (
+        await client.graphql({
+          endpoint: '/metadata',
+          query: `mutation SendInvitations($emails: [String!]!) {
+            sendInvitations(emails: $emails) {
+              success
+              result { ... on WorkspaceInvitation { id email } }
+            }
+          }`,
+          variables: { emails: [email] },
+        })
+      ).body,
+      'sendInvitations again',
+    );
+
+    const relisted = unwrap(
+      (
+        await client.graphql<{
+          findWorkspaceInvitations: { id: string; email: string }[];
+        }>({
+          endpoint: '/metadata',
+          query: `query GetWorkspaceInvitations {
+            findWorkspaceInvitations { id email }
+          }`,
+        })
+      ).body,
+      'findWorkspaceInvitations after resend',
+    );
+
+    assertEqual(
+      relisted.findWorkspaceInvitations.filter(
+        (invitation) => invitation.email === email,
+      ).length,
+      1,
+      'inviting twice leaves one invitation',
+    );
+
+    const survivingId = relisted.findWorkspaceInvitations.find(
+      (invitation) => invitation.email === email,
+    )?.id;
+
+    unwrap(
+      (
+        await client.graphql({
+          endpoint: '/metadata',
+          query: `mutation DeleteWorkspaceInvitation($appTokenId: String!) {
+            deleteWorkspaceInvitation(appTokenId: $appTokenId)
+          }`,
+          variables: { appTokenId: survivingId },
+        })
+      ).body,
+      'deleteWorkspaceInvitation',
+    );
+
+    const afterDelete = unwrap(
+      (
+        await client.graphql<{
+          findWorkspaceInvitations: { email: string }[];
+        }>({
+          endpoint: '/metadata',
+          query: `query GetWorkspaceInvitations { findWorkspaceInvitations { id email } }`,
+        })
+      ).body,
+      'findWorkspaceInvitations after delete',
+    );
+
+    assert(
+      !afterDelete.findWorkspaceInvitations.some(
+        (invitation) => invitation.email === email,
+      ),
+      'the revoked invitation is gone',
+    );
+
+    return { email };
+  });
+
   await recorder.step('signOut invalidates the session', async () => {
     unwrap(
       (

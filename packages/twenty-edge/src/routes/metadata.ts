@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { createYoga } from 'graphql-yoga';
 
 import {
-  findActiveSession,
+  findSessionContext,
   insertSession,
   revokeSession,
 } from 'src/db/core/auth-repository';
@@ -46,10 +46,10 @@ export const metadataRoute = new Hono<AppEnv>().all('/', async (context) => {
 
   return withDatabaseClient(context.env, context.executionCtx, async (client) => {
     const sessionToken = readSessionToken(context);
-    const session =
+    const sessionContext =
       sessionToken === null
         ? null
-        : await findActiveSession({
+        : await findSessionContext({
             client,
             tokenHash: await hashSessionToken(sessionToken),
           });
@@ -80,8 +80,9 @@ export const metadataRoute = new Hono<AppEnv>().all('/', async (context) => {
 
         return attempts <= limit;
       },
-      sessionUserId: session?.userId ?? null,
-      sessionWorkspaceId: session?.workspaceId ?? null,
+      sessionContext,
+      sessionUserId: sessionContext?.user.id ?? null,
+      sessionWorkspaceId: sessionContext?.membership?.workspace.id ?? null,
       issueSession: async ({ userId, workspaceId, userWorkspaceId }) => {
         const issued = await issueSessionToken();
 

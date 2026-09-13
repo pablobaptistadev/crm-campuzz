@@ -21,9 +21,14 @@ const SCALAR_BY_FIELD_TYPE: Partial<Record<FieldMetadataType, string>> = {
   DATE_TIME: 'DateTime',
   DATE: 'Date',
   RAW_JSON: 'RawJSON',
-  FILES: 'RawJSON',
+  FILES: '[FileValue!]',
   TS_VECTOR: 'String',
   ARRAY: '[String]',
+};
+
+// The few field types whose input shape differs from their output shape.
+const INPUT_SCALAR_BY_FIELD_TYPE: Partial<Record<FieldMetadataType, string>> = {
+  FILES: '[FileValueInput!]',
 };
 
 const FILTER_BY_SCALAR: Record<string, string> = {
@@ -36,10 +41,38 @@ const FILTER_BY_SCALAR: Record<string, string> = {
   DateTime: 'DateTimeFilter',
   Date: 'DateFilter',
   RawJSON: 'RawJsonFilter',
+  '[FileValue!]': 'RawJsonFilter',
   '[String]': 'ArrayFilter',
 };
 
+// twenty-front selects into three composite sub-properties that are jsonb in
+// the database: secondaryLinks, additionalPhones and the ACTOR context. A leaf
+// scalar there fails the document with "must not have a selection".
+const STRUCTURED_PROPERTY_TYPES: Record<string, string> = {
+  secondaryLinks: '[LinkValue!]',
+  additionalPhones: '[PhoneValue!]',
+  context: 'ActorContext',
+};
+
+const STRUCTURED_INPUT_TYPES: Record<string, string> = {
+  secondaryLinks: '[LinkValueInput!]',
+  additionalPhones: '[PhoneValueInput!]',
+  context: 'ActorContextInput',
+};
+
 export const COMMON_SDL = `
+type LinkValue { label: String url: String }
+input LinkValueInput { label: String url: String }
+
+type PhoneValue { number: String callingCode: String countryCode: String }
+input PhoneValueInput { number: String callingCode: String countryCode: String }
+
+type ActorContext { provider: String }
+input ActorContextInput { provider: String }
+
+type FileValue { fileId: UUID label: String extension: String url: String }
+input FileValueInput { fileId: UUID label: String extension: String url: String }
+
 enum OrderByDirection {
   AscNullsFirst
   AscNullsLast
@@ -80,7 +113,11 @@ const buildCompositeSdl = (type: FieldMetadataType): string => {
     .filter((property) => property.hidden !== 'output' && property.hidden !== true)
     .map(
       (property) =>
-        `  ${property.name}: ${SCALAR_BY_FIELD_TYPE[property.type] ?? 'String'}`,
+        `  ${property.name}: ${
+          STRUCTURED_PROPERTY_TYPES[property.name] ??
+          SCALAR_BY_FIELD_TYPE[property.type] ??
+          'String'
+        }`,
     )
     .join('\n');
 
@@ -88,7 +125,11 @@ const buildCompositeSdl = (type: FieldMetadataType): string => {
     .filter((property) => property.hidden !== 'input' && property.hidden !== true)
     .map(
       (property) =>
-        `  ${property.name}: ${SCALAR_BY_FIELD_TYPE[property.type] ?? 'String'}`,
+        `  ${property.name}: ${
+          STRUCTURED_INPUT_TYPES[property.name] ??
+          SCALAR_BY_FIELD_TYPE[property.type] ??
+          'String'
+        }`,
     )
     .join('\n');
 
@@ -304,7 +345,11 @@ export const buildObjectSdl = ({
         return `  ${field.name}: [${buildSelectEnumName(object, field)}]`;
       }
 
-      return `  ${field.name}: ${SCALAR_BY_FIELD_TYPE[field.type] ?? 'String'}`;
+      return `  ${field.name}: ${
+        INPUT_SCALAR_BY_FIELD_TYPE[field.type] ??
+        SCALAR_BY_FIELD_TYPE[field.type] ??
+        'String'
+      }`;
     })
     .join('\n');
 
@@ -355,7 +400,7 @@ const buildRootSdl = (objects: FlatObjectMetadata[]): string => {
     .map((object) => {
       const typeName = pascalCase(object.nameSingular);
 
-      return `  ${object.namePlural}(filter: ${typeName}FilterInput, orderBy: [${typeName}OrderByInput], first: Int, last: Int, before: Cursor, after: Cursor, offset: Int): ${typeName}Connection!
+      return `  ${object.namePlural}(filter: ${typeName}FilterInput, orderBy: [${typeName}OrderByInput], first: Int, last: Int, before: String, after: String, offset: Int): ${typeName}Connection!
   ${object.nameSingular}(filter: ${typeName}FilterInput): ${typeName}`;
     })
     .join('\n');

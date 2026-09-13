@@ -87,27 +87,237 @@ describe('twenty-front metadata documents', () => {
     `);
   });
 
-  it('validates the current user query', () => {
+  // GetCurrentUser + UserQueryFragment and every fragment it spreads, copied
+  // verbatim from packages/twenty-front/src/modules/users/graphql/**,
+  // workspace-member/graphql/**, settings/roles/graphql/** and
+  // settings/billing/graphql/**. This is the document that decides whether the
+  // app boots: one unknown field on it and the user never gets past login.
+  it('validates the current user query the front actually sends', () => {
     expectValid(`
       query GetCurrentUser {
         currentUser {
-          id
-          email
-          firstName
-          lastName
-          currentWorkspace { id displayName subdomain metadataVersion activationStatus }
-          currentUserWorkspace {
-            id
-            objectsPermissions {
-              objectMetadataId
-              canReadObjectRecords
-              canUpdateObjectRecords
-              canSoftDeleteObjectRecords
-              canDestroyObjectRecords
-            }
-          }
-          availableWorkspaces { id displayName subdomain }
+          ...UserQueryFragment
         }
+      }
+
+      fragment UserQueryFragment on User {
+        id
+        firstName
+        lastName
+        email
+        hasPassword
+        canAccessFullAdminPanel
+        canImpersonate
+        supportUserHash
+        onboardingStatus
+        previousOnboardingStatus
+        isWorkspaceCreator
+        workspaceMember { ...WorkspaceMemberQueryFragment }
+        workspaceMembers { ...PartialWorkspaceMemberQueryFragment }
+        deletedWorkspaceMembers { ...DeletedWorkspaceMemberQueryFragment }
+        currentUserWorkspace {
+          id
+          permissionFlags
+          isImpersonating
+          objectsPermissions { ...ObjectPermissionFragment }
+          twoFactorAuthenticationMethodSummary {
+            twoFactorAuthenticationMethodId
+            status
+            strategy
+          }
+        }
+        currentWorkspace {
+          id
+          displayName
+          logo
+          inviteHash
+          allowImpersonation
+          activationStatus
+          isPublicInviteLinkEnabled
+          workspaceDiscoverability
+          isGoogleAuthEnabled
+          isMicrosoftAuthEnabled
+          isPasswordAuthEnabled
+          isGoogleAuthBypassEnabled
+          isMicrosoftAuthBypassEnabled
+          isPasswordAuthBypassEnabled
+          subdomain
+          customDomain
+          hasValidSignedEnterpriseKey
+          hasValidEnterpriseValidityToken
+          workspaceCustomApplication { id }
+          installedApplications { id name universalIdentifier logoUrl }
+          isCustomDomainEnabled
+          workspaceUrls { ...WorkspaceUrlsFragment }
+          featureFlags { key value }
+          currentBillingSubscription { ...CurrentBillingSubscriptionFragment }
+          billingCustomer { id hasPaymentMethod }
+          billingSubscriptions { ...BillingSubscriptionFragment }
+          billingEntitlements { key value }
+          workspaceMembersCount
+          defaultRole { ...RoleFragment }
+          aiChatModelTier
+          aiAgentModelTier
+          isAutoModelSelectionEnabled
+          aiModelIdByTier
+          aiAdditionalInstructions
+          isTwoFactorAuthenticationEnforced
+          trashRetentionDays
+          eventLogRetentionDays
+          editableProfileFields
+          isInternalMessagesImportEnabled
+        }
+        availableWorkspaces { ...AvailableWorkspacesFragment }
+        userVars
+      }
+
+      fragment WorkspaceMemberQueryFragment on WorkspaceMember {
+        id
+        name { firstName lastName }
+        colorScheme
+        uiScale
+        openRecordIn
+        avatarUrl
+        locale
+        userEmail
+        userWorkspaceId
+        timeZone
+        dateFormat
+        timeFormat
+        calendarStartDay
+        numberFormat
+      }
+
+      fragment PartialWorkspaceMemberQueryFragment on WorkspaceMember {
+        id
+        name { firstName lastName }
+        avatarUrl
+        userEmail
+        userWorkspaceId
+      }
+
+      fragment DeletedWorkspaceMemberQueryFragment on DeletedWorkspaceMember {
+        id
+        name { firstName lastName }
+        avatarUrl
+        userEmail
+      }
+
+      fragment ObjectPermissionFragment on ObjectPermission {
+        objectMetadataId
+        canReadObjectRecords
+        canUpdateObjectRecords
+        canSoftDeleteObjectRecords
+        canDestroyObjectRecords
+        restrictedFields
+        rowLevelPermissionPredicates { ...RowLevelPermissionPredicateFragment }
+        rowLevelPermissionPredicateGroups {
+          ...RowLevelPermissionPredicateGroupFragment
+        }
+      }
+
+      fragment RowLevelPermissionPredicateFragment on RowLevelPermissionPredicate {
+        id
+        fieldMetadataId
+        objectMetadataId
+        operand
+        subFieldName
+        workspaceMemberFieldMetadataId
+        workspaceMemberSubFieldName
+        rowLevelPermissionPredicateGroupId
+        positionInRowLevelPermissionPredicateGroup
+        roleId
+        value
+      }
+
+      fragment RowLevelPermissionPredicateGroupFragment on RowLevelPermissionPredicateGroup {
+        id
+        parentRowLevelPermissionPredicateGroupId
+        logicalOperator
+        positionInRowLevelPermissionPredicateGroup
+        roleId
+        objectMetadataId
+      }
+
+      fragment WorkspaceUrlsFragment on WorkspaceUrls {
+        subdomainUrl
+        customUrl
+      }
+
+      fragment RoleFragment on Role {
+        id
+        label
+        description
+        icon
+        canUpdateAllSettings
+        canAccessAllTools
+        isEditable
+        canReadAllObjectRecords
+        canUpdateAllObjectRecords
+        canSoftDeleteAllObjectRecords
+        canDestroyAllObjectRecords
+        canBeAssignedToUsers
+        canBeAssignedToAgents
+        canBeAssignedToApiKeys
+      }
+
+      fragment CurrentBillingSubscriptionFragment on BillingSubscription {
+        id
+        status
+        interval
+        metadata
+        currentPeriodEnd
+        cancelAt
+        phases { ...BillingSubscriptionSchedulePhaseFragment }
+        billingSubscriptionItems {
+          id
+          hasReachedCurrentPeriodCap
+          quantity
+          stripePriceId
+          unitAmount
+          creditAmount
+          billingProduct {
+            name
+            description
+            images
+            metadata { productKey planKey priceUsageBased isLegacy }
+          }
+        }
+      }
+
+      fragment BillingSubscriptionFragment on BillingSubscription {
+        id
+        status
+        metadata
+        cancelAt
+        phases { ...BillingSubscriptionSchedulePhaseFragment }
+      }
+
+      fragment BillingSubscriptionSchedulePhaseFragment on BillingSubscriptionSchedulePhase {
+        start_date
+        end_date
+        items { ...BillingSubscriptionSchedulePhaseItemFragment }
+      }
+
+      fragment BillingSubscriptionSchedulePhaseItemFragment on BillingSubscriptionSchedulePhaseItem {
+        price
+        quantity
+      }
+
+      fragment AvailableWorkspacesFragment on AvailableWorkspaces {
+        availableWorkspacesForSignIn { ...AvailableWorkspaceFragment }
+        availableWorkspacesForSignUp { ...AvailableWorkspaceFragment }
+      }
+
+      fragment AvailableWorkspaceFragment on AvailableWorkspace {
+        id
+        displayName
+        loginToken
+        inviteHash
+        personalInviteToken
+        workspaceUrls { subdomainUrl customUrl }
+        logo
+        sso { type id issuer name status }
       }
     `);
   });
@@ -232,13 +442,252 @@ describe('twenty-front metadata documents', () => {
     `);
   });
 
+  // The nine collections MinimalMetadataLoadEffect pulls when the store is cold.
+  // Copied verbatim from packages/twenty-front/src/modules/**/graphql/queries/**.
+  it('validates the view documents, including the ViewType enum variable', () => {
+    expectValid(`
+      query FindAllViews($viewTypes: [ViewType!]) {
+        getViews(viewTypes: $viewTypes) { ...ViewFragment }
+      }
+
+      fragment ViewFragment on View {
+        id
+        name
+        objectMetadataId
+        type
+        key
+        icon
+        position
+        isCompact
+        kanbanAggregateOperation
+        kanbanAggregateOperationFieldMetadataId
+        mainGroupByFieldMetadataId
+        shouldHideEmptyGroups
+        kanbanColumnWidth
+        anyFieldFilterValue
+        calendarFieldMetadataId
+        calendarEndFieldMetadataId
+        calendarLayout
+        visibility
+        createdByUserWorkspaceId
+        isActive
+        viewFields { ...ViewFieldFragment }
+        viewFieldGroups { ...ViewFieldGroupFragment }
+        viewFilters { ...ViewFilterFragment }
+        viewFilterGroups { ...ViewFilterGroupFragment }
+        viewSorts { ...ViewSortFragment }
+        viewGroups { ...ViewGroupFragment }
+      }
+
+      fragment ViewFieldFragment on ViewField {
+        id fieldMetadataId viewId isVisible position size aggregateOperation
+        viewFieldGroupId isActive createdAt updatedAt deletedAt
+      }
+
+      fragment ViewFieldGroupFragment on ViewFieldGroup {
+        id name position isVisible viewId isActive createdAt updatedAt deletedAt
+        viewFields { ...ViewFieldFragment }
+      }
+
+      fragment ViewFilterFragment on ViewFilter {
+        id fieldMetadataId operand value viewFilterGroupId positionInViewFilterGroup
+        subFieldName relationTargetFieldMetadataId viewId createdAt updatedAt deletedAt
+      }
+
+      fragment ViewFilterGroupFragment on ViewFilterGroup {
+        id parentViewFilterGroupId logicalOperator positionInViewFilterGroup viewId
+      }
+
+      fragment ViewSortFragment on ViewSort {
+        id fieldMetadataId direction subFieldName viewId createdAt deletedAt updatedAt
+      }
+
+      fragment ViewGroupFragment on ViewGroup {
+        id isVisible fieldValue position viewId createdAt updatedAt deletedAt
+      }
+    `);
+  });
+
+  it('validates the page layout documents', () => {
+    expectValid(`
+      query FindAllRecordPageLayouts {
+        getPageLayouts(pageLayoutType: RECORD_PAGE) { ...PageLayoutFragment }
+      }
+
+      fragment PageLayoutFragment on PageLayout {
+        id applicationId name objectMetadataId type universalIdentifier
+        isSystemSideEffect isFirstTabPinned defaultTabToFocusOnMobileAndSidePanelId
+        createdAt updatedAt
+        tabs { ...PageLayoutTabFragment }
+      }
+
+      fragment PageLayoutTabFragment on PageLayoutTab {
+        id applicationId universalIdentifier isSystemSideEffect title icon position
+        layoutMode widgets { ...PageLayoutWidgetFragment } pageLayoutId isActive
+        createdAt updatedAt
+      }
+
+      fragment PageLayoutWidgetFragment on PageLayoutWidget {
+        id applicationId universalIdentifier isSystemSideEffect title type
+        objectMetadataId createdAt updatedAt isActive deletedAt conditionalDisplay
+        conditionalAvailabilityExpression
+        gridPosition { column columnSpan row rowSpan }
+        position {
+          ... on PageLayoutWidgetGridPosition { layoutMode row column rowSpan columnSpan }
+          ... on PageLayoutWidgetVerticalListPosition { layoutMode index heightBehavior }
+          ... on PageLayoutWidgetCanvasPosition { layoutMode }
+        }
+        configuration {
+          ... on BarChartConfiguration { configurationType aggregateFieldMetadataId aggregateOperation groupMode layout isCumulative }
+          ... on LineChartConfiguration { configurationType aggregateFieldMetadataId isStacked }
+          ... on PieChartConfiguration { configurationType groupByFieldMetadataId hideEmptyCategory }
+          ... on AggregateChartConfiguration { configurationType label prefix suffix ratioAggregateConfig { fieldMetadataId optionValue } }
+          ... on IframeConfiguration { configurationType url }
+          ... on StandaloneRichTextConfiguration { configurationType body { blocknote markdown } }
+          ... on CalendarConfiguration { configurationType }
+          ... on EmailsConfiguration { configurationType }
+          ... on EmailThreadConfiguration { configurationType }
+          ... on CallRecordingSummaryConfiguration { configurationType }
+          ... on CallRecordingTranscriptConfiguration { configurationType }
+          ... on MessageCampaignBodyConfiguration { configurationType }
+          ... on MessageCampaignDetailsConfiguration { configurationType }
+          ... on FieldConfiguration { configurationType fieldDisplayMode fieldMetadataId viewId nestedRelationFieldMetadataId isUIEditable }
+          ... on FieldRichTextConfiguration { configurationType }
+          ... on FieldsConfiguration { configurationType viewId newFieldDefaultVisibility shouldAllowUserToSeeHiddenFields }
+          ... on FormFieldConfiguration { configurationType fieldMetadataId }
+          ... on FilesConfiguration { configurationType }
+          ... on NotesConfiguration { configurationType }
+          ... on TasksConfiguration { configurationType }
+          ... on TimelineConfiguration { configurationType }
+          ... on ViewConfiguration { configurationType }
+          ... on RecordTableConfiguration { configurationType viewId recordLimit isUIEditable }
+          ... on WorkflowConfiguration { configurationType }
+          ... on WorkflowRunConfiguration { configurationType }
+          ... on WorkflowVersionConfiguration { configurationType }
+          ... on FrontComponentConfiguration { configurationType frontComponentId headerCommandMenuItemUniversalIdentifiers }
+        }
+        pageLayoutTabId
+      }
+    `);
+  });
+
+  // Posted on every route change. It is fire-and-forget for the app, so a
+  // rejected document shows up only as a console error — and as a 400 on every
+  // navigation.
+  it('validates the session list the settings screen reads', () => {
+    expectValid(`
+      query CurrentUserSessions {
+        currentUserSessions {
+          id
+          workspaceId
+          authProvider
+          isImpersonating
+          userAgent
+          ipAddress
+          createdAt
+          lastActiveAt
+          expiresAt
+          isCurrent
+        }
+      }
+    `);
+  });
+
+  it('validates the analytics mutation', () => {
+    expectValid(`
+      mutation TrackAnalytics(
+        $type: AnalyticsType!
+        $event: String
+        $name: String
+        $properties: JSON
+      ) {
+        trackAnalytics(
+          type: $type
+          event: $event
+          name: $name
+          properties: $properties
+        ) {
+          success
+        }
+      }
+    `);
+  });
+
+  it('validates the remaining boot collections', () => {
+    expectValid(`
+      query FindManyCommandMenuItems {
+        commandMenuItems {
+          id universalIdentifier applicationId workflowVersionId frontComponentId
+          frontComponent { id name isHeadless }
+          engineComponentKey label icon shortLabel position isPinned
+          payload { ... on PathCommandMenuItemPayload { path } }
+          hotKeys conditionalAvailabilityExpression conditionalPinnedExpression
+          availabilityType availabilityObjectMetadataId
+          navigationTargetObjectMetadataId pageLayoutId isActive
+        }
+      }
+    `);
+
+    expectValid(`
+      query FindManyNavigationMenuItems {
+        navigationMenuItems {
+          id type userWorkspaceId targetRecordId targetObjectMetadataId viewId
+          folderId name link icon color pageLayoutId position applicationId
+          createdAt updatedAt
+          targetRecordIdentifier { id labelIdentifier imageIdentifier }
+        }
+      }
+    `);
+
+    expectValid(`
+      query FindManyFrontComponents {
+        frontComponents {
+          id name applicationId builtComponentChecksum builtComponentPath
+          componentName createdAt description isHeadless sourceComponentPath
+          universalIdentifier updatedAt usesSdkClient
+          frontComponentSharedDependenciesChecksum
+        }
+      }
+    `);
+
+    expectValid(`
+      query FindManyLogicFunctions {
+        findManyLogicFunctions {
+          id name description runtime timeoutSeconds executionMode
+          sourceHandlerPath handlerName cronTriggerSettings
+          databaseEventTriggerSettings httpRouteTriggerSettings toolTriggerSettings
+          workflowActionTriggerSettings applicationId universalIdentifier
+          createdAt updatedAt
+        }
+      }
+    `);
+  });
+
   it('validates the minimal metadata query the front boots on', () => {
     expectValid(`
       query FindMinimalMetadata {
         minimalMetadata {
-          objectMetadataItems { id nameSingular namePlural labelSingular labelPlural icon isActive isSystem }
-          views { id name type key objectMetadataId }
-          collectionHashes { collection hash }
+          objectMetadataItems {
+            id
+            nameSingular
+            namePlural
+            labelSingular
+            labelPlural
+            icon
+            isActive
+            isSystem
+            isRemote
+          }
+          views {
+            id
+            type
+            key
+            objectMetadataId
+          }
+          collectionHashes {
+            collectionName
+            hash
+          }
         }
       }
     `);

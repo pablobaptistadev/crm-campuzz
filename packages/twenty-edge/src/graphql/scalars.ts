@@ -53,6 +53,16 @@ export const RawJSONScalar = new GraphQLScalarType({
   parseLiteral: () => null,
 });
 
+// The front's analytics mutation declares its payload as JSON, a different
+// scalar name from the RawJSON the record API uses.
+export const JSONScalar = new GraphQLScalarType({
+  name: 'JSON',
+  description: 'Arbitrary JSON',
+  serialize: identity,
+  parseValue: identity,
+  parseLiteral: () => null,
+});
+
 export const SCALAR_RESOLVERS = {
   UUID: UUIDScalar,
   DateTime: DateTimeScalar,

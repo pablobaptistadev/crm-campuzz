@@ -42,11 +42,18 @@ export const resolveWorkspaceFromHost = async ({
   }
 
   const hostname = stripPort(host).toLowerCase();
+  const normalizedAppDomainForHost = appDomain?.toLowerCase() ?? '';
 
-  const byCustomDomain = await findWorkspaceByCustomDomain({
-    client,
-    customDomain: hostname,
-  });
+  // A host under the app domain can only be a subdomain tenant, so the custom
+  // domain lookup is skipped: it would be one more transatlantic round trip on
+  // the hot path for a row that cannot exist.
+  const couldBeCustomDomain =
+    normalizedAppDomainForHost.length === 0 ||
+    !hostname.endsWith(normalizedAppDomainForHost);
+
+  const byCustomDomain = couldBeCustomDomain
+    ? await findWorkspaceByCustomDomain({ client, customDomain: hostname })
+    : null;
 
   if (byCustomDomain !== null) {
     return byCustomDomain;

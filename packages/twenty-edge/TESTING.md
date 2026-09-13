@@ -1,7 +1,8 @@
 # Como testar — fase a fase
 
-Estado em 13/09/2026. 49 testes passando, typecheck limpo, Worker empacota em
-1.19 MB (234 KB gzip) contra o teto de 64 MiB.
+Estado em 13/09/2026. 68 testes de unidade passando, typecheck limpo, e a suíte
+de ponta a ponta (`packages/twenty-edge-e2e`) verde em 44 passos — Redis, API e
+navegador de verdade.
 
 ## 0. Local, sem infraestrutura nenhuma
 
@@ -126,3 +127,33 @@ skeleton e chegar na tela de login.
   é o próximo passo.
 - Upload no R2 — o bucket ainda precisa ser recriado sem o typo (`cr-ampuzz`).
 - Permissões, roles e row-level security: o schema não foi criado ainda.
+
+
+## Suíte de ponta a ponta — `packages/twenty-edge-e2e`
+
+Um Worker separado que testa este aqui: Upstash por REST, a API inteira por HTTP
+e o app real dentro do Cloudflare Browser Rendering, com screenshot de cada
+passo gravado no R2.
+
+```bash
+curl https://campuzz-e2e-prod.andre-51e.workers.dev/run            # 44 passos
+open https://campuzz-e2e-prod.andre-51e.workers.dev/report         # relatório visual
+```
+
+Ela existe porque os testes de unidade não pegam a classe de defeito que mais
+apareceu aqui: o front manda um documento GraphQL inteiro e uma única propriedade
+faltando derruba tudo. Os defeitos que ela encontrou e que já estão corrigidos:
+
+| Achado | Sintoma |
+|---|---|
+| Cache de query do Hyperdrive ligado | Objeto criado não aparecia na leitura seguinte; `createOneField` logo depois de `createOneObject` dizia `OBJECT_NOT_FOUND` |
+| `withDeleted` nunca ligava | Filtrar por `deletedAt` não trazia os registros apagados |
+| `clearSessionCookie` sem `Secure` | Sair da conta lançava erro em vez de limpar o cookie `__Host-` |
+| `UserQueryFragment` incompleto | Login passava e o app não abria |
+| `restrictedFields` nulo | O front roda `Object.entries` nele sem guarda e quebrava depois do login |
+| Relação sem o lado inverso | `attachment.author` e `task.assignee` apontavam para campos que não existiam em `workspaceMember`; toda página de registro caía no error boundary |
+| `collectionHashes { collection }` | O front lê `collectionName` |
+| `getViews(viewTypes: [String!])` | O front declara a variável como `[ViewType!]` |
+| `after: Cursor` | O front declara `$lastCursor: String` |
+| `secondaryLinks` / `additionalPhones` como JSON | O front seleciona subcampos dentro deles |
+| `trackAnalytics` e `currentUserSessions` ausentes | 400 a cada navegação e na tela de configurações |

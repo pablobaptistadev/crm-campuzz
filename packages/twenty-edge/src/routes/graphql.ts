@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { createYoga } from 'graphql-yoga';
 import { type GraphQLSchema } from 'graphql';
 
-import { findActiveSession, findWorkspaceById } from 'src/db/core/auth-repository';
+import { findSessionContext } from 'src/db/core/auth-repository';
 import { resolveWorkspaceFromHost } from 'src/db/core/workspace-resolver';
 import { loadWorkspaceMetadata } from 'src/db/core/metadata-repository';
 import { withDatabaseClient } from 'src/db/client';
@@ -52,12 +52,12 @@ export const graphqlRoute = new Hono<AppEnv>().all('/', async (context) =>
       return context.json({ errors: [{ message: 'UNAUTHENTICATED' }] }, 401);
     }
 
-    const session = await findActiveSession({
+    const sessionContext = await findSessionContext({
       client,
       tokenHash: await hashSessionToken(sessionToken),
     });
 
-    if (session === null || session.workspaceId === null) {
+    if (sessionContext === null || sessionContext.membership === null) {
       return context.json({ errors: [{ message: 'UNAUTHENTICATED' }] }, 401);
     }
 
@@ -69,9 +69,7 @@ export const graphqlRoute = new Hono<AppEnv>().all('/', async (context) =>
       appDomain: context.env.APP_DOMAIN,
     });
 
-    const workspace =
-      workspaceFromHost ??
-      (await findWorkspaceById({ client, workspaceId: session.workspaceId }));
+    const workspace = workspaceFromHost ?? sessionContext.membership.workspace;
 
     if (workspace === null || workspace.databaseSchema === null) {
       return context.json({ errors: [{ message: 'WORKSPACE_NOT_READY' }] }, 409);

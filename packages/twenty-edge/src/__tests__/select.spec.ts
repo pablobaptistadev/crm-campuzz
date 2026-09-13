@@ -97,6 +97,29 @@ describe('buildSelectQuery', () => {
     );
   });
 
+  it('lifts the soft-delete predicate when the filter mentions deletedAt', () => {
+    expect(
+      buildSelectQuery({ shape, filter: { deletedAt: { is: 'NOT_NULL' } } }).text,
+    ).not.toContain('"person"."deletedAt" IS NULL AND');
+
+    expect(
+      buildSelectQuery({
+        shape,
+        filter: { and: [{ id: { eq: 'x' } }, { deletedAt: { is: 'NOT_NULL' } }] },
+      }).text,
+    ).not.toContain('"person"."deletedAt" IS NULL AND');
+
+    expect(
+      buildCountQuery({ shape, filter: { not: { deletedAt: { is: 'NULL' } } } })
+        .text,
+    ).not.toContain('"person"."deletedAt" IS NULL AND');
+
+    // A filter that says nothing about deletedAt keeps the predicate.
+    expect(buildSelectQuery({ shape, filter: { id: { eq: 'x' } } }).text).toContain(
+      '"person"."deletedAt" IS NULL',
+    );
+  });
+
   it('aliases every projected column as alias_column', () => {
     const { text } = buildSelectQuery({ shape });
 

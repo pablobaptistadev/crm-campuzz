@@ -190,6 +190,100 @@ export const findActiveSession = async ({
   return rows[0] ?? null;
 };
 
+export type SessionContext = {
+  session: { id: string; userId: string };
+  user: UserRow;
+  membership: { workspace: WorkspaceRow; userWorkspaceId: string } | null;
+};
+
+type SessionContextRow = {
+  sessionId: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  isEmailVerified: boolean;
+  passwordHash: string | null;
+  disabled: boolean;
+  locale: string;
+  userWorkspaceId: string | null;
+  workspaceId: string | null;
+  displayName: string | null;
+  subdomain: string | null;
+  customDomain: string | null;
+  activationStatus: string | null;
+  databaseSchema: string | null;
+  metadataVersion: number | null;
+};
+
+// One round trip instead of three. Every query the Worker sends crosses the
+// ocean to sa-east-1, so the boot burst the front fires is dominated by the
+// number of statements per request, not by how much each one reads.
+export const findSessionContext = async ({
+  client,
+  tokenHash,
+}: {
+  client: Client;
+  tokenHash: string;
+}): Promise<SessionContext | null> => {
+  const { rows } = await client.query<SessionContextRow>(
+    `SELECT s."id" AS "sessionId",
+            u."id" AS "userId", u."firstName", u."lastName", u."email",
+            u."isEmailVerified", u."passwordHash", u."disabled", u."locale",
+            uw."id" AS "userWorkspaceId",
+            w."id" AS "workspaceId", w."displayName", w."subdomain",
+            w."customDomain", w."activationStatus", w."databaseSchema",
+            w."metadataVersion"
+     FROM core."userSession" s
+     JOIN core."user" u ON u."id" = s."userId" AND u."deletedAt" IS NULL
+     LEFT JOIN core."userWorkspace" uw
+       ON uw."userId" = u."id" AND uw."deletedAt" IS NULL
+     LEFT JOIN core."workspace" w
+       ON w."id" = uw."workspaceId" AND w."deletedAt" IS NULL
+     WHERE s."tokenHash" = $1 AND s."revokedAt" IS NULL AND s."expiresAt" > now()
+     ORDER BY uw."createdAt" ASC
+     LIMIT 1`,
+    [tokenHash],
+  );
+
+  const row = rows[0];
+
+  if (row === undefined) {
+    return null;
+  }
+
+  return {
+    session: { id: row.sessionId, userId: row.userId },
+    user: {
+      id: row.userId,
+      firstName: row.firstName,
+      lastName: row.lastName,
+      email: row.email,
+      isEmailVerified: row.isEmailVerified,
+      passwordHash: row.passwordHash,
+      disabled: row.disabled,
+      locale: row.locale,
+    },
+    membership:
+      row.workspaceId === null ||
+      row.userWorkspaceId === null ||
+      row.subdomain === null
+        ? null
+        : {
+            userWorkspaceId: row.userWorkspaceId,
+            workspace: {
+              id: row.workspaceId,
+              displayName: row.displayName,
+              subdomain: row.subdomain,
+              customDomain: row.customDomain,
+              activationStatus: row.activationStatus ?? 'ACTIVE',
+              databaseSchema: row.databaseSchema,
+              metadataVersion: row.metadataVersion ?? 1,
+            },
+          },
+  };
+};
+
 export const revokeSession = async ({
   client,
   tokenHash,

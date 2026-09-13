@@ -30,6 +30,36 @@ const ORDER_BY_SQL: Record<OrderByDirection, string> = {
 
 const FILTER_COMBINATORS = new Set(['and', 'or', 'not']);
 
+// Twenty lifts the implicit soft-delete predicate as soon as the caller's own
+// filter mentions deletedAt — that mention is how a client opts into deleted
+// rows, since there is no withDeleted argument in the GraphQL contract.
+export const filterMentionsDeletedAt = (
+  filter: RecordFilter | undefined,
+): boolean => {
+  if (filter === undefined || filter === null) {
+    return false;
+  }
+
+  return Object.entries(filter).some(([key, value]) => {
+    if (key === 'deletedAt') {
+      return true;
+    }
+
+    if (key === 'and' || key === 'or') {
+      return (
+        Array.isArray(value) &&
+        value.some((entry) => filterMentionsDeletedAt(entry as RecordFilter))
+      );
+    }
+
+    if (key === 'not') {
+      return filterMentionsDeletedAt(value as RecordFilter);
+    }
+
+    return false;
+  });
+};
+
 const resolveColumnNamesForField = (
   shape: WorkspaceTableShape,
   fieldName: string,
@@ -198,8 +228,9 @@ export const buildSelectQuery = ({
   orderBy = [],
   limit,
   offset,
-  withDeleted = false,
+  withDeleted,
 }: BuildSelectInput): SelectQuery => {
+  const includeDeleted = withDeleted ?? filterMentionsDeletedAt(filter);
   const parameters = createParameterBag();
   const columns = [...shape.columnShapeByColumnName.values()];
 
@@ -214,9 +245,7 @@ export const buildSelectQuery = ({
 
   const whereParts: string[] = [];
 
-  // Soft delete is implicit on every read. Twenty only lifts it when the caller
-  // filters on deletedAt explicitly.
-  if (shape.hasDeletedAtColumn && !withDeleted) {
+  if (shape.hasDeletedAtColumn && !includeDeleted) {
     whereParts.push(
       `${buildColumnExpression({ alias, columnName: 'deletedAt' })} IS NULL`,
     );
@@ -255,12 +284,13 @@ export const buildCountQuery = ({
   shape,
   alias = shape.nameSingular,
   filter,
-  withDeleted = false,
+  withDeleted,
 }: Omit<BuildSelectInput, 'orderBy' | 'limit' | 'offset'>): SelectQuery => {
   const parameters = createParameterBag();
+  const includeDeleted = withDeleted ?? filterMentionsDeletedAt(filter);
   const whereParts: string[] = [];
 
-  if (shape.hasDeletedAtColumn && !withDeleted) {
+  if (shape.hasDeletedAtColumn && !includeDeleted) {
     whereParts.push(
       `${buildColumnExpression({ alias, columnName: 'deletedAt' })} IS NULL`,
     );

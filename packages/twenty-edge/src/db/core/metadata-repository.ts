@@ -30,6 +30,27 @@ type FieldRow = Omit<FlatFieldMetadata, 'options' | 'settings' | 'defaultValue'>
   defaultValue: unknown;
 };
 
+// Keyed by workspace AND metadata version, so a DDL change invalidates the
+// entry rather than serving a stale schema for the life of the isolate. Nothing
+// tenant-scoped may live in module scope without that version in the key.
+const isolateMetadataCache = new Map<string, WorkspaceMetadata>();
+const ISOLATE_METADATA_CACHE_LIMIT = 8;
+
+const readIsolateCache = (key: string): WorkspaceMetadata | null =>
+  isolateMetadataCache.get(key) ?? null;
+
+const writeIsolateCache = (key: string, metadata: WorkspaceMetadata): void => {
+  if (isolateMetadataCache.size >= ISOLATE_METADATA_CACHE_LIMIT) {
+    const oldestKey = isolateMetadataCache.keys().next().value;
+
+    if (oldestKey !== undefined) {
+      isolateMetadataCache.delete(oldestKey);
+    }
+  }
+
+  isolateMetadataCache.set(key, metadata);
+};
+
 export const loadWorkspaceMetadata = async ({
   client,
   workspaceId,
@@ -39,6 +60,13 @@ export const loadWorkspaceMetadata = async ({
   workspaceId: string;
   metadataVersion: number;
 }): Promise<WorkspaceMetadata> => {
+  const cacheKey = `${workspaceId}:${metadataVersion}`;
+  const cached = readIsolateCache(cacheKey);
+
+  if (cached !== null) {
+    return cached;
+  }
+
   const [objectResult, fieldResult] = await Promise.all([
     client.query<ObjectRow>(
       `SELECT * FROM core."objectMetadata" WHERE "workspaceId" = $1 ORDER BY "nameSingular"`,
@@ -59,7 +87,7 @@ export const loadWorkspaceMetadata = async ({
     fieldsByObjectId.set(field.objectMetadataId, fields);
   }
 
-  return {
+  const metadata: WorkspaceMetadata = {
     workspaceId,
     schemaName: getWorkspaceSchemaName(workspaceId),
     metadataVersion,
@@ -68,6 +96,10 @@ export const loadWorkspaceMetadata = async ({
       fields: fieldsByObjectId.get(row.id) ?? [],
     })),
   };
+
+  writeIsolateCache(cacheKey, metadata);
+
+  return metadata;
 };
 
 export const persistObjectMetadata = async ({

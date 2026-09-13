@@ -2,13 +2,20 @@ import { type Client } from 'pg';
 
 import {
   findFirstWorkspaceForUser,
+  type SessionContext,
   findUserByEmail,
   findUserById,
   insertUser,
   type UserRow,
 } from 'src/db/core/auth-repository';
 import { loadWorkspaceMetadata } from 'src/db/core/metadata-repository';
-import { SCALAR_SDL } from 'src/graphql/scalars';
+import {
+  findWorkspaceMemberByUserId,
+  findWorkspaceMembers,
+  type WorkspaceMemberRow,
+} from 'src/db/workspace/workspace-member-repository';
+import { BOOT_SCHEMA_SDL } from 'src/graphql/boot-schema';
+import { JSONScalar, SCALAR_SDL } from 'src/graphql/scalars';
 import {
   bootstrapWorkspace,
   seedWorkspaceMember,
@@ -18,12 +25,19 @@ import {
   createObjectMetadata,
 } from 'src/services/metadata-mutations';
 import { type FieldMetadataType } from 'src/metadata/field-metadata-type';
+import {
+  type FlatFieldMetadata,
+  type FlatObjectMetadata,
+} from 'src/metadata/types';
 import { hashPassword, verifyPassword } from 'src/auth/password';
 import { issueLoginToken, verifyLoginToken } from 'src/auth/login-token';
 
 export type MetadataContext = {
   client: Client;
   appSecret: string;
+  // Loaded once per request by the route, so no resolver re-reads the user,
+  // the membership or the workspace.
+  sessionContext: SessionContext | null;
   serverUrl: string;
   throttle: (key: string, limit: number, windowMs: number) => Promise<boolean>;
   sessionUserId: string | null;
@@ -38,6 +52,7 @@ export type MetadataContext = {
 
 export const METADATA_SDL = `
 ${SCALAR_SDL}
+${BOOT_SCHEMA_SDL}
 
 type PageInfo {
   hasNextPage: Boolean!
@@ -46,21 +61,43 @@ type PageInfo {
   endCursor: Cursor
 }
 
+# Every field below is requested by twenty-front's UserQueryFragment. GraphQL
+# fails the whole document on a single unknown field, so a missing one here is
+# not a missing feature — it is a blank app.
 type User {
   id: UUID!
   firstName: String
   lastName: String
   email: String!
   locale: String
+  hasPassword: Boolean!
+  canAccessFullAdminPanel: Boolean!
+  canImpersonate: Boolean!
+  supportUserHash: String
+  onboardingStatus: String
+  previousOnboardingStatus: String
+  isWorkspaceCreator: Boolean
   currentWorkspace: Workspace
   currentUserWorkspace: UserWorkspace
   workspaceMember: WorkspaceMember
-  availableWorkspaces: [Workspace!]!
+  workspaceMembers: [WorkspaceMember!]!
+  deletedWorkspaceMembers: [DeletedWorkspaceMember!]!
+  availableWorkspaces: AvailableWorkspaces!
+  userVars: RawJSON
 }
 
 type UserWorkspace {
   id: UUID!
+  permissionFlags: [String!]
+  isImpersonating: Boolean
   objectsPermissions: [ObjectPermission!]!
+  twoFactorAuthenticationMethodSummary: [TwoFactorAuthenticationMethodSummary!]!
+}
+
+type TwoFactorAuthenticationMethodSummary {
+  twoFactorAuthenticationMethodId: UUID!
+  status: String!
+  strategy: String!
 }
 
 type ObjectPermission {
@@ -69,23 +106,173 @@ type ObjectPermission {
   canUpdateObjectRecords: Boolean
   canSoftDeleteObjectRecords: Boolean
   canDestroyObjectRecords: Boolean
+  restrictedFields: RawJSON
+  rowLevelPermissionPredicates: [RowLevelPermissionPredicate!]
+  rowLevelPermissionPredicateGroups: [RowLevelPermissionPredicateGroup!]
+}
+
+type RowLevelPermissionPredicate {
+  id: UUID!
+  fieldMetadataId: UUID
+  objectMetadataId: UUID
+  operand: String
+  subFieldName: String
+  workspaceMemberFieldMetadataId: UUID
+  workspaceMemberSubFieldName: String
+  rowLevelPermissionPredicateGroupId: UUID
+  positionInRowLevelPermissionPredicateGroup: Float
+  roleId: UUID
+  value: RawJSON
+}
+
+type RowLevelPermissionPredicateGroup {
+  id: UUID!
+  parentRowLevelPermissionPredicateGroupId: UUID
+  logicalOperator: String
+  positionInRowLevelPermissionPredicateGroup: Float
+  roleId: UUID
+  objectMetadataId: UUID
 }
 
 type WorkspaceMember {
   id: UUID!
   name: FullNameOutput
+  colorScheme: String
+  uiScale: String
+  openRecordIn: String
+  avatarUrl: String
+  locale: String
+  userEmail: String
+  userWorkspaceId: UUID
+  timeZone: String
+  dateFormat: String
+  timeFormat: String
+  calendarStartDay: Float
+  numberFormat: String
+}
+
+type DeletedWorkspaceMember {
+  id: UUID!
+  name: FullNameOutput
+  avatarUrl: String
   userEmail: String
 }
 
 type FullNameOutput { firstName: String lastName: String }
 
+type Role {
+  id: UUID!
+  label: String!
+  description: String
+  icon: String
+  canUpdateAllSettings: Boolean
+  canAccessAllTools: Boolean
+  isEditable: Boolean
+  canReadAllObjectRecords: Boolean
+  canUpdateAllObjectRecords: Boolean
+  canSoftDeleteAllObjectRecords: Boolean
+  canDestroyAllObjectRecords: Boolean
+  canBeAssignedToUsers: Boolean
+  canBeAssignedToAgents: Boolean
+  canBeAssignedToApiKeys: Boolean
+}
+
+type FeatureFlag { key: String! value: Boolean! }
+type BillingEntitlement { key: String! value: Boolean! }
+type BillingCustomer { id: UUID! hasPaymentMethod: Boolean }
+type WorkspaceCustomApplication { id: UUID! }
+
+type InstalledApplication {
+  id: UUID!
+  name: String
+  universalIdentifier: String
+  logoUrl: String
+}
+
+type BillingSubscriptionSchedulePhaseItem { price: String quantity: Float }
+
+type BillingSubscriptionSchedulePhase {
+  start_date: Float
+  end_date: Float
+  items: [BillingSubscriptionSchedulePhaseItem!]
+}
+
+type BillingProductMetadata {
+  productKey: String
+  planKey: String
+  priceUsageBased: String
+  isLegacy: Boolean
+}
+
+type BillingProduct {
+  name: String
+  description: String
+  images: [String!]
+  metadata: BillingProductMetadata
+}
+
+type BillingSubscriptionItem {
+  id: UUID!
+  hasReachedCurrentPeriodCap: Boolean
+  quantity: Float
+  stripePriceId: String
+  unitAmount: Float
+  creditAmount: Float
+  billingProduct: BillingProduct
+}
+
+type BillingSubscription {
+  id: UUID!
+  status: String
+  interval: String
+  metadata: RawJSON
+  currentPeriodEnd: Float
+  cancelAt: Float
+  phases: [BillingSubscriptionSchedulePhase!]
+  billingSubscriptionItems: [BillingSubscriptionItem!]
+}
+
 type Workspace {
   id: UUID!
   displayName: String
+  logo: String
   subdomain: String!
   customDomain: String
+  inviteHash: String
+  allowImpersonation: Boolean
   activationStatus: String!
   metadataVersion: Int!
+  isPublicInviteLinkEnabled: Boolean
+  workspaceDiscoverability: String
+  isGoogleAuthEnabled: Boolean
+  isMicrosoftAuthEnabled: Boolean
+  isPasswordAuthEnabled: Boolean
+  isGoogleAuthBypassEnabled: Boolean
+  isMicrosoftAuthBypassEnabled: Boolean
+  isPasswordAuthBypassEnabled: Boolean
+  hasValidSignedEnterpriseKey: Boolean
+  hasValidEnterpriseValidityToken: Boolean
+  workspaceCustomApplication: WorkspaceCustomApplication
+  installedApplications: [InstalledApplication!]!
+  isCustomDomainEnabled: Boolean
+  workspaceUrls: WorkspaceUrls!
+  featureFlags: [FeatureFlag!]!
+  currentBillingSubscription: BillingSubscription
+  billingCustomer: BillingCustomer
+  billingSubscriptions: [BillingSubscription!]!
+  billingEntitlements: [BillingEntitlement!]!
+  workspaceMembersCount: Float
+  defaultRole: Role
+  aiChatModelTier: String
+  aiAgentModelTier: String
+  isAutoModelSelectionEnabled: Boolean
+  aiModelIdByTier: RawJSON
+  aiAdditionalInstructions: String
+  isTwoFactorAuthenticationEnforced: Boolean
+  trashRetentionDays: Float
+  eventLogRetentionDays: Float
+  editableProfileFields: [String!]
+  isInternalMessagesImportEnabled: Boolean
 }
 
 type RelationObjectRef { id: UUID! nameSingular: String! namePlural: String! }
@@ -211,6 +398,25 @@ type View {
   icon: String
   position: Float!
   objectMetadataId: UUID!
+  isCompact: Boolean
+  kanbanAggregateOperation: String
+  kanbanAggregateOperationFieldMetadataId: UUID
+  mainGroupByFieldMetadataId: UUID
+  shouldHideEmptyGroups: Boolean
+  kanbanColumnWidth: Float
+  anyFieldFilterValue: String
+  calendarFieldMetadataId: UUID
+  calendarEndFieldMetadataId: UUID
+  calendarLayout: String
+  visibility: String
+  createdByUserWorkspaceId: UUID
+  isActive: Boolean
+  viewFields: [ViewField!]!
+  viewFieldGroups: [ViewFieldGroup!]!
+  viewFilters: [ViewFilter!]!
+  viewFilterGroups: [ViewFilterGroup!]!
+  viewSorts: [ViewSort!]!
+  viewGroups: [ViewGroup!]!
 }
 
 type MinimalMetadata {
@@ -219,7 +425,20 @@ type MinimalMetadata {
   collectionHashes: [CollectionHash!]!
 }
 
-type CollectionHash { collection: String! hash: String! }
+type CollectionHash { collectionName: String! hash: String! }
+
+type UserSession {
+  id: UUID!
+  workspaceId: UUID
+  authProvider: String
+  isImpersonating: Boolean
+  userAgent: String
+  ipAddress: String
+  createdAt: DateTime
+  lastActiveAt: DateTime
+  expiresAt: DateTime
+  isCurrent: Boolean
+}
 
 type AuthToken { token: String! expiresAt: DateTime! }
 
@@ -300,8 +519,14 @@ type Query {
   objects(paging: PagingInput): ObjectConnection!
   object(id: UUID!): Object
   fields(paging: PagingInput): FieldConnection!
-  getViews(viewTypes: [String!]): [View!]!
+  getViews(viewTypes: [ViewType!]): [View!]!
+  getPageLayouts(pageLayoutType: PageLayoutType): [PageLayout!]!
+  commandMenuItems: [CommandMenuItem!]!
+  navigationMenuItems: [NavigationMenuItem!]!
+  frontComponents: [FrontComponent!]!
+  findManyLogicFunctions: [LogicFunction!]!
   minimalMetadata: MinimalMetadata!
+  currentUserSessions: [UserSession!]!
 }
 
 input ObjectCreateInput {
@@ -353,6 +578,7 @@ type Mutation {
   signIn(email: String!, password: String!, captchaToken: String): SignInUpOutput!
   signUp(email: String!, password: String!, captchaToken: String, locale: String, verifyEmailRedirectPath: String, firstName: String, lastName: String, workspaceName: String): SignInUpOutput!
   signOut(refreshToken: String): Boolean!
+  trackAnalytics(type: AnalyticsType!, event: String, name: String, properties: JSON): Analytics!
 }
 `;
 
@@ -395,60 +621,254 @@ const toAuthTokenPair = (loginToken: { token: string; expiresAt: string }) => ({
   refreshToken: loginToken,
 });
 
-const toWorkspaceDto = (workspace: {
-  id: string;
-  displayName: string | null;
-  subdomain: string;
-  customDomain: string | null;
-  activationStatus: string;
-  metadataVersion: number;
-}) => workspace;
-
-const requireAuthenticatedUser = async (
-  context: MetadataContext,
-): Promise<UserRow> => {
-  if (context.sessionUserId === null) {
-    throw new Error('UNAUTHENTICATED');
-  }
-
-  const user = await findUserById({
-    client: context.client,
-    userId: context.sessionUserId,
-  });
-
-  if (user === null) {
-    throw new Error('UNAUTHENTICATED');
-  }
-
-  return user;
+// twenty-front reads relation.targetObjectMetadata.nameSingular without a null
+// guard, so a relation field must either resolve its refs or report no relation
+// at all — a half-filled one crashes the app on the first record page.
+type RelationRef = {
+  type: string | null;
+  sourceObjectMetadata: { id: string; nameSingular: string; namePlural: string };
+  targetObjectMetadata: { id: string; nameSingular: string; namePlural: string };
+  sourceFieldMetadata: { id: string; name: string };
+  targetFieldMetadata: { id: string; name: string };
 };
 
-const requireWorkspaceId = async (
-  context: MetadataContext,
-): Promise<string> => {
-  const user = await requireAuthenticatedUser(context);
-  const membership = await findFirstWorkspaceForUser({
-    client: context.client,
-    userId: user.id,
+type FieldWithRelation = FlatFieldMetadata & { relation: RelationRef | null };
+
+const withRelationRefs = (objects: FlatObjectMetadata[]) => {
+  const objectById = new Map(objects.map((object) => [object.id, object]));
+
+  const toObjectRef = (object: FlatObjectMetadata) => ({
+    id: object.id,
+    nameSingular: object.nameSingular,
+    namePlural: object.namePlural,
   });
+
+  return objects.map((object) => ({
+    ...object,
+    fields: object.fields.flatMap((field): FieldWithRelation[] => {
+      if (
+        field.type !== 'RELATION' ||
+        field.relationTargetObjectMetadataId === null
+      ) {
+        return [{ ...field, relation: null }];
+      }
+
+      const targetObject = objectById.get(field.relationTargetObjectMetadataId);
+      const targetField = targetObject?.fields.find(
+        (candidate) => candidate.id === field.relationTargetFieldMetadataId,
+      );
+
+      // A relation the front cannot model is not advertised at all. Sending it
+      // with a null relation crashes the record page instead of degrading: the
+      // front throws "Target object metadata item not found".
+      if (targetObject === undefined || targetField === undefined) {
+        return [];
+      }
+
+      return [
+        {
+          ...field,
+          relation: {
+            type: field.settings?.relationType ?? null,
+            sourceObjectMetadata: toObjectRef(object),
+            targetObjectMetadata: toObjectRef(targetObject),
+            sourceFieldMetadata: { id: field.id, name: field.name },
+            targetFieldMetadata: { id: targetField.id, name: targetField.name },
+          },
+        },
+      ];
+    }),
+  }));
+};
+
+// There is no viewField table yet, so a view's columns are derived from the
+// object's own fields. The id has to be stable across requests — the front keys
+// its store by it — which rules out a random UUID.
+const deriveStableId = (left: string, right: string): string => {
+  const leftHex = left.replace(/-/g, '');
+  const rightHex = right.replace(/-/g, '');
+  const mixed = Array.from(
+    leftHex,
+    (character, index) =>
+      (
+        (parseInt(character, 16) ^ parseInt(rightHex[index] ?? '0', 16)) &
+        0xf
+      ).toString(16),
+  ).join('');
+
+  return [
+    mixed.slice(0, 8),
+    mixed.slice(8, 12),
+    mixed.slice(12, 16),
+    mixed.slice(16, 20),
+    mixed.slice(20, 32),
+  ].join('-');
+};
+
+const VISIBLE_VIEW_FIELD_COUNT = 8;
+
+const buildViewFields = (
+  viewId: string,
+  object: FlatObjectMetadata | undefined,
+) => {
+  if (object === undefined) {
+    return [];
+  }
+
+  const fields = object.fields.filter(
+    (field) => field.isActive && !field.isSystem,
+  );
+
+  // The label identifier leads the table; Twenty renders it as the record chip.
+  const ordered = [
+    ...fields.filter(
+      (field) => field.id === object.labelIdentifierFieldMetadataId,
+    ),
+    ...fields.filter(
+      (field) => field.id !== object.labelIdentifierFieldMetadataId,
+    ),
+  ];
+
+  return ordered.map((field, index) => ({
+    id: deriveStableId(viewId, field.id),
+    fieldMetadataId: field.id,
+    viewId,
+    isVisible: index < VISIBLE_VIEW_FIELD_COUNT,
+    position: index,
+    size: 150,
+    aggregateOperation: null,
+    viewFieldGroupId: null,
+    isActive: true,
+    createdAt: null,
+    updatedAt: null,
+    deletedAt: null,
+  }));
+};
+
+type ViewRow = {
+  id: string;
+  name: string;
+  type: string;
+  key: string | null;
+  icon: string | null;
+  position: number;
+  objectMetadataId: string;
+  isCompact?: boolean;
+};
+
+const toViewDto = (view: ViewRow, object: FlatObjectMetadata | undefined) => ({
+  ...view,
+  isCompact: view.isCompact ?? false,
+  kanbanAggregateOperation: null,
+  kanbanAggregateOperationFieldMetadataId: null,
+  mainGroupByFieldMetadataId: null,
+  shouldHideEmptyGroups: false,
+  kanbanColumnWidth: null,
+  anyFieldFilterValue: null,
+  calendarFieldMetadataId: null,
+  calendarEndFieldMetadataId: null,
+  calendarLayout: null,
+  visibility: 'WORKSPACE',
+  createdByUserWorkspaceId: null,
+  isActive: true,
+  viewFields: buildViewFields(view.id, object),
+  viewFieldGroups: [],
+  viewFilters: [],
+  viewFilterGroups: [],
+  viewSorts: [],
+  viewGroups: [],
+});
+
+const toWorkspaceMemberDto = (member: WorkspaceMemberRow) => ({
+  id: member.id,
+  name: { firstName: member.nameFirstName, lastName: member.nameLastName },
+  colorScheme: member.colorScheme ?? 'System',
+  uiScale: 'Normal',
+  openRecordIn: 'SIDE_PANEL',
+  avatarUrl: member.avatarUrl,
+  locale: member.locale ?? 'pt-BR',
+  userEmail: member.userEmail,
+  userWorkspaceId: null,
+  timeZone: 'America/Sao_Paulo',
+  dateFormat: 'SYSTEM',
+  timeFormat: 'SYSTEM',
+  calendarStartDay: 0,
+  numberFormat: 'SYSTEM',
+});
+
+// Everything the front reads off currentWorkspace, with the features we do not
+// run yet answered rather than omitted — an absent field fails the document.
+const toWorkspaceDto = (
+  workspace: {
+    id: string;
+    displayName: string | null;
+    subdomain: string;
+    customDomain: string | null;
+    activationStatus: string;
+    metadataVersion: number;
+  },
+  serverUrl: string,
+) => ({
+  ...workspace,
+  logo: null,
+  inviteHash: null,
+  allowImpersonation: false,
+  isPublicInviteLinkEnabled: false,
+  workspaceDiscoverability: 'INVITE_ONLY',
+  isGoogleAuthEnabled: false,
+  isMicrosoftAuthEnabled: false,
+  isPasswordAuthEnabled: true,
+  isGoogleAuthBypassEnabled: false,
+  isMicrosoftAuthBypassEnabled: false,
+  isPasswordAuthBypassEnabled: false,
+  hasValidSignedEnterpriseKey: false,
+  hasValidEnterpriseValidityToken: false,
+  workspaceCustomApplication: null,
+  installedApplications: [],
+  isCustomDomainEnabled: workspace.customDomain !== null,
+  workspaceUrls: buildWorkspaceUrls(workspace, serverUrl),
+  featureFlags: [],
+  currentBillingSubscription: null,
+  billingCustomer: null,
+  billingSubscriptions: [],
+  billingEntitlements: [],
+  workspaceMembersCount: 1,
+  defaultRole: null,
+  aiChatModelTier: null,
+  aiAgentModelTier: null,
+  isAutoModelSelectionEnabled: false,
+  aiModelIdByTier: null,
+  aiAdditionalInstructions: null,
+  isTwoFactorAuthenticationEnforced: false,
+  trashRetentionDays: 30,
+  eventLogRetentionDays: 90,
+  editableProfileFields: [],
+  isInternalMessagesImportEnabled: false,
+});
+
+const requireAuthenticatedUser = (context: MetadataContext): UserRow => {
+  if (context.sessionContext === null) {
+    throw new Error('UNAUTHENTICATED');
+  }
+
+  return context.sessionContext.user;
+};
+
+const requireMembership = (context: MetadataContext) => {
+  const membership = context.sessionContext?.membership ?? null;
 
   if (membership === null) {
     throw new Error('NO_WORKSPACE');
   }
 
-  return membership.workspace.id;
+  return membership;
 };
+
+const requireWorkspaceId = (context: MetadataContext): string =>
+  requireMembership(context).workspace.id;
 
 const loadMetadataForSession = async (context: MetadataContext) => {
-  const user = await requireAuthenticatedUser(context);
-  const membership = await findFirstWorkspaceForUser({
-    client: context.client,
-    userId: user.id,
-  });
-
-  if (membership === null) {
-    throw new Error('NO_WORKSPACE');
-  }
+  const membership = requireMembership(context);
 
   return loadWorkspaceMetadata({
     client: context.client,
@@ -482,25 +902,15 @@ const hashCollection = (value: unknown): string => {
 };
 
 export const METADATA_RESOLVERS = {
+  JSON: JSONScalar,
+
   Query: {
     currentUser: async (_parent: unknown, _args: unknown, context: MetadataContext) => {
-      if (context.sessionUserId === null) {
+      if (context.sessionContext === null) {
         return null;
       }
 
-      const user = await findUserById({
-        client: context.client,
-        userId: context.sessionUserId,
-      });
-
-      if (user === null) {
-        return null;
-      }
-
-      const membership = await findFirstWorkspaceForUser({
-        client: context.client,
-        userId: user.id,
-      });
+      const { user, membership } = context.sessionContext;
 
       // The front hides an object whose permission entry is missing, so every
       // object needs one. Until roles exist, the only member of a workspace is
@@ -520,19 +930,70 @@ export const METADATA_RESOLVERS = {
               canUpdateObjectRecords: true,
               canSoftDeleteObjectRecords: true,
               canDestroyObjectRecords: true,
+              // The front runs Object.entries on restrictedFields without a
+              // guard, so null here crashes the app after a successful login.
+              restrictedFields: {},
+              rowLevelPermissionPredicates: [],
+              rowLevelPermissionPredicateGroups: [],
             }));
+
+      const workspaceMember =
+        membership === null
+          ? null
+          : await findWorkspaceMemberByUserId({
+              client: context.client,
+              workspaceId: membership.workspace.id,
+              userId: user.id,
+            });
+
+      const workspaceMembers =
+        membership === null
+          ? []
+          : await findWorkspaceMembers({
+              client: context.client,
+              workspaceId: membership.workspace.id,
+            });
+
+      const availableWorkspace =
+        membership === null
+          ? null
+          : toAvailableWorkspace(membership.workspace, null, context.serverUrl);
 
       return {
         ...user,
+        hasPassword: true,
+        canAccessFullAdminPanel: false,
+        canImpersonate: false,
+        supportUserHash: null,
+        // Anything short of COMPLETED sends the front into an onboarding flow
+        // we do not serve, so it would never reach the app.
+        onboardingStatus: 'COMPLETED',
+        previousOnboardingStatus: 'COMPLETED',
+        isWorkspaceCreator: true,
         currentWorkspace:
-          membership === null ? null : toWorkspaceDto(membership.workspace),
+          membership === null
+            ? null
+            : toWorkspaceDto(membership.workspace, context.serverUrl),
         currentUserWorkspace:
           membership === null
             ? null
-            : { id: membership.userWorkspaceId, objectsPermissions },
-        workspaceMember: null,
-        availableWorkspaces:
-          membership === null ? [] : [toWorkspaceDto(membership.workspace)],
+            : {
+                id: membership.userWorkspaceId,
+                permissionFlags: [],
+                isImpersonating: false,
+                objectsPermissions,
+                twoFactorAuthenticationMethodSummary: [],
+              },
+        workspaceMember:
+          workspaceMember === null ? null : toWorkspaceMemberDto(workspaceMember),
+        workspaceMembers: workspaceMembers.map(toWorkspaceMemberDto),
+        deletedWorkspaceMembers: [],
+        availableWorkspaces: {
+          availableWorkspacesForSignIn:
+            availableWorkspace === null ? [] : [availableWorkspace],
+          availableWorkspacesForSignUp: [],
+        },
+        userVars: {},
       };
     },
 
@@ -611,7 +1072,7 @@ export const METADATA_RESOLVERS = {
     objects: async (_parent: unknown, _args: unknown, context: MetadataContext) => {
       const metadata = await loadMetadataForSession(context);
 
-      return toConnection(metadata.objects);
+      return toConnection(withRelationRefs(metadata.objects));
     },
 
     object: async (
@@ -621,13 +1082,19 @@ export const METADATA_RESOLVERS = {
     ) => {
       const metadata = await loadMetadataForSession(context);
 
-      return metadata.objects.find((object) => object.id === args.id) ?? null;
+      return (
+        withRelationRefs(metadata.objects).find(
+          (object) => object.id === args.id,
+        ) ?? null
+      );
     },
 
     fields: async (_parent: unknown, _args: unknown, context: MetadataContext) => {
       const metadata = await loadMetadataForSession(context);
 
-      return toConnection(metadata.objects.flatMap((object) => object.fields));
+      return toConnection(
+        withRelationRefs(metadata.objects).flatMap((object) => object.fields),
+      );
     },
 
     getViews: async (
@@ -635,18 +1102,14 @@ export const METADATA_RESOLVERS = {
       args: { viewTypes?: string[] },
       context: MetadataContext,
     ) => {
-      const user = await requireAuthenticatedUser(context);
-      const membership = await findFirstWorkspaceForUser({
-        client: context.client,
-        userId: user.id,
-      });
+      const membership = context.sessionContext?.membership ?? null;
 
       if (membership === null) {
         return [];
       }
 
-      const { rows } = await context.client.query(
-        `SELECT "id","name","type","key","icon","position","objectMetadataId"
+      const { rows } = await context.client.query<ViewRow>(
+        `SELECT "id","name","type","key","icon","position","objectMetadataId","isCompact"
          FROM core."view"
          WHERE "workspaceId" = $1 AND "deletedAt" IS NULL
            AND ($2::text[] IS NULL OR "type" = ANY($2))
@@ -654,7 +1117,65 @@ export const METADATA_RESOLVERS = {
         [membership.workspace.id, args.viewTypes ?? null],
       );
 
-      return rows;
+      const metadata = await loadWorkspaceMetadata({
+        client: context.client,
+        workspaceId: membership.workspace.id,
+        metadataVersion: membership.workspace.metadataVersion,
+      });
+
+      const objectById = new Map(
+        metadata.objects.map((object) => [object.id, object]),
+      );
+
+      return rows.map((view) =>
+        toViewDto(view, objectById.get(view.objectMetadataId)),
+      );
+    },
+
+    // Collections the front loads at boot but we do not serve yet. They answer
+    // empty rather than erroring: an unresolved field would fail the whole
+    // document and leave the app on its loading skeleton.
+    getPageLayouts: () => [],
+    commandMenuItems: () => [],
+    navigationMenuItems: () => [],
+    frontComponents: () => [],
+    findManyLogicFunctions: () => [],
+
+    currentUserSessions: async (
+      _parent: unknown,
+      _args: unknown,
+      context: MetadataContext,
+    ) => {
+      if (context.sessionContext === null) {
+        return [];
+      }
+
+      const { rows } = await context.client.query<{
+        id: string;
+        workspaceId: string | null;
+        authProvider: string;
+        isImpersonating: boolean;
+        userAgent: string | null;
+        ipAddress: string | null;
+        createdAt: Date;
+        lastActiveAt: Date;
+        expiresAt: Date;
+      }>(
+        `SELECT "id","workspaceId","authProvider","isImpersonating","userAgent",
+                "ipAddress","createdAt","lastActiveAt","expiresAt"
+         FROM core."userSession"
+         WHERE "userId" = $1 AND "revokedAt" IS NULL AND "expiresAt" > now()
+         ORDER BY "lastActiveAt" DESC
+         LIMIT 50`,
+        [context.sessionContext.user.id],
+      );
+
+      const currentSessionId = context.sessionContext.session.id;
+
+      return rows.map((row) => ({
+        ...row,
+        isCurrent: row.id === currentSessionId,
+      }));
     },
 
     minimalMetadata: async (
@@ -664,18 +1185,26 @@ export const METADATA_RESOLVERS = {
     ) => {
       const metadata = await loadMetadataForSession(context);
 
-      const { rows: views } = await context.client.query(
-        `SELECT "id","name","type","key","icon","position","objectMetadataId"
+      const { rows } = await context.client.query<ViewRow>(
+        `SELECT "id","name","type","key","icon","position","objectMetadataId","isCompact"
          FROM core."view" WHERE "workspaceId" = $1 AND "deletedAt" IS NULL`,
         [metadata.workspaceId],
       );
 
+      const objectById = new Map(
+        metadata.objects.map((object) => [object.id, object]),
+      );
+
+      const views = rows.map((view) =>
+        toViewDto(view, objectById.get(view.objectMetadataId)),
+      );
+
       return {
-        objectMetadataItems: metadata.objects,
+        objectMetadataItems: withRelationRefs(metadata.objects),
         views,
         collectionHashes: [
-          { collection: 'objectMetadataItems', hash: hashCollection(metadata.objects) },
-          { collection: 'views', hash: hashCollection(views) },
+          { collectionName: 'objectMetadata', hash: hashCollection(metadata.objects) },
+          { collectionName: 'view', hash: hashCollection(views) },
         ],
       };
     },
@@ -715,14 +1244,7 @@ export const METADATA_RESOLVERS = {
     morphRelations: () => [],
     createdAt: () => new Date().toISOString(),
     updatedAt: () => new Date().toISOString(),
-    relation: (field: {
-      type: string;
-      settings: { relationType?: string } | null;
-      relationTargetObjectMetadataId: string | null;
-    }) =>
-      field.type !== 'RELATION' || field.relationTargetObjectMetadataId === null
-        ? null
-        : { type: field.settings?.relationType ?? null },
+    relation: (field: { relation?: unknown }) => field.relation ?? null,
   },
 
   Mutation: {
@@ -1080,6 +1602,10 @@ export const METADATA_RESOLVERS = {
 
       return rows[0] ?? null;
     },
+
+    // Accepted and dropped: we keep no analytics pipeline, and the front only
+    // reads `success`.
+    trackAnalytics: () => ({ success: true }),
 
     signOut: async (_parent: unknown, _args: unknown, context: MetadataContext) => {
       await context.clearSession();

@@ -28,6 +28,25 @@ export const STANDARD_OBJECT_INPUTS: StandardObjectInput[] = [
       { name: 'avatarUrl', label: 'Avatar Url', type: 'TEXT' },
       { name: 'userEmail', label: 'User Email', type: 'TEXT' },
       { name: 'userId', label: 'User Id', type: 'UUID' },
+      // Both sides of a relation must exist: the front dereferences
+      // relation.targetFieldMetadata.id without a guard, so a MANY_TO_ONE
+      // without its inverse crashes every page that renders the owning object.
+      {
+        name: 'authoredAttachments',
+        label: 'Authored attachments',
+        type: 'RELATION',
+        settings: ONE_TO_MANY,
+        relationTargetObjectNameSingular: 'attachment',
+        relationTargetFieldName: 'author',
+      },
+      {
+        name: 'assignedTasks',
+        label: 'Assigned tasks',
+        type: 'RELATION',
+        settings: ONE_TO_MANY,
+        relationTargetObjectNameSingular: 'task',
+        relationTargetFieldName: 'assignee',
+      },
     ],
   },
   {

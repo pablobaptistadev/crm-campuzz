@@ -1,5 +1,12 @@
 import { makeExecutableSchema } from '@graphql-tools/schema';
-import { buildSchema, getIntrospectionQuery, graphqlSync, printSchema } from 'graphql';
+import {
+  buildSchema,
+  getIntrospectionQuery,
+  graphqlSync,
+  parse,
+  printSchema,
+  validate,
+} from 'graphql';
 import { describe, expect, it } from 'vitest';
 
 import { buildWorkspaceSchemaSdl } from 'src/graphql/build-sdl';
@@ -32,6 +39,87 @@ describe('workspace SDL', () => {
     const result = graphqlSync({ schema, source: getIntrospectionQuery() });
 
     expect(result.errors).toBeUndefined();
+  });
+
+  // Shaped exactly like generateFindManyRecordsQuery +
+  // mapFieldMetadataToGraphQLQuery in twenty-front: $lastCursor is declared
+  // String, and every composite sub-property the front selects into has to be
+  // an object type rather than a JSON leaf.
+  it('validates the FindMany query twenty-front generates', () => {
+    const schema = makeExecutableSchema({ typeDefs: sdl });
+
+    const errors = validate(
+      schema,
+      parse(`
+        query FindManyCompanies(
+          $filter: CompanyFilterInput
+          $orderBy: [CompanyOrderByInput]
+          $lastCursor: String
+          $limit: Int
+          $offset: Int
+        ) {
+          companies(
+            filter: $filter
+            orderBy: $orderBy
+            first: $limit
+            after: $lastCursor
+            offset: $offset
+          ) {
+            edges {
+              node {
+                id
+                name
+                employees
+                createdAt
+                updatedAt
+                deletedAt
+                domainName {
+                  primaryLinkUrl
+                  primaryLinkLabel
+                  secondaryLinks { label url }
+                }
+                annualRecurringRevenue { amountMicros currencyCode }
+                address {
+                  addressStreet1
+                  addressStreet2
+                  addressCity
+                  addressState
+                  addressCountry
+                  addressPostcode
+                  addressLat
+                  addressLng
+                }
+                people {
+                  edges {
+                    node {
+                      id
+                      name { firstName lastName }
+                      emails { primaryEmail additionalEmails }
+                      phones {
+                        primaryPhoneNumber
+                        primaryPhoneCountryCode
+                        primaryPhoneCallingCode
+                        additionalPhones { number callingCode countryCode }
+                      }
+                    }
+                  }
+                }
+              }
+              cursor
+            }
+            pageInfo {
+              hasNextPage
+              hasPreviousPage
+              startCursor
+              endCursor
+            }
+            totalCount
+          }
+        }
+      `),
+    );
+
+    expect(errors.map((error) => error.message)).toEqual([]);
   });
 
   it('names root fields the way twenty-front expects', () => {

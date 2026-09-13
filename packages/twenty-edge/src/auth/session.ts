@@ -69,6 +69,11 @@ export const readSessionToken = (context: Context<AppEnv>): string | null =>
 
 export const clearSessionCookie = (context: Context<AppEnv>): void => {
   for (const cookieName of [SECURE_SESSION_COOKIE_NAME, SESSION_COOKIE_NAME]) {
-    deleteCookie(context, cookieName, { path: '/' });
+    // A __Host- cookie is only a valid cookie with Secure set, and the delete
+    // helper enforces that: without it sign-out throws instead of clearing.
+    deleteCookie(context, cookieName, {
+      path: '/',
+      secure: cookieName === SECURE_SESSION_COOKIE_NAME,
+    });
   }
 };

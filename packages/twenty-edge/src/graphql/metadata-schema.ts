@@ -87,47 +87,118 @@ type Workspace {
   metadataVersion: Int!
 }
 
-type FieldMetadata {
+type RelationObjectRef { id: UUID! nameSingular: String! namePlural: String! }
+type RelationFieldRef { id: UUID! name: String! }
+
+type FieldRelation {
+  type: String
+  sourceObjectMetadata: RelationObjectRef
+  targetObjectMetadata: RelationObjectRef
+  sourceFieldMetadata: RelationFieldRef
+  targetFieldMetadata: RelationFieldRef
+}
+
+# Named Field / Object, not FieldMetadata / ObjectMetadata: twenty-front's
+# fragments are declared "on Field" and "on Object", and a fragment whose type
+# condition does not exist makes the whole document fail validation.
+type Field {
   id: UUID!
+  universalIdentifier: UUID
+  type: String!
   name: String!
   label: String!
-  type: String!
   description: String
   icon: String
   isActive: Boolean!
   isSystem: Boolean!
+  isUIEditable: Boolean!
+  writability: String
   isNullable: Boolean!
+  isUnique: Boolean
+  isSearchable: Boolean
   isCustom: Boolean!
+  isLabelSyncedWithName: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
   defaultValue: RawJSON
   options: RawJSON
   settings: RawJSON
+  morphId: UUID
+  applicationId: UUID
   relationTargetObjectMetadataId: UUID
   relationTargetFieldMetadataId: UUID
+  relation: FieldRelation
+  morphRelations: [FieldRelation!]
 }
 
-type FieldMetadataEdge { node: FieldMetadata! cursor: Cursor! }
-type FieldMetadataConnection { edges: [FieldMetadataEdge!]! pageInfo: PageInfo! }
+type FieldEdge { node: Field! cursor: Cursor! }
+type FieldConnection { edges: [FieldEdge!]! pageInfo: PageInfo! }
 
-type ObjectMetadata {
+type SearchFieldMetadata {
   id: UUID!
+  fieldMetadataId: UUID!
+  tsVectorFieldMetadataId: UUID
+  position: Float
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type IndexFieldMetadata {
+  id: UUID!
+  fieldMetadataId: UUID!
+  subFieldName: String
+  createdAt: DateTime
+  updatedAt: DateTime
+  order: Int
+}
+
+type IndexMetadata {
+  id: UUID!
+  createdAt: DateTime
+  updatedAt: DateTime
+  name: String!
+  indexWhereClause: String
+  indexType: String
+  isUnique: Boolean!
+  isCustom: Boolean!
+  indexFieldMetadataList: [IndexFieldMetadata!]!
+}
+
+type Object {
+  id: UUID!
+  universalIdentifier: UUID
   nameSingular: String!
   namePlural: String!
   labelSingular: String!
   labelPlural: String!
+  color: String
   description: String
   icon: String
+  isRemote: Boolean!
   isActive: Boolean!
   isSystem: Boolean!
   isCustom: Boolean!
-  isSearchable: Boolean!
+  isUIEditable: Boolean!
+  isUICreatable: Boolean!
+  writability: String
+  createdAt: DateTime
+  updatedAt: DateTime
   labelIdentifierFieldMetadataId: UUID
   imageIdentifierFieldMetadataId: UUID
-  fieldsList: [FieldMetadata!]!
-  fields(paging: PagingInput): FieldMetadataConnection!
+  applicationId: UUID
+  shortcut: String
+  isLabelSyncedWithName: Boolean
+  isSearchable: Boolean!
+  openRecordIn: String
+  duplicateCriteria: RawJSON
+  searchFieldMetadataList: [SearchFieldMetadata!]!
+  indexMetadataList: [IndexMetadata!]!
+  fieldsList: [Field!]!
+  fields(paging: PagingInput): FieldConnection!
 }
 
-type ObjectMetadataEdge { node: ObjectMetadata! cursor: Cursor! }
-type ObjectMetadataConnection { edges: [ObjectMetadataEdge!]! pageInfo: PageInfo! }
+type ObjectEdge { node: Object! cursor: Cursor! }
+type ObjectConnection { edges: [ObjectEdge!]! pageInfo: PageInfo! }
 
 input PagingInput { first: Int after: Cursor last: Int before: Cursor }
 
@@ -142,7 +213,7 @@ type View {
 }
 
 type MinimalMetadata {
-  objectMetadataItems: [ObjectMetadata!]!
+  objectMetadataItems: [Object!]!
   views: [View!]!
   collectionHashes: [CollectionHash!]!
 }
@@ -162,9 +233,9 @@ type AvailableWorkspacesAndAccessTokens {
 type Query {
   currentUser: User
   checkUserExists(email: String!): UserExists!
-  objects(paging: PagingInput): ObjectMetadataConnection!
-  object(id: UUID!): ObjectMetadata
-  fields(paging: PagingInput): FieldMetadataConnection!
+  objects(paging: PagingInput): ObjectConnection!
+  object(id: UUID!): Object
+  fields(paging: PagingInput): FieldConnection!
   getViews(viewTypes: [String!]): [View!]!
   minimalMetadata: MinimalMetadata!
 }
@@ -207,8 +278,8 @@ input ViewUpdateInput {
 }
 
 type Mutation {
-  createOneObject(input: ObjectCreateInput!): ObjectMetadata!
-  createOneField(input: FieldCreateInput!): FieldMetadata!
+  createOneObject(input: ObjectCreateInput!): Object!
+  createOneField(input: FieldCreateInput!): Field!
   createView(data: ViewCreateInput!): View!
   updateView(id: UUID!, data: ViewUpdateInput!): View
   deleteView(id: UUID!): View
@@ -447,15 +518,48 @@ export const METADATA_RESOLVERS = {
     },
   },
 
-  ObjectMetadata: {
+  Object: {
     fieldsList: (object: { fields: unknown[] }) => object.fields,
     fields: (object: { fields: unknown[] }) => toConnection(object.fields),
+    // Not modelled yet, but the front dereferences both unconditionally, so
+    // they must be lists rather than null.
+    searchFieldMetadataList: () => [],
+    indexMetadataList: () => [],
+    universalIdentifier: (object: { id: string }) => object.id,
+    color: () => null,
+    isRemote: () => false,
+    isUIEditable: () => true,
+    isUICreatable: () => true,
+    writability: () => 'FULL_WRITE',
+    openRecordIn: () => 'SIDE_PANEL',
+    shortcut: () => null,
+    isLabelSyncedWithName: () => false,
+    applicationId: () => null,
+    duplicateCriteria: () => null,
+    createdAt: () => new Date().toISOString(),
+    updatedAt: () => new Date().toISOString(),
   },
 
-  FieldMetadata: {
-    // Custom fields are the ones no standard object declares; until index
-    // metadata exists this mirrors the object's own flag.
+  Field: {
+    universalIdentifier: (field: { id: string }) => field.id,
     isCustom: () => false,
+    isUIEditable: () => true,
+    isSearchable: () => false,
+    writability: () => 'FULL_WRITE',
+    isLabelSyncedWithName: () => false,
+    morphId: () => null,
+    applicationId: () => null,
+    morphRelations: () => [],
+    createdAt: () => new Date().toISOString(),
+    updatedAt: () => new Date().toISOString(),
+    relation: (field: {
+      type: string;
+      settings: { relationType?: string } | null;
+      relationTargetObjectMetadataId: string | null;
+    }) =>
+      field.type !== 'RELATION' || field.relationTargetObjectMetadataId === null
+        ? null
+        : { type: field.settings?.relationType ?? null },
   },
 
   Mutation: {

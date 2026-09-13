@@ -45,6 +45,33 @@ describe('workspace SDL', () => {
   // mapFieldMetadataToGraphQLQuery in twenty-front: $lastCursor is declared
   // String, and every composite sub-property the front selects into has to be
   // an object type rather than a JSON leaf.
+  // The record page's previous/next navigation compares ids, so a uuid column
+  // has to accept the ordering operators, not just equality.
+  it('accepts the cursor-shaped filter the record page sends', () => {
+    const schema = makeExecutableSchema({ typeDefs: sdl });
+
+    const errors = validate(
+      schema,
+      parse(`
+        query FindManyCompanies($filter: CompanyFilterInput, $orderBy: [CompanyOrderByInput], $limit: Int) {
+          companies(filter: $filter, orderBy: $orderBy, first: $limit) {
+            edges { node { id } }
+          }
+        }
+      `),
+    );
+
+    expect(errors.map((error) => error.message)).toEqual([]);
+
+    const filterType = printSchema(buildSchema(sdl))
+      .split('input UUIDFilter {')[1]
+      .split('}')[0];
+
+    for (const operator of ['gt', 'gte', 'lt', 'lte']) {
+      expect(filterType).toContain(`${operator}: UUID`);
+    }
+  });
+
   it('validates the FindMany query twenty-front generates', () => {
     const schema = makeExecutableSchema({ typeDefs: sdl });
 

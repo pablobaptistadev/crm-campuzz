@@ -19,6 +19,7 @@ type PageDiagnostics = {
   failedRequests: string[];
   responses: string[];
   rejectedRequests: string[];
+  graphqlCalls: string[];
 };
 
 const createDiagnostics = (): PageDiagnostics => ({
@@ -28,6 +29,7 @@ const createDiagnostics = (): PageDiagnostics => ({
   failedRequests: [],
   responses: [],
   rejectedRequests: [],
+  graphqlCalls: [],
 });
 
 const attachDiagnostics = (
@@ -84,6 +86,19 @@ const attachDiagnostics = (
     diagnostics.responses.push(
       `${response.status()} ${response.request().method()} ${url}`,
     );
+
+    // A record page fails quietly: the query answers 200 with data the page
+    // then cannot use, so the request/response pair is what tells them apart.
+    if (url.includes('/graphql')) {
+      const operation = (response.request().postData() ?? '').slice(0, 140);
+
+      void response
+        .text()
+        .then((body) => {
+          diagnostics.graphqlCalls.push(`${operation} => ${body.slice(0, 260)}`);
+        })
+        .catch(() => undefined);
+    }
 
     // A 400 from the API is a rejected document, and the body names the field
     // that does not exist — without it the failure is just a status code.
@@ -452,6 +467,55 @@ export const runBrowserSuite = async (
           return { url: page.url(), artifact: artifact.key };
         },
       );
+
+      await recorder.step('the record page renders the record', async () => {
+        assert(seededCompanyId !== null, 'a record to open');
+
+        await page.goto(
+          `${bindings.TARGET_URL}/object/company/${seededCompanyId}`,
+          { waitUntil: 'domcontentloaded', timeout: STEP_TIMEOUT_MS },
+        );
+
+        // The skeleton is made of zero-width spaces, so any "the page has text"
+        // check passes while nothing has actually rendered. Wait for the record
+        // itself.
+        await waitInPage(
+          page,
+          `(document.body.innerText || '').includes(${JSON.stringify(companyName)})`,
+          LOGIN_TIMEOUT_MS,
+        ).catch(() => undefined);
+
+        const bodyText = await evaluateInPage<string>(
+          page,
+          `document.body.innerText || ''`,
+        );
+
+        const artifact = await capture({
+          page,
+          bindings,
+          runId,
+          name: 'record-page',
+          artifacts,
+        });
+
+        assert(
+          !bodyText.includes('Unexpected Application Error'),
+          `record page rendered an error boundary: ${bodyText.slice(0, 300)}`,
+        );
+
+        assert(
+          bodyText.includes(companyName),
+          `record page shows the record :: graphql=${diagnostics.graphqlCalls.slice(-3).join(' ;; ')} :: console=${Array.from(new Set(diagnostics.consoleErrors)).slice(0, 2).join(' ;; ')}`,
+        );
+
+        // A record page with no field list is the symptom of a missing layout.
+        assert(
+          bodyText.includes('Employees'),
+          `record page shows the fields: ${JSON.stringify(bodyText.slice(0, 500))}`,
+        );
+
+        return { url: page.url(), artifact: artifact.key };
+      });
 
       for (const [label, path] of [
         ['people', '/objects/people'],

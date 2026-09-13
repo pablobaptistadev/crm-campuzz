@@ -709,7 +709,42 @@ const deriveStableId = (left: string, right: string): string => {
   ].join('-');
 };
 
+// The front falls back to the number icon when a field has none, which is why
+// every column read "123". Names come from twenty-ui's icon set.
+const ICON_BY_FIELD_TYPE: Record<string, string> = {
+  UUID: 'IconKey',
+  TEXT: 'IconAbc',
+  NUMBER: 'Icon123',
+  NUMERIC: 'Icon123',
+  BOOLEAN: 'IconCheckbox',
+  DATE_TIME: 'IconCalendarTime',
+  DATE: 'IconCalendarEvent',
+  CURRENCY: 'IconCurrencyDollar',
+  EMAILS: 'IconMail',
+  PHONES: 'IconPhone',
+  LINKS: 'IconLink',
+  ADDRESS: 'IconMap',
+  FULL_NAME: 'IconUser',
+  ACTOR: 'IconUserCircle',
+  RAW_JSON: 'IconCode',
+  RICH_TEXT: 'IconFileText',
+  FILES: 'IconFiles',
+  SELECT: 'IconTag',
+  MULTI_SELECT: 'IconTags',
+  RATING: 'IconStar',
+  ARRAY: 'IconList',
+  POSITION: 'IconHierarchy2',
+  TS_VECTOR: 'IconSearch',
+  RELATION: 'IconRelationOneToMany',
+  MORPH_RELATION: 'IconRelationOneToMany',
+};
+
 const VISIBLE_VIEW_FIELD_COUNT = 8;
+
+// Namespaces keep the three ids derived from one object distinct.
+const RECORD_PAGE_NAMESPACE = '00000000-0000-4000-8000-00000000900d';
+const RECORD_TAB_NAMESPACE = '00000000-0000-4000-8000-0000000090ab';
+const FIELDS_WIDGET_NAMESPACE = '00000000-0000-4000-8000-0000000090fe';
 
 const buildViewFields = (
   viewId: string,
@@ -788,7 +823,7 @@ const toWorkspaceMemberDto = (member: WorkspaceMemberRow) => ({
   name: { firstName: member.nameFirstName, lastName: member.nameLastName },
   colorScheme: member.colorScheme ?? 'System',
   uiScale: 'Normal',
-  openRecordIn: 'SIDE_PANEL',
+  openRecordIn: 'RECORD_PAGE',
   avatarUrl: member.avatarUrl,
   locale: member.locale ?? 'pt-BR',
   userEmail: member.userEmail,
@@ -907,6 +942,18 @@ const hashCollection = (value: unknown): string => {
 
 export const METADATA_RESOLVERS = {
   JSON: JSONScalar,
+
+  // Synthesised values carry their own type tag: without __resolveType a union
+  // field throws at execution, which would take the whole page layout with it.
+  PageLayoutWidgetPosition: {
+    __resolveType: (value: { __type?: string }) => value.__type ?? null,
+  },
+  PageLayoutWidgetConfiguration: {
+    __resolveType: (value: { __type?: string }) => value.__type ?? null,
+  },
+  CommandMenuItemPayload: {
+    __resolveType: (value: { __type?: string }) => value.__type ?? null,
+  },
 
   Query: {
     currentUser: async (_parent: unknown, _args: unknown, context: MetadataContext) => {
@@ -1200,10 +1247,107 @@ export const METADATA_RESOLVERS = {
         }));
     },
 
+    // A record page renders nothing without a layout — no layout, no tabs, no
+    // widgets, and the page sits on its skeleton forever. One layout per object,
+    // derived from the metadata, with a fields widget: the widget falls back to
+    // the object's own fields when its view id is null, which is exactly the
+    // default Twenty ships.
+    getPageLayouts: async (
+      _parent: unknown,
+      args: { pageLayoutType?: string },
+      context: MetadataContext,
+    ) => {
+      const membership = context.sessionContext?.membership ?? null;
+
+      if (membership === null || args.pageLayoutType !== 'RECORD_PAGE') {
+        return [];
+      }
+
+      const metadata = await loadWorkspaceMetadata({
+        client: context.client,
+        workspaceId: membership.workspace.id,
+        metadataVersion: membership.workspace.metadataVersion,
+      });
+
+      return metadata.objects
+        .filter((object) => object.isActive && !object.isSystem)
+        .map((object) => {
+          const pageLayoutId = deriveStableId(object.id, RECORD_PAGE_NAMESPACE);
+          const tabId = deriveStableId(object.id, RECORD_TAB_NAMESPACE);
+          const widgetId = deriveStableId(object.id, FIELDS_WIDGET_NAMESPACE);
+
+          return {
+            id: pageLayoutId,
+            applicationId: null,
+            name: object.labelSingular,
+            objectMetadataId: object.id,
+            type: 'RECORD_PAGE',
+            universalIdentifier: pageLayoutId,
+            isSystemSideEffect: false,
+            isFirstTabPinned: false,
+            defaultTabToFocusOnMobileAndSidePanelId: tabId,
+            createdAt: null,
+            updatedAt: null,
+            tabs: [
+              {
+                id: tabId,
+                applicationId: null,
+                universalIdentifier: tabId,
+                isSystemSideEffect: false,
+                title: object.labelSingular,
+                icon: object.icon,
+                position: 0,
+                layoutMode: 'VERTICAL_LIST',
+                pageLayoutId,
+                isActive: true,
+                createdAt: null,
+                updatedAt: null,
+                widgets: [
+                  {
+                    id: widgetId,
+                    applicationId: null,
+                    universalIdentifier: widgetId,
+                    isSystemSideEffect: false,
+                    title: object.labelSingular,
+                    type: 'FIELDS',
+                    objectMetadataId: object.id,
+                    createdAt: null,
+                    updatedAt: null,
+                    isActive: true,
+                    deletedAt: null,
+                    conditionalDisplay: null,
+                    conditionalAvailabilityExpression: null,
+                    gridPosition: {
+                      column: 0,
+                      columnSpan: 12,
+                      row: 0,
+                      rowSpan: 1,
+                    },
+                    position: {
+                      __type: 'PageLayoutWidgetVerticalListPosition',
+                      layoutMode: 'VERTICAL_LIST',
+                      index: 0,
+                      heightBehavior: 'FIT_CONTENT',
+                    },
+                    configuration: {
+                      __type: 'FieldsConfiguration',
+                      configurationType: 'FIELDS',
+                      viewId: null,
+                      newFieldDefaultVisibility: true,
+                      shouldAllowUserToSeeHiddenFields: true,
+                    },
+                    pageLayoutTabId: tabId,
+                  },
+                ],
+              },
+            ],
+          };
+        });
+    },
+
     // Collections the front loads at boot but we do not serve yet. They answer
     // empty rather than erroring: an unresolved field would fail the whole
     // document and leave the app on its loading skeleton.
-    getPageLayouts: () => [],
     commandMenuItems: () => [],
     frontComponents: () => [],
     findManyLogicFunctions: () => [],
@@ -1290,7 +1434,7 @@ export const METADATA_RESOLVERS = {
     isUIEditable: () => true,
     isUICreatable: () => true,
     writability: () => 'FULL_WRITE',
-    openRecordIn: () => 'SIDE_PANEL',
+    openRecordIn: () => 'RECORD_PAGE',
     shortcut: () => null,
     isLabelSyncedWithName: () => false,
     applicationId: () => null,
@@ -1301,6 +1445,8 @@ export const METADATA_RESOLVERS = {
 
   Field: {
     universalIdentifier: (field: { id: string }) => field.id,
+    icon: (field: { icon: string | null; type: string }) =>
+      field.icon ?? ICON_BY_FIELD_TYPE[field.type] ?? 'IconAbc',
     isCustom: () => false,
     isUIEditable: () => true,
     isSearchable: () => false,

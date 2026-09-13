@@ -341,7 +341,7 @@ type FieldRichTextConfiguration { configurationType: String }
 type FieldsConfiguration {
   configurationType: String
   viewId: UUID
-  newFieldDefaultVisibility: String
+  newFieldDefaultVisibility: Boolean
   shouldAllowUserToSeeHiddenFields: Boolean
 }
 

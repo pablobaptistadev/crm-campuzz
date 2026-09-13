@@ -95,7 +95,7 @@ input StringFilter {
   like: String ilike: String startsWith: String endsWith: String
   regex: String iregex: String search: String
 }
-input UUIDFilter { eq: UUID neq: UUID in: [UUID!] is: FilterIs }
+input UUIDFilter { eq: UUID neq: UUID in: [UUID!] is: FilterIs gt: UUID gte: UUID lt: UUID lte: UUID }
 input FloatFilter { eq: Float neq: Float in: [Float!] is: FilterIs gt: Float gte: Float lt: Float lte: Float }
 input BigFloatFilter { eq: BigFloat neq: BigFloat in: [BigFloat!] is: FilterIs gt: BigFloat gte: BigFloat lt: BigFloat lte: BigFloat }
 input BooleanFilter { eq: Boolean is: FilterIs }

@@ -157,3 +157,7 @@ faltando derruba tudo. Os defeitos que ela encontrou e que já estão corrigidos
 | `after: Cursor` | O front declara `$lastCursor: String` |
 | `secondaryLinks` / `additionalPhones` como JSON | O front seleciona subcampos dentro deles |
 | `trackAnalytics` e `currentUserSessions` ausentes | 400 a cada navegação e na tela de configurações |
+| `navigationMenuItems` vazio | Sem menu lateral: no celular o app entrava e mostrava uma tela quase em branco |
+| `getPageLayouts` vazio | A página de um registro ficava no esqueleto para sempre — sem layout não há abas nem widgets |
+| `UUIDFilter` sem `lt`/`gt` | A navegação anterior/próximo do registro manda `id: { lt: ... }` e tomava 400 |
+| Campo sem ícone | Toda coluna e todo campo aparecia com o ícone de número |

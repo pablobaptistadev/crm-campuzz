@@ -517,11 +517,19 @@ export const runBrowserSuite = async (
         );
 
         // The skeleton is made of zero-width spaces, so any "the page has text"
-        // check passes while nothing has actually rendered. Wait for the record
-        // itself.
+        // check passes while nothing has actually rendered. Waiting for the
+        // record's own name is not enough either: we arrive from the companies
+        // table, whose rows carry that same name, so the first poll can match
+        // the page we are leaving. "Employees" is a field label only the record
+        // page shows, and requiring both means the wait cannot end on either
+        // page alone.
         await waitInPage(
           page,
-          `(document.body.innerText || '').includes(${JSON.stringify(companyName)})`,
+          `(() => {
+            const text = document.body.innerText || '';
+
+            return text.includes(${JSON.stringify(companyName)}) && text.includes('Employees');
+          })()`,
           LOGIN_TIMEOUT_MS,
         ).catch(() => undefined);
 

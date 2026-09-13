@@ -10,6 +10,24 @@ export const pascalCase = (value: string): string =>
 
 // Base36 of the uuid read as one big integer. Shortens 32 hex chars to ~25,
 // which matters because Postgres identifiers cap at 63 bytes.
+// A field name from a label the person typed: "Alunos da unidade" becomes
+// alunosDaUnidade. Accents are folded because a column name cannot carry them.
+export const toCamelCase = (value: string): string => {
+  const words = value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .split(/[^A-Za-z0-9]+/)
+    .filter((word) => word.length > 0);
+
+  return words
+    .map((word, index) =>
+      index === 0
+        ? word.charAt(0).toLowerCase() + word.slice(1)
+        : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+    )
+    .join('');
+};
+
 export const uuidToBase36 = (uuid: string): string =>
   BigInt(`0x${uuid.replace(/-/g, '')}`).toString(36);
 

@@ -52,6 +52,7 @@ import {
   seedWorkspaceMember,
 } from 'src/services/bootstrap-workspace';
 import {
+  type RelationCreationPayload,
   createFieldMetadata,
   createObjectMetadata,
   deleteFieldMetadata,
@@ -913,6 +914,16 @@ input FieldCreateInput {
   isNullable: Boolean
   icon: String
   options: [FieldOptionInput!]
+  relationCreationPayload: RelationCreationPayloadInput
+}
+
+# A relation is two fields, not one: this describes the far side, which is
+# created with it. The names are the front's own.
+input RelationCreationPayloadInput {
+  type: String!
+  targetObjectMetadataId: UUID!
+  targetFieldLabel: String!
+  targetFieldIcon: String
 }
 
 # Shapes copied from twenty-front's generated inputs: the front types its
@@ -2779,6 +2790,7 @@ export const METADATA_RESOLVERS = {
           isNullable?: boolean;
           icon?: string;
           options?: { value: string; label: string; color?: string }[];
+          relationCreationPayload?: RelationCreationPayload | null;
         };
       },
       context: MetadataContext,
@@ -2797,6 +2809,7 @@ export const METADATA_RESOLVERS = {
         client: context.client,
         workspaceId,
         object,
+        objects: metadata.objects,
         input: {
           ...args.input,
           type: args.input.type as FieldMetadataType,

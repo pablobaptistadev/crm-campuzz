@@ -16,6 +16,7 @@ import { type FieldMetadataType } from 'src/metadata/field-metadata-type';
 import {
   computeTableName,
   getWorkspaceSchemaName,
+  toCamelCase,
 } from 'src/metadata/naming';
 import {
   type FlatFieldMetadata,
@@ -158,15 +159,119 @@ export const createObjectMetadata = async ({
   return object;
 };
 
+export type RelationCreationPayload = {
+  type: 'ONE_TO_MANY' | 'MANY_TO_ONE';
+  targetObjectMetadataId: string;
+  targetFieldLabel: string;
+  targetFieldIcon?: string | null;
+};
+
+// A relation is never one field. Creating it writes the far side too, pointing
+// back — the front dereferences relation.targetFieldMetadata.id without a
+// guard, so a one-sided relation crashes every page that renders the object.
+const createRelationFieldPair = async ({
+  client,
+  workspaceId,
+  object,
+  targetObject,
+  field,
+  payload,
+}: {
+  client: Client;
+  workspaceId: string;
+  object: FlatObjectMetadata;
+  targetObject: FlatObjectMetadata;
+  field: FlatFieldMetadata;
+  payload: RelationCreationPayload;
+}): Promise<FlatFieldMetadata> => {
+  const inverseName = toCamelCase(payload.targetFieldLabel);
+
+  assertValidMetadataName(inverseName);
+
+  if (targetObject.fields.some((entry) => entry.name === inverseName)) {
+    throw new UserFacingError(
+      `Field "${inverseName}" already exists on ${targetObject.nameSingular}`,
+    );
+  }
+
+  const inverseRelationType =
+    payload.type === 'MANY_TO_ONE' ? 'ONE_TO_MANY' : 'MANY_TO_ONE';
+
+  const inverse: FlatFieldMetadata = {
+    id: crypto.randomUUID(),
+    objectMetadataId: targetObject.id,
+    workspaceId,
+    name: inverseName,
+    label: payload.targetFieldLabel,
+    type: 'RELATION',
+    description: null,
+    icon: payload.targetFieldIcon ?? null,
+    isActive: true,
+    isSystem: false,
+    isNullable: true,
+    isUnique: false,
+    defaultValue: null,
+    options: null,
+    settings: { relationType: inverseRelationType, onDelete: 'SET_NULL' },
+    relationTargetObjectMetadataId: object.id,
+    relationTargetFieldMetadataId: field.id,
+  };
+
+  const owning: FlatFieldMetadata = {
+    ...field,
+    settings: { relationType: payload.type, onDelete: 'SET_NULL' },
+    relationTargetObjectMetadataId: targetObject.id,
+    relationTargetFieldMetadataId: inverse.id,
+  };
+
+  await persistFieldMetadata({ client, field: owning });
+  await persistFieldMetadata({ client, field: inverse });
+
+  // Only the MANY_TO_ONE side owns a column, so exactly one of the two reaches
+  // the table — and the foreign key follows it.
+  const owningSide = payload.type === 'MANY_TO_ONE' ? owning : inverse;
+  const owningObject =
+    payload.type === 'MANY_TO_ONE' ? object : targetObject;
+  const referencedObject =
+    payload.type === 'MANY_TO_ONE' ? targetObject : object;
+
+  const owningTable = computeTableName(
+    owningObject.nameSingular,
+    owningObject.isCustom,
+  );
+  const referencedTable = computeTableName(
+    referencedObject.nameSingular,
+    referencedObject.isCustom,
+  );
+  const schemaName = getWorkspaceSchemaName(workspaceId);
+
+  await client.query(
+    `ALTER TABLE ${escapeIdentifier(schemaName)}.${escapeIdentifier(owningTable)}
+     ADD COLUMN IF NOT EXISTS ${escapeIdentifier(`${owningSide.name}Id`)} uuid`,
+  );
+
+  await client.query(
+    `ALTER TABLE ${escapeIdentifier(schemaName)}.${escapeIdentifier(owningTable)}
+     ADD CONSTRAINT ${escapeIdentifier(`FK_${owningTable}_${owningSide.name}`)}
+     FOREIGN KEY (${escapeIdentifier(`${owningSide.name}Id`)})
+     REFERENCES ${escapeIdentifier(schemaName)}.${escapeIdentifier(referencedTable)}("id")
+     ON DELETE SET NULL`,
+  );
+
+  return owning;
+};
+
 export const createFieldMetadata = async ({
   client,
   workspaceId,
   object,
+  objects,
   input,
 }: {
   client: Client;
   workspaceId: string;
   object: FlatObjectMetadata;
+  objects: FlatObjectMetadata[];
   input: {
     name: string;
     label: string;
@@ -174,6 +279,7 @@ export const createFieldMetadata = async ({
     isNullable?: boolean;
     icon?: string;
     options?: { value: string; label: string; color?: string }[];
+    relationCreationPayload?: RelationCreationPayload | null;
   };
 }): Promise<FlatFieldMetadata> => {
   assertValidMetadataName(input.name);
@@ -190,6 +296,31 @@ export const createFieldMetadata = async ({
     objectMetadataId: object.id,
     workspaceId,
   });
+
+  const payload = input.relationCreationPayload ?? null;
+
+  if (payload !== null) {
+    const targetObject = objects.find(
+      (entry) => entry.id === payload.targetObjectMetadataId,
+    );
+
+    if (targetObject === undefined) {
+      throw new UserFacingError('TARGET_OBJECT_NOT_FOUND');
+    }
+
+    const owning = await createRelationFieldPair({
+      client,
+      workspaceId,
+      object,
+      targetObject,
+      field: { ...field, type: 'RELATION' },
+      payload,
+    });
+
+    await bumpMetadataVersion({ client, workspaceId });
+
+    return owning;
+  }
 
   await applyFieldColumns({ client, schemaName, tableName, field });
 

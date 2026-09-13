@@ -21,6 +21,7 @@ import {
   type FlatFieldMetadata,
   type FlatObjectMetadata,
 } from 'src/metadata/types';
+import { syncSearchVector } from 'src/services/sync-search-vectors';
 import { SYSTEM_FIELDS } from 'src/standard/build';
 
 // Object and field names become Postgres identifiers, so they are constrained
@@ -147,6 +148,7 @@ export const createObjectMetadata = async ({
     await client.query(statement);
   }
 
+  await syncSearchVector({ client, workspaceId, object });
   await bumpMetadataVersion({ client, workspaceId });
 
   return object;
@@ -188,6 +190,13 @@ export const createFieldMetadata = async ({
   await applyFieldColumns({ client, schemaName, tableName, field });
 
   await persistFieldMetadata({ client, field });
+
+  await syncSearchVector({
+    client,
+    workspaceId,
+    object: { ...object, fields: [...object.fields, field] },
+  });
+
   await bumpMetadataVersion({ client, workspaceId });
 
   return field;
@@ -296,6 +305,16 @@ export const deleteFieldMetadata = async ({
 
   const schemaName = getWorkspaceSchemaName(workspaceId);
   const tableName = computeTableName(object.nameSingular, object.isCustom);
+
+  const remaining = {
+    ...object,
+    fields: object.fields.filter((entry) => entry.id !== field.id),
+  };
+
+  // The search column is generated from these columns, and Postgres refuses to
+  // drop a column something generated depends on. Rebuilding it without the
+  // field is what clears the way.
+  await syncSearchVector({ client, workspaceId, object: remaining });
 
   // A composite field owns one column per property, so this is a loop for the
   // same reason creating it was.

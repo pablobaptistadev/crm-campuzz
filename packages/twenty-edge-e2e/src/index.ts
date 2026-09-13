@@ -60,7 +60,7 @@ const run = async (
     const browserRun = await runBrowserSuite(bindings, runId);
 
     steps.push(...browserRun.steps);
-    artifacts = browserRun.artifacts;
+    artifacts = [...artifacts, ...browserRun.artifacts];
   }
 
   const finishedAt = Date.now();
@@ -122,7 +122,10 @@ app.get('/run', async (context) => {
     return context.html(renderReportHtml(report, artifacts));
   }
 
-  return context.json(report, report.totals.failed > 0 ? 500 : 200);
+  return context.json(
+    { ...report, artifacts },
+    report.totals.failed > 0 ? 500 : 200,
+  );
 });
 
 app.get('/report', async (context) => {

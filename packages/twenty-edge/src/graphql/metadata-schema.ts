@@ -860,6 +860,7 @@ type Mutation {
 type SyncStandardMetadataResult {
   createdObjects: [String!]!
   createdFields: [String!]!
+  searchableObjects: [String!]!
 }
 `;
 
@@ -1155,25 +1156,25 @@ const buildRelationWidgets = ({
 const TIMELINE_ACTIVITY_TYPES = [
   {
     action: 'created',
-    label: 'Created',
+    label: 'Criado',
     icon: 'IconPlus',
     id: '00000000-0000-4000-8000-0000000000c1',
   },
   {
     action: 'updated',
-    label: 'Updated',
+    label: 'Atualizado',
     icon: 'IconPencil',
     id: '00000000-0000-4000-8000-0000000000c2',
   },
   {
     action: 'deleted',
-    label: 'Deleted',
+    label: 'Excluído',
     icon: 'IconTrash',
     id: '00000000-0000-4000-8000-0000000000c3',
   },
   {
     action: 'restored',
-    label: 'Restored',
+    label: 'Restaurado',
     icon: 'IconRestore',
     id: '00000000-0000-4000-8000-0000000000c4',
   },

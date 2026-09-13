@@ -18,22 +18,22 @@ const TIMELINE_TYPE_BY_ACTION: Record<
 > = {
   created: {
     id: '00000000-0000-4000-8000-0000000000c1',
-    label: 'Created',
+    label: 'Criado',
     icon: 'IconPlus',
   },
   updated: {
     id: '00000000-0000-4000-8000-0000000000c2',
-    label: 'Updated',
+    label: 'Atualizado',
     icon: 'IconPencil',
   },
   deleted: {
     id: '00000000-0000-4000-8000-0000000000c3',
-    label: 'Deleted',
+    label: 'Excluído',
     icon: 'IconTrash',
   },
   restored: {
     id: '00000000-0000-4000-8000-0000000000c4',
-    label: 'Restored',
+    label: 'Restaurado',
     icon: 'IconRestore',
   },
 };

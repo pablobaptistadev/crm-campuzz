@@ -1,8 +1,12 @@
 # O que falta — plano
 
-Estado em 13/09/2026. O núcleo está no ar e testado ponta a ponta (50 passos:
-Redis, API, navegador desktop e iPhone). Este documento é a lista do que falta
-para o CRM ser usável no dia a dia, na ordem em que pretendo fazer.
+Estado em 13/09/2026. O núcleo está no ar e testado ponta a ponta (Redis, API,
+navegador desktop e iPhone). Este documento é a lista do que falta para o CRM
+ser usável no dia a dia, na ordem em que pretendo fazer.
+
+**Feitos:** 0 (sync do metadata padrão), 1 (upload), 4 (views salvas),
+2 (notas e tarefas no registro), 6 (timeline), 7 (CSV), 3 (busca global),
+5 (kanban e agrupamento). **Falta:** 8, 9, 10.
 
 ## Decisões tomadas antes de começar
 
@@ -50,7 +54,7 @@ direto, e `completeFileUpload` confirma. Nenhuma das duas mutations existe.
 
 **Tamanho:** médio. **Key nova:** nenhuma.
 
-## 2. Notas e tarefas dentro do registro
+## 2. Notas e tarefas dentro do registro — FEITO
 
 Faltam os objetos de ligação `noteTarget` e `taskTarget` (note/task ↔ company,
 person, opportunity). São o que faz a aba Notas e Tarefas do registro existir.
@@ -61,7 +65,13 @@ person, opportunity). São o que faz a aba Notas e Tarefas do registro existir.
 
 **Tamanho:** médio. **Depende de:** 0.
 
-## 3. Busca global
+**Como ficou:** `noteTarget` e `taskTarget` como objetos de sistema, cada um com
+um campo `target` do tipo MORPH_RELATION (uma coluna por alvo,
+`target${Alvo}Id`). O front exige exatamente esse formato — ele infere a junção
+procurando um único MORPH_RELATION. `attachment` e `timelineActivity` foram
+para o mesmo formato: é assim que o front filtra, por `target<Objeto>Id`.
+
+## 3. Busca global — FEITO
 
 - Coluna `searchVector tsvector` gerada por objeto, com índice GIN, alimentada
   pelos campos textuais (TEXT, EMAILS, FULL_NAME, LINKS). O gerador de DDL passa
@@ -73,6 +83,13 @@ person, opportunity). São o que faz a aba Notas e Tarefas do registro existir.
 - Teste: buscar o nome de uma empresa semeada; ⌘K no navegador.
 
 **Tamanho:** grande. **Depende de:** 0.
+
+**Como ficou:** coluna `searchVector` gerada (`GENERATED ALWAYS AS ... STORED`)
+com índice GIN, uma por objeto pesquisável, reconstruída sempre que os campos
+mudam — inclusive antes de derrubar uma coluna, que o Postgres recusa enquanto
+uma coluna gerada depender dela. Acento é dobrado dos dois lados por
+`public.unaccent_immutable()`: "joao" acha "João" e vice-versa. O texto digitado
+vira prefixo (`termo:*`) em vez de ir cru para o `to_tsquery`.
 
 ## 4. Filtros, ordenações e colunas salvos na view
 
@@ -90,7 +107,7 @@ monta vive só na sessão.
 
 **Tamanho:** grande (é volume, não dificuldade). **Depende de:** nada.
 
-## 5. Kanban e agrupamento
+## 5. Kanban e agrupamento — FEITO
 
 - `${plural}GroupBy` com as operações de agregação (count, sum, min, max, avg).
 - Colunas do kanban saem dos `viewGroups` (item 4).
@@ -98,7 +115,13 @@ monta vive só na sessão.
 
 **Tamanho:** médio. **Depende de:** 4.
 
-## 6. Timeline / histórico
+**Como ficou:** `${plural}GroupBy` devolve uma connection por grupo. A contagem
+sai de um `GROUP BY` só; os cards de cada coluna saem do mesmo caminho de leitura
+de sempre, com o balde reexpresso como filtro — cursor, soft delete e compostos
+de graça. Data agrupa por granularidade, com fuso: meia-noite em São Paulo é
+03:00 UTC, e sem isso a noite cai no dia seguinte.
+
+## 6. Timeline / histórico — FEITO
 
 O objeto `timelineActivity` já existe e ninguém escreve nele.
 
@@ -109,13 +132,25 @@ O objeto `timelineActivity` já existe e ninguém escreve nele.
 
 **Tamanho:** médio. **Depende de:** 0.
 
-## 7. Importar e exportar CSV
+**Como ficou:** a entrada é gravada na mesma requisição, não em `waitUntil` — o
+client do Hyperdrive é fechado quando o handler retorna, e o pg derruba o socket
+com uma query em voo. O diff do update sai de um CTE que fotografa a linha antes
+do UPDATE, na mesma instrução: um SELECT separado leria o que outra escrita
+concorrente deixou.
+
+## 7. Importar e exportar CSV — FEITO
 
 A exportação do front é do lado do cliente (pagina a lista e monta o arquivo), e
 a importação usa `createMany`, que já existe. Provavelmente já funciona: o
 trabalho aqui é medir no navegador e consertar o que aparecer.
 
 **Tamanho:** pequeno, incerto até medir.
+
+**Como ficou:** a exportação já funcionava (é do lado do cliente). A importação
+não: ela manda `create<Objetos>(data, upsert: true)`, e sem o argumento `upsert`
+no schema o documento inteiro era recusado. Upsert casa por `id` — nenhuma outra
+coluna tem índice único hoje — e devolve `xmax = 0` para o timeline saber se
+inseriu ou atualizou.
 
 ## 8. Papéis e permissões
 
@@ -157,6 +192,7 @@ faz tudo. É o item com peso de segurança de verdade.
 
 ```
 0 → 1 → 4 → 2 → 6 → 7 → 3 → 5 → 8 → 9 → 10
+        ────────────────────────┘ feitos
 ```
 
 Primeiro o que não precisa de infraestrutura nova e o usuário sente todo dia

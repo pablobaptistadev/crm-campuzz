@@ -82,6 +82,70 @@ enum OrderByDirection {
 
 enum FilterIs { NULL NOT_NULL }
 
+enum DateGranularityEnum {
+  DAY
+  MONTH
+  QUARTER
+  YEAR
+  WEEK
+  DAY_OF_THE_WEEK
+  MONTH_OF_THE_YEAR
+  QUARTER_OF_THE_YEAR
+  NONE
+}
+
+enum FirstDayOfTheWeek { SUNDAY MONDAY }
+
+input GroupByDateGranularityInput {
+  granularity: DateGranularityEnum
+  timeZone: String
+  firstDayOfTheWeek: FirstDayOfTheWeek
+}
+
+input OrderByDateGranularityInput {
+  granularity: DateGranularityEnum
+  timeZone: String
+  firstDayOfTheWeek: FirstDayOfTheWeek
+  direction: OrderByDirection
+}
+
+# The command menu searches every object at once, so its filter is the subset
+# of conditions that every table has in common rather than a per-object input.
+input ObjectRecordFilterInput {
+  and: [ObjectRecordFilterInput!]
+  or: [ObjectRecordFilterInput!]
+  not: ObjectRecordFilterInput
+  id: UUIDFilter
+  createdAt: DateTimeFilter
+  updatedAt: DateTimeFilter
+  deletedAt: DateTimeFilter
+}
+
+type SearchRecord {
+  recordId: UUID!
+  objectNameSingular: String!
+  objectLabelSingular: String!
+  label: String!
+  imageUrl: String
+  tsRankCD: Float!
+  tsRank: Float!
+}
+
+type SearchResultEdge {
+  node: SearchRecord!
+  cursor: String!
+}
+
+type SearchResultPageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+}
+
+type SearchResultConnection {
+  edges: [SearchResultEdge!]!
+  pageInfo: SearchResultPageInfo!
+}
+
 type PageInfo {
   hasNextPage: Boolean!
   hasPreviousPage: Boolean!
@@ -153,6 +217,9 @@ ${filterFields}
 }
 input ${typeName}OrderByInput {
 ${definition.properties.map((property) => `  ${property.name}: OrderByDirection`).join('\n')}
+}
+input ${typeName}GroupByInput {
+${definition.properties.map((property) => `  ${property.name}: Boolean`).join('\n')}
 }`;
 };
 
@@ -375,6 +442,71 @@ export const buildObjectSdl = ({
     )
     .join('\n');
 
+  // Twenty's own rule: everything but the types that cannot be compared as a
+  // value. A to-many relation is out because a record would land in several
+  // columns at once.
+  const groupableFields = activeFields.filter(
+    (field) =>
+      field.type !== 'TS_VECTOR' &&
+      field.type !== 'RAW_JSON' &&
+      field.type !== 'FILES' &&
+      field.type !== 'POSITION' &&
+      ((field.type !== 'RELATION' && field.type !== 'MORPH_RELATION') ||
+        field.settings?.relationType === 'MANY_TO_ONE'),
+  );
+
+  const groupByFields = groupableFields
+    .flatMap((field) => {
+      if (field.type === 'RELATION' || field.type === 'MORPH_RELATION') {
+        const morphFields = buildMorphFieldNames({ field, objectById });
+
+        return morphFields === null
+          ? [`  ${field.name}Id: Boolean`]
+          : morphFields.map(({ fieldName }) => `  ${fieldName}Id: Boolean`);
+      }
+
+      // A date groups by a bucket rather than by its exact instant, so its
+      // input carries the granularity instead of a bare true.
+      if (field.type === 'DATE' || field.type === 'DATE_TIME') {
+        return [`  ${field.name}: GroupByDateGranularityInput`];
+      }
+
+      if (isCompositeFieldMetadataType(field.type)) {
+        return [
+          `  ${field.name}: ${pascalCase(toCamelCase(field.type))}GroupByInput`,
+        ];
+      }
+
+      return [`  ${field.name}: Boolean`];
+    })
+    .join('\n');
+
+  const orderByWithGroupByFields = groupableFields
+    .flatMap((field) => {
+      if (field.type === 'RELATION' || field.type === 'MORPH_RELATION') {
+        const morphFields = buildMorphFieldNames({ field, objectById });
+
+        return morphFields === null
+          ? [`  ${field.name}Id: OrderByDirection`]
+          : morphFields.map(
+              ({ fieldName }) => `  ${fieldName}Id: OrderByDirection`,
+            );
+      }
+
+      if (field.type === 'DATE' || field.type === 'DATE_TIME') {
+        return [`  ${field.name}: OrderByDateGranularityInput`];
+      }
+
+      if (isCompositeFieldMetadataType(field.type)) {
+        return [
+          `  ${field.name}: ${pascalCase(toCamelCase(field.type))}OrderByInput`,
+        ];
+      }
+
+      return [`  ${field.name}: OrderByDirection`];
+    })
+    .join('\n');
+
   const mutationInputFields = activeFields
     .filter(
       (field) =>
@@ -454,6 +586,21 @@ ${mutationInputFields}
 
 input ${typeName}WhereUniqueInput {
   id: UUID!
+}
+
+input ${typeName}GroupByInput {
+${groupByFields}
+}
+
+input ${typeName}OrderByWithGroupByInput {
+${orderByWithGroupByFields}
+}
+
+type ${typeName}GroupByConnection {
+  edges: [${typeName}Edge!]!
+  pageInfo: PageInfo!
+  totalCount: Int
+  groupByDimensionValues: [String]!
 }`;
 };
 
@@ -463,7 +610,8 @@ const buildRootSdl = (objects: FlatObjectMetadata[]): string => {
       const typeName = pascalCase(object.nameSingular);
 
       return `  ${object.namePlural}(filter: ${typeName}FilterInput, orderBy: [${typeName}OrderByInput], first: Int, last: Int, before: String, after: String, offset: Int): ${typeName}Connection!
-  ${object.nameSingular}(filter: ${typeName}FilterInput): ${typeName}`;
+  ${object.nameSingular}(filter: ${typeName}FilterInput): ${typeName}
+  ${object.namePlural}GroupBy(groupBy: [${typeName}GroupByInput!]!, filter: ${typeName}FilterInput, orderBy: [${typeName}OrderByWithGroupByInput!], orderByForRecords: [${typeName}OrderByInput], viewId: UUID, limit: Int, offsetForRecords: Int): [${typeName}GroupByConnection!]!`;
     })
     .join('\n');
 
@@ -484,6 +632,14 @@ const buildRootSdl = (objects: FlatObjectMetadata[]): string => {
   return `
 type Query {
 ${queries}
+  search(
+    searchInput: String!
+    limit: Int!
+    after: String
+    excludedObjectNameSingulars: [String!]
+    includedObjectNameSingulars: [String!]
+    filter: ObjectRecordFilterInput
+  ): SearchResultConnection!
 }
 
 type Mutation {

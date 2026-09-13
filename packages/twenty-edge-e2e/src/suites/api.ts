@@ -467,6 +467,241 @@ export const runApiSuite = async (
     return data.createCompanies.map((company) => company.id);
   });
 
+  // What the CSV import sends. Re-importing the same file has to land on the
+  // same rows: without upsert it silently doubles every record.
+  await recorder.step('createCompanies upserts instead of duplicating', async () => {
+    // A UUID the run owns, so a re-run upserts its own row rather than someone
+    // else's. runSuffix is base36, so it goes through char codes to reach hex.
+    const hexSuffix = Array.from(runSuffix)
+      .map((character) => character.charCodeAt(0).toString(16))
+      .join('')
+      .slice(-12)
+      .padStart(12, '0');
+
+    const rows = [
+      {
+        id: `c5701000-0000-4000-8000-${hexSuffix}`,
+        name: `Campuzz CSV ${runSuffix}`,
+        employees: 5,
+      },
+    ];
+
+    const first = unwrap(
+      (
+        await client.graphql<{ createCompanies: { id: string }[] }>({
+          endpoint: '/graphql',
+          query: `mutation UpsertCompanies($data: [CompanyCreateInput!]!, $upsert: Boolean) {
+            createCompanies(data: $data, upsert: $upsert) { id name employees }
+          }`,
+          variables: { data: rows, upsert: true },
+        })
+      ).body,
+      'createCompanies upsert',
+    );
+
+    companyIds.push(first.createCompanies[0].id);
+
+    const second = unwrap(
+      (
+        await client.graphql<{
+          createCompanies: { id: string; name: string; employees: number }[];
+        }>({
+          endpoint: '/graphql',
+          query: `mutation UpsertCompanies($data: [CompanyCreateInput!]!, $upsert: Boolean) {
+            createCompanies(data: $data, upsert: $upsert) { id name employees }
+          }`,
+          variables: {
+            data: [{ ...rows[0], employees: 50 }],
+            upsert: true,
+          },
+        })
+      ).body,
+      'createCompanies upsert again',
+    );
+
+    assertEqual(
+      second.createCompanies[0].id,
+      first.createCompanies[0].id,
+      'the second import lands on the same row',
+    );
+    assertEqual(second.createCompanies[0].employees, 50, 'the row was updated');
+
+    const remaining = unwrap(
+      (
+        await client.graphql<{ companies: { totalCount: number } }>({
+          endpoint: '/graphql',
+          query: `query CsvRows($name: String!) {
+            companies(filter: { name: { eq: $name } }) { totalCount }
+          }`,
+          variables: { name: `Campuzz CSV ${runSuffix}` },
+        })
+      ).body,
+      'companies after upsert',
+    );
+
+    assertEqual(remaining.companies.totalCount, 1, 'no duplicate row');
+
+    return { id: first.createCompanies[0].id };
+  });
+
+  // Search reads a generated column, so it only finds what the DDL indexed —
+  // and the index folds accents on both sides, which is the whole point in a
+  // Portuguese workspace.
+  await recorder.step('global search finds records across objects', async () => {
+    const companyName = `Zoológico Campuzz ${runSuffix}`;
+
+    const created = unwrap(
+      (
+        await client.graphql<{ createCompany: { id: string } }>({
+          endpoint: '/graphql',
+          query: `mutation CreateCompany($data: CompanyCreateInput!) {
+            createCompany(data: $data) { id }
+          }`,
+          variables: { data: { name: companyName, employees: 3 } },
+        })
+      ).body,
+      'search seed',
+    );
+
+    companyIds.push(created.createCompany.id);
+
+    const search = async (searchInput: string) =>
+      unwrap(
+        (
+          await client.graphql<{
+            search: {
+              edges: { node: { recordId: string; label: string } }[];
+              pageInfo: { hasNextPage: boolean };
+            };
+          }>({
+            endpoint: '/graphql',
+            query: `query Search($searchInput: String!, $limit: Int!) {
+              search(searchInput: $searchInput, limit: $limit) {
+                edges { node { recordId objectNameSingular objectLabelSingular label tsRank tsRankCD } cursor }
+                pageInfo { hasNextPage endCursor }
+              }
+            }`,
+            variables: { searchInput, limit: 20 },
+          })
+        ).body,
+        `search ${searchInput}`,
+      );
+
+    const accented = await search('Zoológico');
+    const plain = await search('zoologico');
+    const prefix = await search('zoolog');
+
+    for (const [label, result] of [
+      ['accented', accented],
+      ['unaccented', plain],
+      ['prefix', prefix],
+    ] as const) {
+      assert(
+        result.search.edges.some(
+          (edge) => edge.node.recordId === created.createCompany.id,
+        ),
+        `the ${label} query finds the record`,
+      );
+    }
+
+    return { id: created.createCompany.id };
+  });
+
+  // What the kanban draws its columns from: one connection per distinct value,
+  // each carrying its own count and its own page of cards.
+  await recorder.step('groupBy splits records into kanban columns', async () => {
+    const created: string[] = [];
+
+    for (const stage of ['NEW', 'NEW', 'SCREENING'] as const) {
+      const result = unwrap(
+        (
+          await client.graphql<{ createOpportunity: { id: string } }>({
+            endpoint: '/graphql',
+            query: `mutation CreateOpportunity($data: OpportunityCreateInput!) {
+              createOpportunity(data: $data) { id }
+            }`,
+            variables: {
+              data: { name: `Campuzz Kanban ${runSuffix} ${stage}`, stage },
+            },
+          })
+        ).body,
+        'groupBy seed',
+      );
+
+      created.push(result.createOpportunity.id);
+    }
+
+    const grouped = unwrap(
+      (
+        await client.graphql<{
+          opportunitiesGroupBy: {
+            groupByDimensionValues: (string | null)[];
+            totalCount: number;
+            edges: { node: { id: string; stage: string } }[];
+          }[];
+        }>({
+          endpoint: '/graphql',
+          query: `query GroupByOpportunities(
+            $groupBy: [OpportunityGroupByInput!]!
+            $filter: OpportunityFilterInput
+          ) {
+            opportunitiesGroupBy(groupBy: $groupBy, filter: $filter) {
+              groupByDimensionValues
+              totalCount
+              edges { node { id stage } cursor }
+              pageInfo { hasNextPage hasPreviousPage startCursor endCursor }
+            }
+          }`,
+          variables: {
+            groupBy: [{ stage: true }],
+            filter: { name: { startsWith: `Campuzz Kanban ${runSuffix}` } },
+          },
+        })
+      ).body,
+      'opportunitiesGroupBy',
+    );
+
+    const byStage = new Map(
+      grouped.opportunitiesGroupBy.map((group) => [
+        group.groupByDimensionValues[0],
+        group,
+      ]),
+    );
+
+    assertEqual(byStage.size, 2, 'one column per distinct stage');
+    assertEqual(byStage.get('NEW')?.totalCount, 2, 'the NEW column counts two');
+    assertEqual(
+      byStage.get('SCREENING')?.totalCount,
+      1,
+      'the SCREENING column counts one',
+    );
+
+    // The count is the group's, not the table's: a column that reported the
+    // whole table would still look right until a second column existed.
+    assertEqual(
+      byStage.get('NEW')?.edges.length,
+      2,
+      'the NEW column carries its own cards',
+    );
+
+    for (const id of created) {
+      unwrap(
+        (
+          await client.graphql({
+            endpoint: '/graphql',
+            query: `mutation DestroyOpportunity($id: UUID!) {
+              destroyOpportunity(id: $id) { id }
+            }`,
+            variables: { id },
+          })
+        ).body,
+        'groupBy cleanup',
+      );
+    }
+
+    return { columns: [...byStage.keys()] };
+  });
+
   const personId = await recorder.step(
     'createPerson with FULL_NAME, EMAILS, PHONES and a relation',
     async () => {

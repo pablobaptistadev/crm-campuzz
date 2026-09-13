@@ -327,6 +327,21 @@ export const runBrowserSuite = async (
 
         seededCompanyId = created.createCompany.id;
 
+        // A second write so the timeline has an `updated` row with a real diff
+        // next to the `created` one.
+        unwrap(
+          (
+            await apiClient.graphql({
+              endpoint: '/graphql',
+              query: `mutation UpdateCompany($id: UUID!, $data: CompanyUpdateInput!) {
+                updateCompany(id: $id, data: $data) { id employees }
+              }`,
+              variables: { id: seededCompanyId, data: { employees: 42 } },
+            })
+          ).body,
+          'seed company update',
+        );
+
         return { id: seededCompanyId, name: companyName };
       });
 
@@ -485,14 +500,16 @@ export const runBrowserSuite = async (
           LOGIN_TIMEOUT_MS,
         ).catch(() => undefined);
 
+        // Console errors are resolved through the page asynchronously, so a
+        // failure message built immediately after the wait reports none. The
+        // page text is read after that settle too: reading it first reports a
+        // skeleton the screenshot taken moments later no longer shows.
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
         const bodyText = await evaluateInPage<string>(
           page,
           `document.body.innerText || ''`,
         );
-
-        // Console errors are resolved through the page asynchronously, so a
-        // failure message built immediately after the wait reports none.
-        await new Promise((resolve) => setTimeout(resolve, 1500));
 
         const artifact = await capture({
           page,
@@ -519,6 +536,61 @@ export const runBrowserSuite = async (
         );
 
         return { url: page.url(), artifact: artifact.key };
+      });
+
+      await recorder.step('the timeline shows what happened', async () => {
+        assert(seededCompanyId !== null, 'a record to open');
+
+        // The timeline is a widget further down the record page, not a tab. The
+        // page scrolls inside a container rather than on the window, so the
+        // screenshot only shows it if that container is the one moved.
+        await evaluateInPage(
+          page,
+          `(() => {
+            const scroller = Array.from(document.querySelectorAll('*'))
+              .find((element) => element.scrollHeight > element.clientHeight + 200);
+
+            (scroller || document.documentElement).scrollTop = 1e6;
+          })()`,
+        );
+
+        await waitInPage(
+          page,
+          `/\\bAtualizado\\b/.test(document.body.innerText || '')`,
+          STEP_TIMEOUT_MS,
+        ).catch(() => undefined);
+
+        // Only the text below the TIMELINE heading counts: "Criado" also shows
+        // up as a field label further up the page.
+        const bodyText = await evaluateInPage<string>(
+          page,
+          `(() => {
+            const text = document.body.innerText || '';
+            const heading = text.toUpperCase().lastIndexOf('TIMELINE');
+
+            return heading === -1 ? '' : text.slice(heading);
+          })()`,
+        );
+
+        const artifact = await capture({
+          page,
+          bindings,
+          runId,
+          name: 'record-timeline',
+          artifacts,
+        });
+
+        // Both rows the seed wrote. An `updated` row only survives the front's
+        // own filter when its diff names a readable field, so seeing it here is
+        // what proves the diff arrived intact.
+        for (const expected of ['Criado', 'Atualizado']) {
+          assert(
+            new RegExp(`\\b${expected}\\b`).test(bodyText),
+            `timeline shows the ${expected.toLowerCase()} event :: ${JSON.stringify(bodyText.slice(0, 400))}`,
+          );
+        }
+
+        return { artifact: artifact.key };
       });
 
       for (const [label, path] of [

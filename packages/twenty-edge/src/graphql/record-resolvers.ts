@@ -27,6 +27,15 @@ import {
 } from 'src/orm/table-shape';
 import { type RecordFilter } from 'src/orm/where';
 import {
+  runGroupBy,
+  type GroupByInput,
+} from 'src/services/group-by';
+import {
+  encodeSearchCursor,
+  searchRecords,
+  type SearchArguments,
+} from 'src/services/search';
+import {
   computeFieldDiff,
   recordTimelineActivity,
   type TimelineAction,
@@ -394,8 +403,78 @@ export const buildRecordResolvers = (
       return result.edges[0]?.node ?? null;
     };
 
+    // One connection per group. The kanban draws a column from each, so the
+    // records come from a second query per group rather than from a window
+    // function: the front asks for at most a page of cards per column.
+    query[`${object.namePlural}GroupBy`] = async (
+      _parent: unknown,
+      args: {
+        groupBy: GroupByInput[];
+        filter?: RecordFilter;
+        orderByForRecords?: Record<string, unknown>[];
+        limit?: number;
+        offsetForRecords?: number;
+      },
+      context: RecordResolverContext,
+    ) => {
+      const { dimensions, buckets } = await runGroupBy({
+        client: context.client,
+        shape,
+        groupBy: args.groupBy,
+        filter: args.filter,
+      });
+
+      if (dimensions.length === 0) {
+        return [];
+      }
+
+      return Promise.all(
+        buckets.map(async (bucket) => {
+          // The bucket is re-expressed as a filter so the records come back
+          // through the same path every other read uses — cursors, soft delete
+          // and composites included.
+          const bucketConditions = dimensions.map((dimension, index) => {
+            const value = bucket.dimensionValues[index];
+
+            return {
+              [dimension.fieldName]:
+                value === null ? { is: 'NULL' } : { eq: value },
+            };
+          });
+
+          const bucketFilter: RecordFilter = {
+            and:
+              args.filter === undefined
+                ? bucketConditions
+                : [args.filter, ...bucketConditions],
+          };
+
+          const page = await findMany({
+            context,
+            shape,
+            args: {
+              filter: bucketFilter,
+              orderBy: args.orderByForRecords,
+              first: args.limit,
+              offset: args.offsetForRecords,
+            },
+          });
+
+          return {
+            ...page,
+            totalCount: bucket.totalCount,
+            groupByDimensionValues: bucket.dimensionValues,
+          };
+        }),
+      );
+    };
+
     // totalCount is resolved lazily: the count query only runs when the client
     // actually selects the field.
+    connectionResolvers[`${singular}GroupByConnection`] = {
+      totalCount: (parent: { totalCount: number }) => parent.totalCount,
+    };
+
     connectionResolvers[`${singular}Connection`] = {
       totalCount: async (
         parent: { __countQuery: { shape: WorkspaceTableShape; filter?: RecordFilter } },
@@ -606,6 +685,31 @@ export const buildRecordResolvers = (
       return result === null ? null : result.record;
     };
   }
+
+  query.search = async (
+    _parent: unknown,
+    args: SearchArguments,
+    context: RecordResolverContext,
+  ) => {
+    const { records, hasNextPage } = await searchRecords({
+      client: context.client,
+      metadata: context.metadata,
+      args,
+    });
+
+    const edges = records.map((record) => ({
+      node: record,
+      cursor: encodeSearchCursor(record),
+    }));
+
+    return {
+      edges,
+      pageInfo: {
+        hasNextPage,
+        endCursor: edges.at(-1)?.cursor ?? null,
+      },
+    };
+  };
 
   return {
     Query: query,

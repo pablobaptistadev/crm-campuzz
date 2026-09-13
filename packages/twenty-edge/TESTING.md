@@ -1,15 +1,15 @@
 # Como testar — fase a fase
 
-Estado em 13/09/2026. 68 testes de unidade passando, typecheck limpo, e a suíte
-de ponta a ponta (`packages/twenty-edge-e2e`) verde em 44 passos — Redis, API e
-navegador de verdade.
+Estado em 13/09/2026. 98 testes de unidade passando, typecheck limpo, e a suíte
+de ponta a ponta (`packages/twenty-edge-e2e`) verde — Redis, API, navegador de
+verdade e iPhone.
 
 ## 0. Local, sem infraestrutura nenhuma
 
 ```bash
 cd packages/twenty-edge
 npm install
-npm test          # 49 testes
+npm test          # 98 testes
 npm run typecheck
 npx wrangler deploy --dry-run --env=""   # prova que empacota para o Worker
 ```
@@ -136,7 +136,7 @@ e o app real dentro do Cloudflare Browser Rendering, com screenshot de cada
 passo gravado no R2.
 
 ```bash
-curl https://campuzz-e2e-prod.andre-51e.workers.dev/run            # 44 passos
+curl https://campuzz-e2e-prod.andre-51e.workers.dev/run            # tudo
 open https://campuzz-e2e-prod.andre-51e.workers.dev/report         # relatório visual
 ```
 
@@ -161,3 +161,15 @@ faltando derruba tudo. Os defeitos que ela encontrou e que já estão corrigidos
 | `getPageLayouts` vazio | A página de um registro ficava no esqueleto para sempre — sem layout não há abas nem widgets |
 | `UUIDFilter` sem `lt`/`gt` | A navegação anterior/próximo do registro manda `id: { lt: ... }` e tomava 400 |
 | Campo sem ícone | Toda coluna e todo campo aparecia com o ícone de número |
+| Junção de nota/tarefa como relação simples | `Cannot resolve morph junction metadata for note` — a página do registro nunca saía do esqueleto |
+| `attachment` e `timelineActivity` sem `target` | O front filtra por `targetCompanyId`; a resposta era `Field "targetCompanyId" is not defined` |
+| `myConnectedAccounts`, `myMessageChannels`, `myCalendarChannels` ausentes | 400 na tela de configurações |
+| `timelineActivityTypes` ausente | 400 em toda página de registro |
+| `create<Objetos>` sem o argumento `upsert` | A importação de CSV era recusada inteira |
+
+E dois defeitos do próprio arnês, que o faziam mentir:
+
+| Achado | Sintoma |
+|---|---|
+| O texto da página era lido antes da espera de 1,5s | O passo falhava dizendo que o registro não renderizou, e o screenshot tirado logo depois mostrava a página inteira |
+| Os screenshots do navegador substituíam os do iPhone | Rodar as duas suítes juntas perdia as evidências da primeira |

@@ -21,11 +21,13 @@ import {
   VISIBLE_VIEW_FIELD_COUNT,
 } from 'src/services/bootstrap-workspace';
 import { seedViewFields } from 'src/db/core/view-repository';
+import { syncSearchVectors } from 'src/services/sync-search-vectors';
 import { buildStandardObjects } from 'src/standard/objects';
 
 export type SyncStandardMetadataResult = {
   createdObjects: string[];
   createdFields: string[];
+  searchableObjects: string[];
 };
 
 // The seed only ran when a workspace was created, so every standard object or
@@ -94,12 +96,28 @@ export const syncStandardMetadata = async ({
   // call that catches up the metadata also catches up the views.
   const backfilledViews = await backfillViewFields({ client, workspaceId });
 
+  // Always, not only when something changed: the search column is derived from
+  // the object's columns, and this is where a workspace that predates search
+  // gets one. Rebuilding an up-to-date column costs one reindex and is what
+  // makes the call safe to run whenever anything looks out of step.
+  const { objects: currentObjects } = await loadWorkspaceMetadata({
+    client,
+    workspaceId,
+    metadataVersion: 0,
+  });
+
+  const searchableObjects = await syncSearchVectors({
+    client,
+    workspaceId,
+    objects: currentObjects,
+  });
+
   if (
     createdObjects.length === 0 &&
     createdFields.length === 0 &&
     backfilledViews === 0
   ) {
-    return { createdObjects, createdFields };
+    return { createdObjects, createdFields, searchableObjects };
   }
 
   // Foreign keys run over the whole set: a new object's relation can point at
@@ -126,7 +144,7 @@ export const syncStandardMetadata = async ({
 
   await bumpMetadataVersion({ client, workspaceId });
 
-  return { createdObjects, createdFields };
+  return { createdObjects, createdFields, searchableObjects };
 };
 
 const backfillViewFields = async ({

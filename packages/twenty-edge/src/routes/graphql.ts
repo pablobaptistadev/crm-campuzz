@@ -109,7 +109,11 @@ export const graphqlRoute = new Hono<AppEnv>().all('/', async (context) =>
       graphqlEndpoint: '/graphql',
       landingPage: false,
       maskedErrors: context.env.DEBUG_ERRORS !== 'true',
-      context: () => ({ client, metadata }),
+      context: () => ({
+        client,
+        metadata,
+        userId: sessionContext.user.id,
+      }),
     });
 
     return yoga.fetch(context.req.raw, context.env);

@@ -3,7 +3,7 @@ import {
   isCompositeFieldMetadataType,
 } from 'src/metadata/composite-types';
 import { type FieldMetadataType } from 'src/metadata/field-metadata-type';
-import { pascalCase } from 'src/metadata/naming';
+import { computeMorphFieldName, pascalCase } from 'src/metadata/naming';
 import {
   type FlatFieldMetadata,
   type FlatObjectMetadata,
@@ -184,6 +184,47 @@ const buildSelectEnumName = (
   field: FlatFieldMetadata,
 ): string => `${pascalCase(object.nameSingular)}${pascalCase(field.name)}Enum`;
 
+// A morph relation is exposed once per target — targetCompany, targetPerson —
+// with a join column each, which is how twenty-front names and queries them.
+export const buildMorphFieldNames = ({
+  field,
+  objectById,
+}: {
+  field: FlatFieldMetadata;
+  objectById: Map<string, FlatObjectMetadata>;
+}): { fieldName: string; target: FlatObjectMetadata }[] | null => {
+  if (field.type !== 'MORPH_RELATION') {
+    return null;
+  }
+
+  const morphTargets = field.settings?.morphTargets ?? [];
+
+  if (morphTargets.length === 0) {
+    return null;
+  }
+
+  return morphTargets
+    .map((morphTarget) => {
+      const target = objectById.get(morphTarget.objectMetadataId);
+
+      return target === undefined
+        ? null
+        : {
+            fieldName: computeMorphFieldName({
+              fieldName: field.name,
+              relationType: field.settings?.relationType ?? 'MANY_TO_ONE',
+              nameSingular: target.nameSingular,
+              namePlural: target.namePlural,
+            }),
+            target,
+          };
+    })
+    .filter(
+      (entry): entry is { fieldName: string; target: FlatObjectMetadata } =>
+        entry !== null,
+    );
+};
+
 const resolveFieldOutputType = ({
   object,
   field,
@@ -275,11 +316,20 @@ export const buildObjectSdl = ({
     .join('\n');
 
   const outputFields = activeFields
-    .map((field) => {
+    .flatMap((field) => {
+      const morphFields = buildMorphFieldNames({ field, objectById });
+
+      if (morphFields !== null) {
+        return morphFields.map(
+          ({ fieldName, target }) =>
+            `  ${fieldName}Id: UUID\n  ${fieldName}: ${pascalCase(target.nameSingular)}`,
+        );
+      }
+
       const outputType = resolveFieldOutputType({ object, field, objectById });
 
       if (outputType === null) {
-        return null;
+        return [];
       }
 
       const joinColumn =
@@ -287,24 +337,28 @@ export const buildObjectSdl = ({
           ? `  ${field.name}Id: UUID\n`
           : '';
 
-      return `${joinColumn}  ${field.name}: ${outputType}`;
+      return [`${joinColumn}  ${field.name}: ${outputType}`];
     })
-    .filter((line): line is string => line !== null)
     .join('\n');
 
   const filterFields = activeFields
-    .map((field) => {
+    .flatMap((field) => {
+      const morphFields = buildMorphFieldNames({ field, objectById });
+
+      if (morphFields !== null) {
+        return morphFields.map(({ fieldName }) => `  ${fieldName}Id: UUIDFilter`);
+      }
+
       const filterType = resolveFieldFilterType({ object, field });
 
       if (filterType === null) {
         return field.settings?.relationType === 'MANY_TO_ONE'
-          ? `  ${field.name}Id: UUIDFilter`
-          : null;
+          ? [`  ${field.name}Id: UUIDFilter`]
+          : [];
       }
 
-      return `  ${field.name}: ${filterType}`;
+      return [`  ${field.name}: ${filterType}`];
     })
-    .filter((line): line is string => line !== null)
     .join('\n');
 
   const orderByFields = activeFields
@@ -325,11 +379,19 @@ export const buildObjectSdl = ({
     .filter(
       (field) =>
         field.type !== 'TS_VECTOR' &&
-        (field.type !== 'RELATION' ||
+        ((field.type !== 'RELATION' && field.type !== 'MORPH_RELATION') ||
           field.settings?.relationType === 'MANY_TO_ONE'),
     )
     .map((field) => {
       if (field.type === 'RELATION' || field.type === 'MORPH_RELATION') {
+        const morphFields = buildMorphFieldNames({ field, objectById });
+
+        if (morphFields !== null) {
+          return morphFields
+            .map(({ fieldName }) => `  ${fieldName}Id: UUID`)
+            .join('\n');
+        }
+
         return `  ${field.name}Id: UUID`;
       }
 
@@ -410,8 +472,8 @@ const buildRootSdl = (objects: FlatObjectMetadata[]): string => {
       const singular = pascalCase(object.nameSingular);
       const plural = pascalCase(object.namePlural);
 
-      return `  create${singular}(data: ${singular}CreateInput!): ${singular}
-  create${plural}(data: [${singular}CreateInput!]!): [${singular}!]!
+      return `  create${singular}(data: ${singular}CreateInput!, upsert: Boolean): ${singular}
+  create${plural}(data: [${singular}CreateInput!]!, upsert: Boolean): [${singular}!]!
   update${singular}(id: UUID!, data: ${singular}UpdateInput!): ${singular}
   delete${singular}(id: UUID!): ${singular}
   destroy${singular}(id: UUID!): ${singular}

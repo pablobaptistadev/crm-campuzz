@@ -19,6 +19,8 @@ export type StandardFieldInput = {
   settings?: FieldMetadataSettings;
   relationTargetObjectNameSingular?: string;
   relationTargetFieldName?: string;
+  // A morph relation names several targets, each with its own inverse field.
+  morphTargets?: { nameSingular: string; namePlural: string; fieldName: string }[];
 };
 
 export type StandardObjectInput = {
@@ -112,7 +114,24 @@ export const buildStandardObject = ({
     isUnique: field.isUnique ?? false,
     defaultValue: field.defaultValue ?? null,
     options: field.options ?? null,
-    settings: field.settings ?? null,
+    settings:
+      field.morphTargets === undefined
+        ? (field.settings ?? null)
+        : {
+            ...field.settings,
+            morphTargets: field.morphTargets.map((target) => ({
+              objectMetadataId: buildDeterministicId(
+                workspaceId,
+                `object:${target.nameSingular}`,
+              ),
+              targetFieldMetadataId: buildDeterministicId(
+                workspaceId,
+                `field:${target.nameSingular}.${target.fieldName}`,
+              ),
+              nameSingular: target.nameSingular,
+              namePlural: target.namePlural,
+            })),
+          },
     relationTargetFieldMetadataId:
       field.relationTargetObjectNameSingular !== undefined &&
       field.relationTargetFieldName !== undefined
@@ -147,7 +166,13 @@ export const buildStandardObject = ({
     isSystem: input.isSystem ?? false,
     isCustom: false,
     isSearchable: true,
-    labelIdentifierFieldMetadataId: labelIdentifier?.id ?? null,
+    // twenty-front parses this with z.uuid(), so an object with no name-like
+    // field — a junction such as noteTarget — still needs one. Its id is the
+    // honest answer: that is what identifies the row.
+    labelIdentifierFieldMetadataId:
+      labelIdentifier?.id ??
+      fields.find((field) => field.name === 'id')?.id ??
+      null,
     imageIdentifierFieldMetadataId: null,
     fields,
   };

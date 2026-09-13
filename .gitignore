@@ -75,3 +75,4 @@ screenshots/
 # Cloudflare Workers local secrets
 **/.dev.vars
 **/.dev.vars.*
+.wrangler/

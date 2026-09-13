@@ -566,6 +566,96 @@ type Query {
   findManyLogicFunctions: [LogicFunction!]!
   minimalMetadata: MinimalMetadata!
   currentUserSessions: [UserSession!]!
+  timelineActivityTypes: [TimelineActivityType!]!
+  myConnectedAccounts: [ConnectedAccount!]!
+  myMessageChannels(connectedAccountId: UUID): [MessageChannel!]!
+  myCalendarChannels(connectedAccountId: UUID): [CalendarChannel!]!
+}
+
+type MessageChannel {
+  id: UUID!
+  handle: String!
+  displayName: String
+  visibility: String
+  type: String
+  isContactAutoCreationEnabled: Boolean
+  contactAutoCreationPolicy: String
+  messageFolderImportPolicy: String
+  excludeNonProfessionalEmails: Boolean
+  excludeGroupEmails: Boolean
+  isSyncEnabled: Boolean
+  syncStatus: String
+  syncStage: String
+  syncStageStartedAt: DateTime
+  connectedAccountId: UUID
+  connectedAccount: ConnectedAccount
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type CalendarChannel {
+  id: UUID!
+  handle: String!
+  visibility: String
+  syncStatus: String
+  syncStage: String
+  syncStageStartedAt: DateTime
+  isContactAutoCreationEnabled: Boolean
+  contactAutoCreationPolicy: String
+  isSyncEnabled: Boolean
+  connectedAccountId: UUID
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type TimelineActivityTypeEmit {
+  on: String
+  objectUniversalIdentifier: UUID
+}
+
+type TimelineActivityType {
+  id: UUID!
+  applicationId: UUID
+  universalIdentifier: String!
+  name: String!
+  label: String!
+  icon: String
+  emit: TimelineActivityTypeEmit
+  frontComponentUniversalIdentifier: String
+  isActive: Boolean!
+}
+
+type ConnectionParametersEndpoint {
+  host: String!
+  port: Int
+  connectionSecurity: String
+  username: String
+}
+
+type ConnectionParameters {
+  IMAP: ConnectionParametersEndpoint
+  SMTP: ConnectionParametersEndpoint
+  CALDAV: ConnectionParametersEndpoint
+}
+
+type ConnectedAccount {
+  id: UUID!
+  handle: String!
+  provider: String!
+  authFailedAt: DateTime
+  authFailedReason: String
+  archivedAt: DateTime
+  scopes: [String!]
+  handleAliases: [String!]
+  lastSignedInAt: DateTime
+  userWorkspaceId: UUID
+  connectionProviderId: String
+  name: String
+  visibility: String
+  lastCredentialsRefreshedAt: DateTime
+  connectionParameters: ConnectionParameters
+  createdAt: DateTime!
+  updatedAt: DateTime!
 }
 
 input ObjectCreateInput {
@@ -823,7 +913,10 @@ type RelationRef = {
   targetFieldMetadata: { id: string; name: string };
 };
 
-type FieldWithRelation = FlatFieldMetadata & { relation: RelationRef | null };
+type FieldWithRelation = FlatFieldMetadata & {
+  relation: RelationRef | null;
+  morphRelations?: RelationRef[];
+};
 
 const withRelationRefs = (objects: FlatObjectMetadata[]) => {
   const objectById = new Map(objects.map((object) => [object.id, object]));
@@ -837,6 +930,38 @@ const withRelationRefs = (objects: FlatObjectMetadata[]) => {
   return objects.map((object) => ({
     ...object,
     fields: object.fields.flatMap((field): FieldWithRelation[] => {
+      const morphTargets = field.settings?.morphTargets ?? [];
+
+      // The front reads morphRelations on a morph field the way it reads
+      // relation on a plain one, and dereferences the target without a guard.
+      if (field.type === 'MORPH_RELATION' && morphTargets.length > 0) {
+        const morphRelations = morphTargets
+          .map((morphTarget) => {
+            const targetObject = objectById.get(morphTarget.objectMetadataId);
+            const targetField = targetObject?.fields.find(
+              (candidate) => candidate.id === morphTarget.targetFieldMetadataId,
+            );
+
+            return targetObject === undefined || targetField === undefined
+              ? null
+              : {
+                  type: (field.settings?.relationType ?? null) as string | null,
+                  sourceObjectMetadata: toObjectRef(object),
+                  targetObjectMetadata: toObjectRef(targetObject),
+                  sourceFieldMetadata: { id: field.id, name: field.name },
+                  targetFieldMetadata: {
+                    id: targetField.id,
+                    name: targetField.name,
+                  },
+                };
+          })
+          .filter((entry): entry is RelationRef => entry !== null);
+
+        return morphRelations.length === 0
+          ? []
+          : [{ ...field, relation: null, morphRelations }];
+      }
+
       if (
         field.type !== 'RELATION' ||
         field.relationTargetObjectMetadataId === null
@@ -946,6 +1071,114 @@ const FILE_FOLDER_PATHS: Record<string, string> = {
 };
 
 // Namespaces keep the three ids derived from one object distinct.
+// Each of these widgets renders one relation of the record, so an object only
+// gets the widget when it actually carries that relation — a Notes tab on an
+// object with no noteTargets would render an error, not an empty list.
+const RELATION_WIDGETS: {
+  type: string;
+  configurationType: string;
+  relationFieldName: string;
+  namespace: string;
+}[] = [
+  {
+    type: 'NOTES',
+    configurationType: 'NOTES',
+    relationFieldName: 'noteTargets',
+    namespace: '00000000-0000-4000-8000-000000009n0e',
+  },
+  {
+    type: 'TASKS',
+    configurationType: 'TASKS',
+    relationFieldName: 'taskTargets',
+    namespace: '00000000-0000-4000-8000-000000009ta5',
+  },
+  {
+    type: 'FILES',
+    configurationType: 'FILES',
+    relationFieldName: 'attachments',
+    namespace: '00000000-0000-4000-8000-0000000091e5',
+  },
+  {
+    type: 'TIMELINE',
+    configurationType: 'TIMELINE',
+    relationFieldName: 'timelineActivities',
+    namespace: '00000000-0000-4000-8000-000000009717',
+  },
+];
+
+const buildRelationWidgets = ({
+  object,
+  tabId,
+}: {
+  object: FlatObjectMetadata;
+  tabId: string;
+}) =>
+  RELATION_WIDGETS.filter((widget) =>
+    object.fields.some(
+      (field) => field.name === widget.relationFieldName && field.isActive,
+    ),
+  ).map((widget, index) => {
+    const widgetId = deriveStableId(object.id, widget.namespace);
+
+    return {
+      id: widgetId,
+      applicationId: null,
+      universalIdentifier: widgetId,
+      isSystemSideEffect: false,
+      title: widget.type,
+      type: widget.type,
+      objectMetadataId: object.id,
+      createdAt: null,
+      updatedAt: null,
+      isActive: true,
+      deletedAt: null,
+      conditionalDisplay: null,
+      conditionalAvailabilityExpression: null,
+      gridPosition: { column: 0, columnSpan: 12, row: index + 1, rowSpan: 1 },
+      position: {
+        __type: 'PageLayoutWidgetVerticalListPosition',
+        layoutMode: 'VERTICAL_LIST',
+        index: index + 1,
+        heightBehavior: 'FIT_CONTENT',
+      },
+      configuration: {
+        __type: `${widget.configurationType.charAt(0)}${widget.configurationType.slice(1).toLowerCase()}Configuration`,
+        configurationType: widget.configurationType,
+      },
+      pageLayoutTabId: tabId,
+    };
+  });
+
+// The four actions we actually write, kept in step with TIMELINE_TYPE_BY_ACTION
+// in src/services/timeline.ts. Listing an action we never emit would put a
+// filter entry in the timeline dropdown that can only ever match nothing.
+const TIMELINE_ACTIVITY_TYPES = [
+  {
+    action: 'created',
+    label: 'Created',
+    icon: 'IconPlus',
+    id: '00000000-0000-4000-8000-0000000000c1',
+  },
+  {
+    action: 'updated',
+    label: 'Updated',
+    icon: 'IconPencil',
+    id: '00000000-0000-4000-8000-0000000000c2',
+  },
+  {
+    action: 'deleted',
+    label: 'Deleted',
+    icon: 'IconTrash',
+    id: '00000000-0000-4000-8000-0000000000c3',
+  },
+  {
+    action: 'restored',
+    label: 'Restored',
+    icon: 'IconRestore',
+    id: '00000000-0000-4000-8000-0000000000c4',
+  },
+] as const;
+
 const RECORD_PAGE_NAMESPACE = '00000000-0000-4000-8000-00000000900d';
 const RECORD_TAB_NAMESPACE = '00000000-0000-4000-8000-0000000090ab';
 const FIELDS_WIDGET_NAMESPACE = '00000000-0000-4000-8000-0000000090fe';
@@ -1507,6 +1740,7 @@ export const METADATA_RESOLVERS = {
                     },
                     pageLayoutTabId: tabId,
                   },
+                  ...buildRelationWidgets({ object, tabId }),
                 ],
               },
             ],
@@ -1520,6 +1754,31 @@ export const METADATA_RESOLVERS = {
     commandMenuItems: () => [],
     frontComponents: () => [],
     findManyLogicFunctions: () => [],
+
+    // We have no mailbox or calendar sync, so nobody has a connected account and
+    // nothing hangs off one. The queries still have to exist: the front asks for
+    // them on the settings pages and an unknown field fails the whole document.
+    myConnectedAccounts: () => [],
+    myMessageChannels: () => [],
+    myCalendarChannels: () => [],
+
+    // The front keys a timeline row to its type by universalIdentifier, then
+    // takes the label and the icon from here — and builds the timeline's filter
+    // dropdown from this same set, so only actions we actually write belong in
+    // it. objectUniversalIdentifier stays null on purpose: it marks an event as
+    // being about a LINKED record, and these describe the record itself.
+    timelineActivityTypes: () =>
+      TIMELINE_ACTIVITY_TYPES.map((activityType) => ({
+        id: activityType.id,
+        applicationId: null,
+        universalIdentifier: activityType.id,
+        name: activityType.action,
+        label: activityType.label,
+        icon: activityType.icon,
+        emit: { on: activityType.action, objectUniversalIdentifier: null },
+        frontComponentUniversalIdentifier: null,
+        isActive: true,
+      })),
 
     currentUserSessions: async (
       _parent: unknown,
@@ -1619,7 +1878,8 @@ export const METADATA_RESOLVERS = {
     isLabelSyncedWithName: () => false,
     morphId: () => null,
     applicationId: () => null,
-    morphRelations: () => [],
+    morphRelations: (field: { morphRelations?: unknown[] }) =>
+      field.morphRelations ?? [],
     createdAt: () => new Date().toISOString(),
     updatedAt: () => new Date().toISOString(),
     relation: (field: { relation?: unknown }) => field.relation ?? null,

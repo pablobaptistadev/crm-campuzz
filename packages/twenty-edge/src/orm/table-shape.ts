@@ -5,6 +5,7 @@ import {
 import { type FieldMetadataType } from 'src/metadata/field-metadata-type';
 import {
   computeColumnName,
+  computeMorphFieldName,
   computeCompositeColumnName,
   computeTableName,
   getWorkspaceSchemaName,
@@ -57,6 +58,45 @@ export const buildWorkspaceTableShape = ({
       const relationType = field.settings?.relationType;
 
       if (relationType === undefined) {
+        continue;
+      }
+
+      const morphTargets = field.settings?.morphTargets ?? [];
+
+      // A morph relation owns one column per target, each named after the
+      // target object, so the shape carries all of them.
+      if (field.type === 'MORPH_RELATION' && morphTargets.length > 0) {
+        if (relationType !== 'MANY_TO_ONE') {
+          continue;
+        }
+
+        for (const morphTarget of morphTargets) {
+          const morphFieldName = computeMorphFieldName({
+            fieldName: field.name,
+            relationType,
+            nameSingular: morphTarget.nameSingular,
+            namePlural: morphTarget.namePlural,
+          });
+          const morphColumnName = computeColumnName(morphFieldName, {
+            isForeignKey: true,
+          });
+
+          relationShapeByFieldName.set(morphFieldName, {
+            fieldName: morphFieldName,
+            joinColumnName: morphColumnName,
+            targetObjectMetadataId: morphTarget.objectMetadataId,
+            relationType,
+          });
+
+          columnShapeByColumnName.set(morphColumnName, {
+            columnName: morphColumnName,
+            fieldName: morphFieldName,
+            fieldType: 'UUID',
+            compositeParentFieldName: null,
+            compositePropertyName: null,
+          });
+        }
+
         continue;
       }
 

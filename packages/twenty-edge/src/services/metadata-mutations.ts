@@ -129,8 +129,12 @@ export const createObjectMetadata = async ({
     // added later can never collide with them.
     isCustom: true,
     isSearchable: true,
+    // z.uuid() on the front's side: every object needs one, so an object
+    // without a name field falls back to its id.
     labelIdentifierFieldMetadataId:
-      fields.find((field) => field.name === 'name')?.id ?? null,
+      fields.find((field) => field.name === 'name')?.id ??
+      fields.find((field) => field.name === 'id')?.id ??
+      null,
     imageIdentifierFieldMetadataId: null,
     fields,
   };

@@ -68,3 +68,20 @@ export const computeFieldColumnNames = ({
 
   return [computeColumnName(name)];
 };
+
+// twenty-shared's computeMorphRelationGqlFieldName: a morph field is exposed
+// once per target, named after the target object.
+export const computeMorphFieldName = ({
+  fieldName,
+  relationType,
+  nameSingular,
+  namePlural,
+}: {
+  fieldName: string;
+  relationType: string;
+  nameSingular: string;
+  namePlural: string;
+}): string =>
+  `${fieldName}${pascalCase(
+    relationType === 'ONE_TO_MANY' ? namePlural : nameSingular,
+  )}`;

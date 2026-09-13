@@ -12,10 +12,20 @@ export type FieldMetadataOption = {
   position?: number;
 };
 
+export type MorphTarget = {
+  objectMetadataId: string;
+  targetFieldMetadataId: string;
+  nameSingular: string;
+  namePlural: string;
+};
+
 export type FieldMetadataSettings = {
   relationType?: RelationType;
   onDelete?: RelationOnDeleteAction;
   joinColumnName?: string;
+  // A morph relation points at several objects at once: one join column per
+  // target, named after the target rather than after the field alone.
+  morphTargets?: MorphTarget[];
 };
 
 // The in-memory metadata model. Deliberately flat — no ORM entities, no lazy

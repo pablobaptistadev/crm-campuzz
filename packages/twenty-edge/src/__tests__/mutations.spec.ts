@@ -106,6 +106,21 @@ describe('buildInsertQuery', () => {
 });
 
 describe('buildUpdateQuery', () => {
+  it('returns the pre-update row alongside the updated one', () => {
+    const { text, values } = buildUpdateQuery({
+      shape,
+      id: 'abc',
+      input: { jobTitle: 'CTO' },
+    });
+
+    expect(text).toContain('to_jsonb("__beforeUpdate".*) AS "__before"');
+    // Placeholders are numbered by where they appear in the SQL, and the id
+    // appears first in the CTE. It is bound once and referenced twice — by the
+    // CTE and by the UPDATE — so the two always read the same row.
+    expect(values).toEqual(['abc', 'CTO']);
+    expect(text.match(/\$1\b/g)).toHaveLength(2);
+  });
+
   it('maintains updatedAt for the caller', () => {
     const { text } = buildUpdateQuery({
       shape,

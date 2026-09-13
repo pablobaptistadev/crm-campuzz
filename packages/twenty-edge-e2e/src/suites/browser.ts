@@ -490,6 +490,10 @@ export const runBrowserSuite = async (
           `document.body.innerText || ''`,
         );
 
+        // Console errors are resolved through the page asynchronously, so a
+        // failure message built immediately after the wait reports none.
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
         const artifact = await capture({
           page,
           bindings,
@@ -505,7 +509,7 @@ export const runBrowserSuite = async (
 
         assert(
           bodyText.includes(companyName),
-          `record page shows the record :: graphql=${diagnostics.graphqlCalls.slice(-3).join(' ;; ')} :: console=${Array.from(new Set(diagnostics.consoleErrors)).slice(0, 2).join(' ;; ')}`,
+          `record page shows the record :: console=${Array.from(new Set(diagnostics.consoleErrors)).slice(0, 3).join(' ;; ')}`,
         );
 
         // A record page with no field list is the symptom of a missing layout.

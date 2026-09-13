@@ -1,14 +1,18 @@
 import { type Client } from 'pg';
 
+import { buildMorphFieldNames } from 'src/graphql/build-sdl';
 import { pascalCase } from 'src/metadata/naming';
 import { type WorkspaceMetadata } from 'src/metadata/types';
 import { buildCursorFilter, decodeCursor, encodeCursor } from 'src/orm/cursor';
 import {
+  BEFORE_SNAPSHOT_COLUMN,
+  INSERTED_FLAG_COLUMN,
   buildDestroyQuery,
   buildInsertQuery,
   buildRestoreQuery,
   buildSoftDeleteQuery,
   buildUpdateQuery,
+  buildUpsertQuery,
 } from 'src/orm/mutations';
 import {
   buildCountQuery,
@@ -22,10 +26,16 @@ import {
   type WorkspaceTableShape,
 } from 'src/orm/table-shape';
 import { type RecordFilter } from 'src/orm/where';
+import {
+  computeFieldDiff,
+  recordTimelineActivity,
+  type TimelineAction,
+} from 'src/services/timeline';
 
 export type RecordResolverContext = {
   client: Client;
   metadata: WorkspaceMetadata;
+  userId: string | null;
 };
 
 const DEFAULT_PAGE_SIZE = 60;
@@ -226,10 +236,49 @@ export const buildRecordResolvers = (
     const relationFields: Record<string, unknown> = {};
 
     for (const field of object.fields) {
-      if (
-        (field.type !== 'RELATION' && field.type !== 'MORPH_RELATION') ||
-        field.relationTargetObjectMetadataId === null
-      ) {
+      if (field.type !== 'RELATION' && field.type !== 'MORPH_RELATION') {
+        continue;
+      }
+
+      // A morph relation resolves once per target, each off its own join
+      // column, so it never reaches the single-target path below.
+      const morphFields = buildMorphFieldNames({ field, objectById });
+
+      if (morphFields !== null) {
+        for (const { fieldName, target } of morphFields) {
+          const morphShape = shapeByObjectId.get(target.id);
+
+          if (morphShape === undefined) {
+            continue;
+          }
+
+          const joinColumnName = `${fieldName}Id`;
+
+          relationFields[fieldName] = async (
+            parent: Record<string, unknown>,
+            _args: unknown,
+            context: RecordResolverContext,
+          ) => {
+            const targetId = parent[joinColumnName];
+
+            if (typeof targetId !== 'string') {
+              return null;
+            }
+
+            const result = await findMany({
+              context,
+              shape: morphShape,
+              args: { filter: { id: { eq: targetId } }, first: 1 },
+            });
+
+            return result.edges[0]?.node ?? null;
+          };
+        }
+
+        continue;
+      }
+
+      if (field.relationTargetObjectMetadataId === null) {
         continue;
       }
 
@@ -279,7 +328,20 @@ export const buildRecordResolvers = (
         continue;
       }
 
-      const inverseJoinColumnName = `${inverseField.name}Id`;
+      // When the other side is a morph field, the column that points back here
+      // is the one named after this object, not after the field.
+      const inverseMorphFields = buildMorphFieldNames({
+        field: inverseField,
+        objectById,
+      });
+
+      const inverseJoinColumnName =
+        inverseMorphFields === null
+          ? `${inverseField.name}Id`
+          : `${
+              inverseMorphFields.find((entry) => entry.target.id === object.id)
+                ?.fieldName ?? inverseField.name
+            }Id`;
 
       relationFields[field.name] = (
         parent: Record<string, unknown>,
@@ -361,58 +423,188 @@ export const buildRecordResolvers = (
 
       return rows[0] === undefined
         ? null
-        : hydrateRecord({ shape, alias: shape.nameSingular, row: rows[0] });
+        : {
+            record: hydrateRecord({
+              shape,
+              alias: shape.nameSingular,
+              row: rows[0],
+            }),
+            row: rows[0] as Record<string, unknown>,
+          };
+    };
+
+    // The event is awaited rather than fired into waitUntil: the request's
+    // client is closed as soon as the handler returns, and pg tears the socket
+    // down under a query still in flight.
+    const writeTimelineActivity = async (
+      context: RecordResolverContext,
+      action: TimelineAction,
+      recordId: unknown,
+      diff?: Record<string, { before: unknown; after: unknown }>,
+    ) => {
+      if (typeof recordId !== 'string') {
+        return;
+      }
+
+      await recordTimelineActivity({
+        client: context.client,
+        metadata: context.metadata,
+        object,
+        action,
+        recordId,
+        userId: context.userId,
+        diff,
+      });
+    };
+
+    // upsert is what the CSV import sends: re-importing the same file has to
+    // land on the same rows rather than duplicate them.
+    const createRecord = async (
+      context: RecordResolverContext,
+      data: Record<string, unknown>,
+      upsert: boolean,
+    ) => {
+      const result = await runMutation(
+        context,
+        upsert
+          ? buildUpsertQuery({ shape, input: data })
+          : buildInsertQuery({ shape, input: data }),
+      );
+
+      if (result === null) {
+        return null;
+      }
+
+      const wasUpdated = result.row[INSERTED_FLAG_COLUMN] === false;
+
+      await writeTimelineActivity(
+        context,
+        wasUpdated ? 'updated' : 'created',
+        result.record.id,
+      );
+
+      return result.record;
     };
 
     mutation[`create${singular}`] = (
       _parent: unknown,
-      args: { data: Record<string, unknown> },
+      args: { data: Record<string, unknown>; upsert?: boolean },
       context: RecordResolverContext,
-    ) => runMutation(context, buildInsertQuery({ shape, input: args.data }));
+    ) => createRecord(context, args.data, args.upsert === true);
 
     mutation[`create${pascalCase(object.namePlural)}`] = async (
       _parent: unknown,
-      args: { data: Record<string, unknown>[] },
+      args: { data: Record<string, unknown>[]; upsert?: boolean },
       context: RecordResolverContext,
     ) => {
       const created = [];
 
       for (const data of args.data) {
-        created.push(
-          await runMutation(context, buildInsertQuery({ shape, input: data })),
-        );
+        created.push(await createRecord(context, data, args.upsert === true));
       }
 
       return created.filter((record) => record !== null);
     };
 
-    mutation[`update${singular}`] = (
+    mutation[`update${singular}`] = async (
       _parent: unknown,
       args: { id: string; data: Record<string, unknown> },
       context: RecordResolverContext,
-    ) =>
-      runMutation(
+    ) => {
+      const result = await runMutation(
         context,
         buildUpdateQuery({ shape, id: args.id, input: args.data }),
       );
 
-    mutation[`delete${singular}`] = (
-      _parent: unknown,
-      args: { id: string },
-      context: RecordResolverContext,
-    ) => runMutation(context, buildSoftDeleteQuery({ shape, id: args.id }));
+      if (result === null) {
+        return null;
+      }
 
-    mutation[`restore${singular}`] = (
-      _parent: unknown,
-      args: { id: string },
-      context: RecordResolverContext,
-    ) => runMutation(context, buildRestoreQuery({ shape, id: args.id }));
+      const beforeRow = result.row[BEFORE_SNAPSHOT_COLUMN];
+      const before =
+        beforeRow === null || typeof beforeRow !== 'object'
+          ? {}
+          : hydrateRecord({
+              shape,
+              alias: shape.nameSingular,
+              row: Object.fromEntries(
+                Object.entries(beforeRow as Record<string, unknown>).map(
+                  ([columnName, value]) => [
+                    `${shape.nameSingular}_${columnName}`,
+                    value,
+                  ],
+                ),
+              ),
+            });
 
-    mutation[`destroy${singular}`] = (
+      const diff = computeFieldDiff({
+        shape,
+        input: args.data,
+        before,
+        after: result.record,
+      });
+
+      // An update that changed nothing readable is not an event: the front
+      // drops an `updated` row whose diff is empty anyway.
+      if (Object.keys(diff).length > 0) {
+        await writeTimelineActivity(context, 'updated', args.id, diff);
+      }
+
+      return result.record;
+    };
+
+    mutation[`delete${singular}`] = async (
       _parent: unknown,
       args: { id: string },
       context: RecordResolverContext,
-    ) => runMutation(context, buildDestroyQuery({ shape, id: args.id }));
+    ) => {
+      const result = await runMutation(
+        context,
+        buildSoftDeleteQuery({ shape, id: args.id }),
+      );
+
+      if (result === null) {
+        return null;
+      }
+
+      await writeTimelineActivity(context, 'deleted', args.id);
+
+      return result.record;
+    };
+
+    mutation[`restore${singular}`] = async (
+      _parent: unknown,
+      args: { id: string },
+      context: RecordResolverContext,
+    ) => {
+      const result = await runMutation(
+        context,
+        buildRestoreQuery({ shape, id: args.id }),
+      );
+
+      if (result === null) {
+        return null;
+      }
+
+      await writeTimelineActivity(context, 'restored', args.id);
+
+      return result.record;
+    };
+
+    // No timeline row for a destroy: the record is gone, so the event would
+    // point at nothing and its own cascade would take it with the record.
+    mutation[`destroy${singular}`] = async (
+      _parent: unknown,
+      args: { id: string },
+      context: RecordResolverContext,
+    ) => {
+      const result = await runMutation(
+        context,
+        buildDestroyQuery({ shape, id: args.id }),
+      );
+
+      return result === null ? null : result.record;
+    };
   }
 
   return {

@@ -782,4 +782,101 @@ describe('twenty-front metadata documents', () => {
       }
     `);
   });
+  it('validates the timeline activity types query', () => {
+    expectValid(`
+      query FindManyTimelineActivityTypes {
+        timelineActivityTypes {
+          id
+          applicationId
+          universalIdentifier
+          name
+          label
+          icon
+          emit {
+            on
+            objectUniversalIdentifier
+          }
+          frontComponentUniversalIdentifier
+          isActive
+        }
+      }
+    `);
+  });
+
+  it('validates the connected account queries the settings pages send', () => {
+    expectValid(`
+      query MyConnectedAccounts {
+        myConnectedAccounts {
+          id
+          handle
+          provider
+          authFailedAt
+          authFailedReason
+          archivedAt
+          scopes
+          handleAliases
+          lastSignedInAt
+          userWorkspaceId
+          connectionProviderId
+          name
+          visibility
+          lastCredentialsRefreshedAt
+          connectionParameters {
+            IMAP { host port connectionSecurity username }
+            SMTP { host port connectionSecurity username }
+            CALDAV { host username }
+          }
+          createdAt
+          updatedAt
+        }
+      }
+    `);
+
+    expectValid(`
+      query MyMessageChannels($connectedAccountId: UUID) {
+        myMessageChannels(connectedAccountId: $connectedAccountId) {
+          id
+          handle
+          displayName
+          visibility
+          type
+          isContactAutoCreationEnabled
+          contactAutoCreationPolicy
+          messageFolderImportPolicy
+          excludeNonProfessionalEmails
+          excludeGroupEmails
+          isSyncEnabled
+          syncStatus
+          syncStage
+          syncStageStartedAt
+          connectedAccountId
+          connectedAccount {
+            id
+            handle
+          }
+          createdAt
+          updatedAt
+        }
+      }
+    `);
+
+    expectValid(`
+      query MyCalendarChannels($connectedAccountId: UUID) {
+        myCalendarChannels(connectedAccountId: $connectedAccountId) {
+          id
+          handle
+          visibility
+          syncStatus
+          syncStage
+          syncStageStartedAt
+          isContactAutoCreationEnabled
+          contactAutoCreationPolicy
+          isSyncEnabled
+          connectedAccountId
+          createdAt
+          updatedAt
+        }
+      }
+    `);
+  });
 });

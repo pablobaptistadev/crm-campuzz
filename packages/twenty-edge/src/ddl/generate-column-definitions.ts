@@ -12,6 +12,7 @@ import { type FieldMetadataType } from 'src/metadata/field-metadata-type';
 import {
   computeColumnName,
   computeCompositeColumnName,
+  computeMorphFieldName,
   computePostgresEnumName,
 } from 'src/metadata/naming';
 import { type FlatFieldMetadata } from 'src/metadata/types';
@@ -54,6 +55,30 @@ export const generateColumnDefinitions = ({
   if (field.type === 'RELATION' || field.type === 'MORPH_RELATION') {
     if (field.settings?.relationType !== 'MANY_TO_ONE') {
       return [];
+    }
+
+    const morphTargets = field.settings.morphTargets ?? [];
+
+    if (field.type === 'MORPH_RELATION' && morphTargets.length > 0) {
+      return morphTargets.map((target) => ({
+        columnName: computeColumnName(
+          computeMorphFieldName({
+            fieldName: field.name,
+            relationType: 'MANY_TO_ONE',
+            nameSingular: target.nameSingular,
+            namePlural: target.namePlural,
+          }),
+          { isForeignKey: true },
+        ),
+        columnType: 'uuid',
+        isArray: false,
+        // Exactly one target is set on any given row, so each column has to
+        // tolerate being empty regardless of the field's own nullability.
+        isNullable: true,
+        isPrimary: false,
+        defaultValue: null,
+        enumValues: null,
+      }));
     }
 
     return [

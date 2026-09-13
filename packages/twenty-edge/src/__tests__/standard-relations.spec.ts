@@ -46,12 +46,56 @@ describe('standard metadata relations', () => {
               ? undefined
               : fieldById.get(field.relationTargetFieldMetadataId);
 
-          return target?.relationTargetFieldMetadataId !== field.id;
+          if (target === undefined) {
+            return true;
+          }
+
+          // A morph field answers for several objects at once, so the inverse
+          // is listed among its targets rather than in a single column.
+          if (target.type === 'MORPH_RELATION') {
+            return !(target.settings?.morphTargets ?? []).some(
+              (morphTarget) => morphTarget.targetFieldMetadataId === field.id,
+            );
+          }
+
+          return target.relationTargetFieldMetadataId !== field.id;
         })
         .map((field) => `${object.nameSingular}.${field.name}`),
     );
 
     expect(mismatched).toEqual([]);
+  });
+
+  it('gives every morph target a field that points back', () => {
+    const objects = buildStandardObjects(WORKSPACE_ID);
+    const objectById = new Map(objects.map((object) => [object.id, object]));
+    const fieldById = new Map(
+      objects.flatMap((object) => object.fields.map((field) => [field.id, field])),
+    );
+
+    const broken = objects.flatMap((object) =>
+      object.fields
+        .filter((field) => field.type === 'MORPH_RELATION')
+        .flatMap((field) =>
+          (field.settings?.morphTargets ?? [])
+            .filter((target) => {
+              const targetObject = objectById.get(target.objectMetadataId);
+              const inverse = fieldById.get(target.targetFieldMetadataId);
+
+              return (
+                targetObject === undefined ||
+                inverse === undefined ||
+                inverse.relationTargetFieldMetadataId !== field.id
+              );
+            })
+            .map(
+              (target) =>
+                `${object.nameSingular}.${field.name} → ${target.nameSingular}`,
+            ),
+        ),
+    );
+
+    expect(broken).toEqual([]);
   });
 
   it('keeps the workspace schema name derived from the workspace id', () => {

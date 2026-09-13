@@ -7,6 +7,7 @@ import {
   type RolePermissionFlagRow,
   type RoleRow,
 } from 'src/db/core/role-repository';
+import { UserFacingError } from 'src/graphql/user-facing-error';
 
 export type RoleInput = {
   label?: string | null;
@@ -81,7 +82,7 @@ export const createRole = async ({
   });
 
   if (role === null) {
-    throw new Error('Role was created but could not be read back');
+    throw new UserFacingError('Role was created but could not be read back');
   }
 
   return role;
@@ -101,13 +102,13 @@ export const updateRole = async ({
   const existing = await findRoleById({ client, workspaceId, roleId });
 
   if (existing === null) {
-    throw new Error('Role not found');
+    throw new UserFacingError('Role not found');
   }
 
   // A built-in role is what everyone falls back to. Editing Admin to drop its
   // own settings permission would lock the workspace out of its own settings.
   if (!existing.isEditable) {
-    throw new Error(`"${existing.label}" is a built-in role and cannot be edited`);
+    throw new UserFacingError(`"${existing.label}" is a built-in role and cannot be edited`);
   }
 
   const columns = EDITABLE_COLUMNS.filter(
@@ -130,7 +131,7 @@ export const updateRole = async ({
   const updated = await findRoleById({ client, workspaceId, roleId });
 
   if (updated === null) {
-    throw new Error('Role not found');
+    throw new UserFacingError('Role not found');
   }
 
   return updated;
@@ -148,11 +149,11 @@ export const deleteRole = async ({
   const existing = await findRoleById({ client, workspaceId, roleId });
 
   if (existing === null) {
-    throw new Error('Role not found');
+    throw new UserFacingError('Role not found');
   }
 
   if (!existing.isEditable) {
-    throw new Error(
+    throw new UserFacingError(
       `"${existing.label}" is a built-in role and cannot be deleted`,
     );
   }

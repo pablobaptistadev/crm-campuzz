@@ -52,6 +52,7 @@ import {
   recordTimelineActivity,
   type TimelineAction,
 } from 'src/services/timeline';
+import { UserFacingError } from 'src/graphql/user-facing-error';
 
 export type RecordResolverContext = {
   client: Client;
@@ -856,7 +857,7 @@ export const buildRecordResolvers = (
       }
 
       if (args.ids.length < 2) {
-        throw new Error('Merging needs at least two records');
+        throw new UserFacingError('Merging needs at least two records');
       }
 
       const selectQuery = buildSelectQuery({
@@ -889,7 +890,7 @@ export const buildRecordResolvers = (
         .filter((entry): entry is NonNullable<typeof entry> => entry !== undefined);
 
       if (ordered.length < 2) {
-        throw new Error('Merging needs at least two records that still exist');
+        throw new UserFacingError('Merging needs at least two records that still exist');
       }
 
       const columnRecords = ordered.map((entry) =>

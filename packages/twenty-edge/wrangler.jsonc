@@ -48,7 +48,10 @@
     "IS_MULTIWORKSPACE_ENABLED": "false",
     "IS_EMAIL_VERIFICATION_REQUIRED": "false",
     "SIGN_IN_PREFILLED": "false",
-    "DEBUG_ERRORS": "true",
+    // Off: with it on, a Postgres error reaches the browser verbatim.
+    // Deliberate errors are marked and pass through either way, so turning it
+    // on only adds the internal ones — for a local reproduction, not for here.
+    "DEBUG_ERRORS": "false",
     // Upstash currently answers in ~300ms from this Worker while Hyperdrive
     // answers in ~5ms. Enable once the Redis is in the users' region.
     "METADATA_CACHE_ENABLED": "false"

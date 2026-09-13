@@ -7,6 +7,7 @@ import {
   type ViewGroupRow,
   type ViewRow,
 } from 'src/db/core/view-repository';
+import { UserFacingError } from 'src/graphql/user-facing-error';
 
 // Twenty exposes three ways to remove one of these: delete marks deletedAt,
 // destroy removes the row, and a view's children go with it either way. The
@@ -30,7 +31,7 @@ const RETURNING_BY_TABLE: Record<ViewChildTable, string> = {
 
 const requireOwnedRow = <TRow>(row: TRow | undefined, table: string): TRow => {
   if (row === undefined) {
-    throw new Error(`${table.toUpperCase()}_NOT_FOUND`);
+    throw new UserFacingError(`${table.toUpperCase()}_NOT_FOUND`);
   }
 
   return row;

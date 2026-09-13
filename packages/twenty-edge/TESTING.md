@@ -1,6 +1,6 @@
 # Como testar — fase a fase
 
-Estado em 13/09/2026. 120 testes de unidade passando, typecheck limpo, e a suíte
+Estado em 13/09/2026. 126 testes de unidade passando, typecheck limpo, e a suíte
 de ponta a ponta (`packages/twenty-edge-e2e`) verde — Redis, API, navegador de
 verdade e iPhone.
 
@@ -9,7 +9,7 @@ verdade e iPhone.
 ```bash
 cd packages/twenty-edge
 npm install
-npm test          # 120 testes
+npm test          # 126 testes
 npm run typecheck
 npx wrangler deploy --dry-run --env=""   # prova que empacota para o Worker
 ```
@@ -222,6 +222,8 @@ faltando derruba tudo. Os defeitos que ela encontrou e que já estão corrigidos
 | `timelineActivityTypes` ausente | 400 em toda página de registro |
 | `create<Objetos>` sem o argumento `upsert` | A importação de CSV era recusada inteira |
 | `ON CONFLICT` contra um índice único parcial | O seed dos papéis morria com "no unique or exclusion constraint matching" — a inferência precisa repetir o `WHERE` do índice |
+| `onEventSubscription` sem tipo no schema | 500 em toda carga de página, e o front reporta no Sentry e tenta de novo |
+| Erro mascarado sem `toJSON` | `Error.message` não é enumerável: o cliente recebia `{"name":"GraphQLError"}` e nenhuma mensagem |
 
 E dois defeitos do próprio arnês, que o faziam mentir:
 

@@ -18,6 +18,10 @@ import {
 import { type AppEnv } from 'src/env';
 import { type WorkspaceMetadata } from 'src/metadata/types';
 import { loadWorkspacePermissions } from 'src/services/permissions';
+import {
+  createMaskedError,
+  isUserFacingError,
+} from 'src/graphql/user-facing-error';
 
 // Keyed by workspace and metadata version, so a schema change invalidates the
 // entry instead of serving a stale schema for the life of the isolate.
@@ -116,7 +120,17 @@ export const graphqlRoute = new Hono<AppEnv>().all('/', async (context) =>
       schema: getWorkspaceSchema(metadata),
       graphqlEndpoint: '/graphql',
       landingPage: false,
-      maskedErrors: context.env.DEBUG_ERRORS !== 'true',
+      // Masking stays on in production so a SQL error never reaches the browser.
+      // Deliberate errors are marked, and pass through with their message.
+      maskedErrors:
+        context.env.DEBUG_ERRORS === 'true'
+          ? false
+          : {
+              maskError: (error, message) =>
+                isUserFacingError(error)
+                  ? (error as Error)
+                  : createMaskedError(message),
+            },
       context: () => ({
         client,
         metadata,

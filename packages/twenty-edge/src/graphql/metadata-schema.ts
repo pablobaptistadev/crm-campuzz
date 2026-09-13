@@ -95,6 +95,7 @@ import {
   orderedVisibleFields,
   VISIBLE_VIEW_FIELD_COUNT,
 } from 'src/services/bootstrap-workspace';
+import { UserFacingError } from 'src/graphql/user-facing-error';
 
 export type MetadataContext = {
   client: Client;
@@ -614,6 +615,62 @@ type Query {
   myCalendarChannels(connectedAccountId: UUID): [CalendarChannel!]!
   getRoles: [Role!]!
   findWorkspaceInvitations: [WorkspaceInvitation!]!
+}
+
+# We serve no live updates — there is no pub/sub in an isolate without a Durable
+# Object — but the front opens this stream at boot and reports a failure to
+# Sentry, then retries. Declaring it lets the stream open and stay quiet: a
+# person still sees their own changes, through the browser events the front
+# dispatches locally. What is missing is other people's changes appearing
+# without a refresh.
+type ObjectRecordEventProperties {
+  updatedFields: [String!]
+  before: RawJSON
+  after: RawJSON
+  diff: RawJSON
+}
+
+type ObjectRecordEvent {
+  action: String!
+  objectNameSingular: String!
+  recordId: UUID!
+  userId: UUID
+  workspaceMemberId: UUID
+  properties: ObjectRecordEventProperties
+}
+
+type ObjectRecordEventWithQueryIds {
+  objectRecordEvent: ObjectRecordEvent!
+  queryIds: [String!]!
+}
+
+type MetadataEvent {
+  type: String!
+  metadataName: String!
+  recordId: UUID
+  updatedCollectionHash: String
+  properties: ObjectRecordEventProperties
+}
+
+type QueueJobEvent {
+  jobId: String!
+  state: String!
+  attemptsMade: Int
+  failedReason: String
+  enqueuedAt: DateTime
+  startedAt: DateTime
+  finishedAt: DateTime
+}
+
+type EventSubscription {
+  eventStreamId: String!
+  objectRecordEventsWithQueryIds: [ObjectRecordEventWithQueryIds!]
+  metadataEvents: [MetadataEvent!]
+  queueJobEvents: [QueueJobEvent!]
+}
+
+type Subscription {
+  onEventSubscription(eventStreamId: String!): EventSubscription!
 }
 
 type WorkspaceInvitation {
@@ -1194,7 +1251,7 @@ const requireSettingsAccess = async (
   const membership = context.sessionContext?.membership ?? null;
 
   if (membership === null) {
-    throw new Error('UNAUTHENTICATED');
+    throw new UserFacingError('UNAUTHENTICATED');
   }
 
   const permissions = await loadWorkspacePermissions({
@@ -1205,7 +1262,7 @@ const requireSettingsAccess = async (
   });
 
   if (!permissions.canUpdateAllSettings) {
-    throw new Error('Not allowed to change settings with your role');
+    throw new UserFacingError('Not allowed to change settings with your role');
   }
 
   return membership.workspace.id;
@@ -1613,7 +1670,7 @@ const toWorkspaceDto = (
 
 const requireAuthenticatedUser = (context: MetadataContext): UserRow => {
   if (context.sessionContext === null) {
-    throw new Error('UNAUTHENTICATED');
+    throw new UserFacingError('UNAUTHENTICATED');
   }
 
   return context.sessionContext.user;
@@ -1623,7 +1680,7 @@ const requireMembership = (context: MetadataContext) => {
   const membership = context.sessionContext?.membership ?? null;
 
   if (membership === null) {
-    throw new Error('NO_WORKSPACE');
+    throw new UserFacingError('NO_WORKSPACE');
   }
 
   return membership;
@@ -1841,7 +1898,7 @@ export const METADATA_RESOLVERS = {
       const workspace = rows[0];
 
       if (workspace === undefined) {
-        throw new Error('WORKSPACE_NOT_FOUND');
+        throw new UserFacingError('WORKSPACE_NOT_FOUND');
       }
 
       return {
@@ -2307,6 +2364,30 @@ export const METADATA_RESOLVERS = {
     relation: (field: { relation?: unknown }) => field.relation ?? null,
   },
 
+  // The stream opens, says nothing, and closes when the client goes away. The
+  // front takes an open stream as "live updates are on"; it takes a failure as
+  // something to report and retry, which is worse for everyone.
+  Subscription: {
+    onEventSubscription: {
+      subscribe: () => ({
+        [Symbol.asyncIterator]() {
+          return {
+            next: () =>
+              new Promise<IteratorResult<never>>(() => {
+                // Never resolves: there is nothing to emit, and resolving with
+                // done would close the stream and start the front's retry loop.
+              }),
+            return: () =>
+              Promise.resolve<IteratorResult<never>>({
+                value: undefined,
+                done: true,
+              }),
+          };
+        },
+      }),
+    },
+  },
+
   Mutation: {
     getLoginTokenFromCredentials: async (
       _parent: unknown,
@@ -2329,7 +2410,7 @@ export const METADATA_RESOLVERS = {
       });
 
       if (userId === null) {
-        throw new Error('INVALID_LOGIN_TOKEN');
+        throw new UserFacingError('INVALID_LOGIN_TOKEN');
       }
 
       const membership = await findFirstWorkspaceForUser({
@@ -2412,7 +2493,7 @@ export const METADATA_RESOLVERS = {
       });
 
       if (existing !== null) {
-        throw new Error('EMAIL_ALREADY_REGISTERED');
+        throw new UserFacingError('EMAIL_ALREADY_REGISTERED');
       }
 
       const user = await insertUser({
@@ -2491,7 +2572,7 @@ export const METADATA_RESOLVERS = {
       const token = args.workspacePersonalInviteToken ?? '';
 
       if (token.length === 0) {
-        throw new Error('INVITATION_REQUIRED');
+        throw new UserFacingError('INVITATION_REQUIRED');
       }
 
       const invitation = await findInvitationByToken({
@@ -2500,7 +2581,7 @@ export const METADATA_RESOLVERS = {
       });
 
       if (invitation === null) {
-        throw new Error('INVITATION_NOT_FOUND_OR_EXPIRED');
+        throw new UserFacingError('INVITATION_NOT_FOUND_OR_EXPIRED');
       }
 
       const existing = await findUserByEmail({
@@ -2625,7 +2706,7 @@ export const METADATA_RESOLVERS = {
           customDomain,
         )
       ) {
-        throw new Error('INVALID_CUSTOM_DOMAIN');
+        throw new UserFacingError('INVALID_CUSTOM_DOMAIN');
       }
 
       const { rows } = await context.client.query(
@@ -2692,7 +2773,7 @@ export const METADATA_RESOLVERS = {
       );
 
       if (object === undefined) {
-        throw new Error('OBJECT_NOT_FOUND');
+        throw new UserFacingError('OBJECT_NOT_FOUND');
       }
 
       return createFieldMetadata({
@@ -2716,7 +2797,7 @@ export const METADATA_RESOLVERS = {
       const object = metadata.objects.find((entry) => entry.id === args.id);
 
       if (object === undefined) {
-        throw new Error('OBJECT_NOT_FOUND');
+        throw new UserFacingError('OBJECT_NOT_FOUND');
       }
 
       return deleteObjectMetadata({
@@ -2739,7 +2820,7 @@ export const METADATA_RESOLVERS = {
       const field = object?.fields.find((entry) => entry.id === args.id);
 
       if (object === undefined || field === undefined) {
-        throw new Error('FIELD_NOT_FOUND');
+        throw new UserFacingError('FIELD_NOT_FOUND');
       }
 
       return deleteFieldMetadata({
@@ -3067,7 +3148,7 @@ export const METADATA_RESOLVERS = {
       const folder = FILE_FOLDER_PATHS[args.fileFolder];
 
       if (folder === undefined) {
-        throw new Error(`UNKNOWN_FILE_FOLDER: ${args.fileFolder}`);
+        throw new UserFacingError(`UNKNOWN_FILE_FOLDER: ${args.fileFolder}`);
       }
 
       const file = await insertFile({
@@ -3110,7 +3191,7 @@ export const METADATA_RESOLVERS = {
       });
 
       if (file === null) {
-        throw new Error('FILE_NOT_FOUND');
+        throw new UserFacingError('FILE_NOT_FOUND');
       }
 
       const path = `${file.folder}/${file.id}`;
@@ -3185,7 +3266,7 @@ export const METADATA_RESOLVERS = {
       const member = members.find((entry) => entry.id === args.workspaceMemberId);
 
       if (member === undefined || member.userId === null) {
-        throw new Error('Workspace member not found');
+        throw new UserFacingError('Workspace member not found');
       }
 
       const { rows } = await context.client.query<{ id: string }>(
@@ -3195,7 +3276,7 @@ export const METADATA_RESOLVERS = {
       );
 
       if (rows[0] === undefined) {
-        throw new Error('Workspace member has no membership row');
+        throw new UserFacingError('Workspace member has no membership row');
       }
 
       await assignRoleToWorkspaceMember({
@@ -3344,7 +3425,7 @@ export const METADATA_RESOLVERS = {
       });
 
       if (!revoked) {
-        throw new Error('Não encontramos este convite');
+        throw new UserFacingError('Não encontramos este convite');
       }
 
       return args.appTokenId;
@@ -3392,7 +3473,7 @@ const authenticate = async (
   );
 
   if (!withinLimit) {
-    throw new Error('TOO_MANY_ATTEMPTS');
+    throw new UserFacingError('TOO_MANY_ATTEMPTS');
   }
 
   const user = await findUserByEmail({ client: context.client, email });
@@ -3400,11 +3481,11 @@ const authenticate = async (
   // Same error either way: distinguishing "no such user" from "wrong password"
   // turns the login form into an account enumeration oracle.
   if (user === null || user.passwordHash === null || user.disabled) {
-    throw new Error('INVALID_CREDENTIALS');
+    throw new UserFacingError('INVALID_CREDENTIALS');
   }
 
   if (!(await verifyPassword(password, user.passwordHash))) {
-    throw new Error('INVALID_CREDENTIALS');
+    throw new UserFacingError('INVALID_CREDENTIALS');
   }
 
   return issueLoginToken({ appSecret: context.appSecret, userId: user.id });

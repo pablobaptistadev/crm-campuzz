@@ -1,5 +1,6 @@
 import { type Client } from 'pg';
 
+import { UserFacingError } from 'src/graphql/user-facing-error';
 import {
   findRoleForUserWorkspace,
   type FieldPermissionRow,
@@ -208,12 +209,14 @@ export const canPerform = ({
   return permission[ACTION_KEY[action]] === true;
 };
 
-export class PermissionDeniedError extends Error {
-  readonly extensions = { code: 'FORBIDDEN' };
-
+// A refused permission is something the person should see, not an internal
+// failure: without this it would be masked to "Unexpected error." like a SQL
+// error, and the app would give no reason for the refusal.
+export class PermissionDeniedError extends UserFacingError {
   constructor(action: ObjectAction, objectNameSingular: string) {
     super(
       `Not allowed to ${action} records of ${objectNameSingular} with your role`,
+      'FORBIDDEN',
     );
     this.name = 'PermissionDeniedError';
   }

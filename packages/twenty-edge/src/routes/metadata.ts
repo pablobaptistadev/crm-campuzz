@@ -23,6 +23,10 @@ import {
   readSessionToken,
 } from 'src/auth/session';
 import { type AppEnv } from 'src/env';
+import {
+  createMaskedError,
+  isUserFacingError,
+} from 'src/graphql/user-facing-error';
 
 // Built once per isolate: parsing the SDL on every request would burn CPU that
 // the invocation budget needs for the actual query.
@@ -117,7 +121,17 @@ export const metadataRoute = new Hono<AppEnv>().all('/', async (context) => {
       schema: getMetadataSchema(),
       graphqlEndpoint: '/metadata',
       landingPage: false,
-      maskedErrors: context.env.DEBUG_ERRORS !== 'true',
+      // Masking stays on in production so a SQL error never reaches the browser.
+      // Deliberate errors are marked, and pass through with their message.
+      maskedErrors:
+        context.env.DEBUG_ERRORS === 'true'
+          ? false
+          : {
+              maskError: (error, message) =>
+                isUserFacingError(error)
+                  ? (error as Error)
+                  : createMaskedError(message),
+            },
       context: () => graphqlContext,
     });
 

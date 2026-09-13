@@ -48,6 +48,8 @@ No ar em `https://crm.campuzz.com.br`, servindo o `twenty-front` sem modificaç�
 - Convites: criar, listar, reenviar, revogar e aceitar. O e-mail sai por HTTP
   (Resend) quando a key existe; sem ela o link volta para quem convidou.
 - REST e um subconjunto do OpenAPI derivados do mesmo metadata.
+- Erros mascarados: só os deliberados chegam ao navegador com mensagem; um erro
+  do Postgres vira `Unexpected error.`
 
 **A única credencial que falta** é a do provedor de e-mail: `RESEND_API_KEY` e
 `EMAIL_FROM`, por `wrangler secret put`. Sem elas tudo funciona, menos a entrega
@@ -57,6 +59,13 @@ da mensagem — o link do convite volta na resposta para quem convidou.
 webhooks, billing, SSO, 2FA, atualização ao vivo por SSE. Cada um é um projeto
 próprio, e os primeiros não cabem num isolate sem peça nova (fila, Durable
 Object, ou um serviço fora do Worker).
+
+Sobre o SSE em particular: a subscription `onEventSubscription` **existe** e
+abre, mas nunca emite. O front trata um stream aberto como "atualização ao vivo
+ligada" e trata uma falha como algo para reportar no Sentry e tentar de novo —
+abrir e ficar quieto é o comportamento menos ruim dos dois. Cada pessoa vê as
+próprias mudanças, pelos eventos que o front dispara localmente; o que falta é
+a mudança de outra pessoa aparecer sem recarregar.
 
 ## Rodar
 

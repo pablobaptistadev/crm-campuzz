@@ -23,6 +23,7 @@ import {
 } from 'src/metadata/types';
 import { syncSearchVector } from 'src/services/sync-search-vectors';
 import { SYSTEM_FIELDS } from 'src/standard/build';
+import { UserFacingError } from 'src/graphql/user-facing-error';
 
 // Object and field names become Postgres identifiers, so they are constrained
 // here rather than relying on escaping alone.
@@ -30,7 +31,7 @@ const NAME_PATTERN = /^[a-z][a-zA-Z0-9]{0,58}$/;
 
 export const assertValidMetadataName = (name: string): void => {
   if (!NAME_PATTERN.test(name)) {
-    throw new Error(
+    throw new UserFacingError(
       `Invalid name "${name}": must start with a lowercase letter and contain only letters and digits`,
     );
   }
@@ -178,7 +179,7 @@ export const createFieldMetadata = async ({
   assertValidMetadataName(input.name);
 
   if (object.fields.some((field) => field.name === input.name)) {
-    throw new Error(`Field "${input.name}" already exists on this object`);
+    throw new UserFacingError(`Field "${input.name}" already exists on this object`);
   }
 
   const schemaName = getWorkspaceSchemaName(workspaceId);
@@ -259,7 +260,7 @@ export const deleteObjectMetadata = async ({
   object: FlatObjectMetadata;
 }): Promise<FlatObjectMetadata> => {
   if (!object.isCustom) {
-    throw new Error(`Object "${object.nameSingular}" is standard and cannot be deleted`);
+    throw new UserFacingError(`Object "${object.nameSingular}" is standard and cannot be deleted`);
   }
 
   const schemaName = getWorkspaceSchemaName(workspaceId);
@@ -303,7 +304,7 @@ export const deleteFieldMetadata = async ({
   field: FlatFieldMetadata;
 }): Promise<FlatFieldMetadata> => {
   if (field.isSystem) {
-    throw new Error(`Field "${field.name}" is a system field and cannot be deleted`);
+    throw new UserFacingError(`Field "${field.name}" is a system field and cannot be deleted`);
   }
 
   const schemaName = getWorkspaceSchemaName(workspaceId);

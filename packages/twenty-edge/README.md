@@ -80,6 +80,14 @@ carregamento — foi exatamente o que aconteceu aqui antes de o handshake existi
 Cada pessoa vê as próprias mudanças, pelos eventos que o front dispara
 localmente; o que falta é a mudança de outra pessoa aparecer sem recarregar.
 
+## Documentos
+
+- `MODULES.md` — inventário: cada módulo, função por função, o que existe e o
+  que falta
+- `ROADMAP.md` — o plano dos 11 itens, todos feitos, com o "como ficou" de cada
+- `TESTING.md` — como medir, e a lista de defeitos que a suíte já pegou
+- `NAMING.md` — variáveis de ambiente e secrets
+
 ## Rodar
 
 ```bash

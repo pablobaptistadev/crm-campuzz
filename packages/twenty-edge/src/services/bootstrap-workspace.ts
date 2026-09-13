@@ -4,6 +4,7 @@ import { applyWorkspaceObjects } from 'src/ddl/create-workspace-schema';
 import { escapeIdentifier } from 'src/ddl/escape';
 import { persistObjectMetadata } from 'src/db/core/metadata-repository';
 import { getWorkspaceSchemaName } from 'src/metadata/naming';
+import { type FlatObjectMetadata } from 'src/metadata/types';
 import { buildStandardObjects } from 'src/standard/objects';
 
 export type BootstrapResult = {
@@ -52,6 +53,8 @@ export const bootstrapWorkspace = async ({
 
   await applyWorkspaceObjects({ client, schemaName, objects });
 
+  await seedDefaultViews({ client, workspaceId, objects });
+
   // Only flip to ACTIVE once the schema really exists: core."workspace" has a
   // CHECK constraint that an active workspace must carry a databaseSchema.
   await client.query(
@@ -60,6 +63,34 @@ export const bootstrapWorkspace = async ({
   );
 
   return { workspaceId, schemaName, objectCount: objects.length };
+};
+
+// The front's navigation is driven by views, not by object metadata: without at
+// least one view per object the sidebar renders empty.
+export const seedDefaultViews = async ({
+  client,
+  workspaceId,
+  objects,
+}: {
+  client: Client;
+  workspaceId: string;
+  objects: FlatObjectMetadata[];
+}): Promise<void> => {
+  const visibleObjects = objects.filter((object) => !object.isSystem);
+
+  for (const [index, object] of visibleObjects.entries()) {
+    await client.query(
+      `INSERT INTO core."view" ("workspaceId","objectMetadataId","name","type","key","icon","position")
+       VALUES ($1,$2,$3,'TABLE','INDEX',$4,$5)`,
+      [
+        workspaceId,
+        object.id,
+        `All ${object.labelPlural}`,
+        object.icon,
+        index,
+      ],
+    );
+  }
 };
 
 export const seedWorkspaceMember = async ({

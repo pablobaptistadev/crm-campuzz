@@ -164,7 +164,26 @@ type Query {
   minimalMetadata: MinimalMetadata!
 }
 
+input ViewCreateInput {
+  objectMetadataId: UUID!
+  name: String!
+  type: String
+  key: String
+  icon: String
+  position: Float
+}
+
+input ViewUpdateInput {
+  name: String
+  type: String
+  icon: String
+  position: Float
+}
+
 type Mutation {
+  createView(data: ViewCreateInput!): View!
+  updateView(id: UUID!, data: ViewUpdateInput!): View
+  deleteView(id: UUID!): View
   getLoginTokenFromCredentials(email: String!, password: String!): AuthTokenPair!
   getAuthTokensFromLoginToken(loginToken: String!): AuthTokens!
   signIn(email: String!, password: String!): AvailableWorkspacesAndAccessTokens!
@@ -199,6 +218,22 @@ const requireAuthenticatedUser = async (
   }
 
   return user;
+};
+
+const requireWorkspaceId = async (
+  context: MetadataContext,
+): Promise<string> => {
+  const user = await requireAuthenticatedUser(context);
+  const membership = await findFirstWorkspaceForUser({
+    client: context.client,
+    userId: user.id,
+  });
+
+  if (membership === null) {
+    throw new Error('NO_WORKSPACE');
+  }
+
+  return membership.workspace.id;
 };
 
 const loadMetadataForSession = async (context: MetadataContext) => {
@@ -264,6 +299,26 @@ export const METADATA_RESOLVERS = {
         userId: user.id,
       });
 
+      // The front hides an object whose permission entry is missing, so every
+      // object needs one. Until roles exist, the only member of a workspace is
+      // its creator and gets full access.
+      const objectsPermissions =
+        membership === null
+          ? []
+          : (
+              await loadWorkspaceMetadata({
+                client: context.client,
+                workspaceId: membership.workspace.id,
+                metadataVersion: membership.workspace.metadataVersion,
+              })
+            ).objects.map((object) => ({
+              objectMetadataId: object.id,
+              canReadObjectRecords: true,
+              canUpdateObjectRecords: true,
+              canSoftDeleteObjectRecords: true,
+              canDestroyObjectRecords: true,
+            }));
+
       return {
         ...user,
         currentWorkspace:
@@ -271,7 +326,7 @@ export const METADATA_RESOLVERS = {
         currentUserWorkspace:
           membership === null
             ? null
-            : { id: membership.userWorkspaceId, objectsPermissions: [] },
+            : { id: membership.userWorkspaceId, objectsPermissions },
         workspaceMember: null,
         availableWorkspaces:
           membership === null ? [] : [toWorkspaceDto(membership.workspace)],
@@ -514,6 +569,92 @@ export const METADATA_RESOLVERS = {
         workspace:
           membership === null ? null : toWorkspaceDto(membership.workspace),
       };
+    },
+
+    createView: async (
+      _parent: unknown,
+      args: {
+        data: {
+          objectMetadataId: string;
+          name: string;
+          type?: string;
+          key?: string;
+          icon?: string;
+          position?: number;
+        };
+      },
+      context: MetadataContext,
+    ) => {
+      const workspaceId = await requireWorkspaceId(context);
+
+      const { rows } = await context.client.query(
+        `INSERT INTO core."view"
+           ("workspaceId","objectMetadataId","name","type","key","icon","position")
+         VALUES ($1,$2,$3,COALESCE($4,'TABLE'),$5,$6,COALESCE($7,0))
+         RETURNING "id","name","type","key","icon","position","objectMetadataId"`,
+        [
+          workspaceId,
+          args.data.objectMetadataId,
+          args.data.name,
+          args.data.type ?? null,
+          args.data.key ?? null,
+          args.data.icon ?? null,
+          args.data.position ?? null,
+        ],
+      );
+
+      return rows[0];
+    },
+
+    updateView: async (
+      _parent: unknown,
+      args: {
+        id: string;
+        data: { name?: string; type?: string; icon?: string; position?: number };
+      },
+      context: MetadataContext,
+    ) => {
+      const workspaceId = await requireWorkspaceId(context);
+
+      // COALESCE keeps every column the caller omitted, so a partial update
+      // cannot blank the rest of the row.
+      const { rows } = await context.client.query(
+        `UPDATE core."view" SET
+           "name" = COALESCE($3,"name"),
+           "type" = COALESCE($4,"type"),
+           "icon" = COALESCE($5,"icon"),
+           "position" = COALESCE($6,"position"),
+           "updatedAt" = now()
+         WHERE "id" = $1 AND "workspaceId" = $2 AND "deletedAt" IS NULL
+         RETURNING "id","name","type","key","icon","position","objectMetadataId"`,
+        [
+          args.id,
+          workspaceId,
+          args.data.name ?? null,
+          args.data.type ?? null,
+          args.data.icon ?? null,
+          args.data.position ?? null,
+        ],
+      );
+
+      return rows[0] ?? null;
+    },
+
+    deleteView: async (
+      _parent: unknown,
+      args: { id: string },
+      context: MetadataContext,
+    ) => {
+      const workspaceId = await requireWorkspaceId(context);
+
+      const { rows } = await context.client.query(
+        `UPDATE core."view" SET "deletedAt" = now(), "updatedAt" = now()
+         WHERE "id" = $1 AND "workspaceId" = $2 AND "deletedAt" IS NULL
+         RETURNING "id","name","type","key","icon","position","objectMetadataId"`,
+        [args.id, workspaceId],
+      );
+
+      return rows[0] ?? null;
     },
 
     signOut: async (_parent: unknown, _args: unknown, context: MetadataContext) => {

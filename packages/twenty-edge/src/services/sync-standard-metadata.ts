@@ -15,7 +15,12 @@ import {
   getWorkspaceSchemaName,
 } from 'src/metadata/naming';
 import { applyFieldColumns } from 'src/services/metadata-mutations';
-import { seedDefaultViews } from 'src/services/bootstrap-workspace';
+import {
+  orderedVisibleFields,
+  seedDefaultViews,
+  VISIBLE_VIEW_FIELD_COUNT,
+} from 'src/services/bootstrap-workspace';
+import { seedViewFields } from 'src/db/core/view-repository';
 import { buildStandardObjects } from 'src/standard/objects';
 
 export type SyncStandardMetadataResult = {
@@ -84,7 +89,16 @@ export const syncStandardMetadata = async ({
     }
   }
 
-  if (createdObjects.length === 0 && createdFields.length === 0) {
+  // Views created before viewField existed have no columns at all, and a view
+  // with no columns renders an empty table. Backfilling here means the same
+  // call that catches up the metadata also catches up the views.
+  const backfilledViews = await backfillViewFields({ client, workspaceId });
+
+  if (
+    createdObjects.length === 0 &&
+    createdFields.length === 0 &&
+    backfilledViews === 0
+  ) {
     return { createdObjects, createdFields };
   }
 
@@ -113,4 +127,50 @@ export const syncStandardMetadata = async ({
   await bumpMetadataVersion({ client, workspaceId });
 
   return { createdObjects, createdFields };
+};
+
+const backfillViewFields = async ({
+  client,
+  workspaceId,
+}: {
+  client: Client;
+  workspaceId: string;
+}): Promise<number> => {
+  // Reloaded rather than reusing the seed: a custom object has views too, and
+  // its fields are not in the standard set.
+  const { objects } = await loadWorkspaceMetadata({
+    client,
+    workspaceId,
+    metadataVersion: 0,
+  });
+
+  const { rows } = await client.query<{ id: string; objectMetadataId: string }>(
+    `SELECT v."id", v."objectMetadataId"
+     FROM core."view" v
+     LEFT JOIN core."viewField" f
+       ON f."viewId" = v."id" AND f."deletedAt" IS NULL
+     WHERE v."workspaceId" = $1 AND v."deletedAt" IS NULL AND f."id" IS NULL
+     GROUP BY v."id", v."objectMetadataId"`,
+    [workspaceId],
+  );
+
+  const objectById = new Map(objects.map((object) => [object.id, object]));
+
+  for (const view of rows) {
+    const object = objectById.get(view.objectMetadataId);
+
+    if (object === undefined) {
+      continue;
+    }
+
+    await seedViewFields({
+      client,
+      workspaceId,
+      viewId: view.id,
+      fields: orderedVisibleFields(object),
+      visibleCount: VISIBLE_VIEW_FIELD_COUNT,
+    });
+  }
+
+  return rows.length;
 };

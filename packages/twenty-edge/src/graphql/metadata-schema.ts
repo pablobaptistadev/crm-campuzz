@@ -10,6 +10,36 @@ import {
 } from 'src/db/core/auth-repository';
 import { loadWorkspaceMetadata } from 'src/db/core/metadata-repository';
 import {
+  findViews,
+  loadViewChildren,
+  seedViewFields,
+  type ViewChildren,
+  type ViewFieldRow,
+  type ViewFilterRow,
+  type ViewRow,
+} from 'src/db/core/view-repository';
+import {
+  createViewFilter,
+  createViewFilterGroup,
+  createViewFields,
+  createViewGroups,
+  createViewSort,
+  destroyView,
+  destroyViewChild,
+  insertView,
+  softDeleteView,
+  softDeleteViewChild,
+  updateViewField,
+  updateViewFilter,
+  updateViewFilterGroup,
+  updateViewGroups,
+  updateViewSettings,
+  updateViewSort,
+  type CreateViewFieldInput as CreateViewFieldArgs,
+  type CreateViewFilterInput as CreateViewFilterArgs,
+  type ViewSettingsInput,
+} from 'src/services/view-mutations';
+import {
   findWorkspaceMemberByUserId,
   findWorkspaceMembers,
   type WorkspaceMemberRow,
@@ -36,6 +66,10 @@ import { issueLoginToken, verifyLoginToken } from 'src/auth/login-token';
 import { issueUploadToken } from 'src/auth/upload-token';
 import { insertFile, markFileUploaded } from 'src/db/core/file-repository';
 import { syncStandardMetadata } from 'src/services/sync-standard-metadata';
+import {
+  orderedVisibleFields,
+  VISIBLE_VIEW_FIELD_COUNT,
+} from 'src/services/bootstrap-workspace';
 
 export type MetadataContext = {
   client: Client;
@@ -555,20 +589,144 @@ input FieldCreateInput {
   options: [FieldOptionInput!]
 }
 
-input ViewCreateInput {
+# Shapes copied from twenty-front's generated inputs: the front types its
+# variables against these names, so a divergence here fails the document.
+input CreateViewInput {
+  id: UUID
   objectMetadataId: UUID!
   name: String!
-  type: String
+  icon: String!
+  type: ViewType
   key: String
+  position: Float
+  isCompact: Boolean
+  kanbanAggregateOperation: String
+  kanbanAggregateOperationFieldMetadataId: UUID
+  kanbanColumnWidth: Int
+  mainGroupByFieldMetadataId: UUID
+  shouldHideEmptyGroups: Boolean
+  anyFieldFilterValue: String
+  calendarFieldMetadataId: UUID
+  calendarEndFieldMetadataId: UUID
+  calendarLayout: String
+  openRecordIn: String
+  visibility: String
+}
+
+input UpdateViewInput {
+  id: UUID
+  name: String
   icon: String
+  type: ViewType
+  position: Float
+  isCompact: Boolean
+  kanbanAggregateOperation: String
+  kanbanAggregateOperationFieldMetadataId: UUID
+  kanbanColumnWidth: Int
+  mainGroupByFieldMetadataId: UUID
+  shouldHideEmptyGroups: Boolean
+  anyFieldFilterValue: String
+  calendarFieldMetadataId: UUID
+  calendarEndFieldMetadataId: UUID
+  calendarLayout: String
+  openRecordIn: String
+  visibility: String
+}
+
+input CreateViewFieldInput {
+  id: UUID
+  viewId: UUID!
+  fieldMetadataId: UUID!
+  isVisible: Boolean
+  position: Float
+  size: Float
+  aggregateOperation: String
+  viewFieldGroupId: UUID
+}
+
+input UpdateViewFieldInputUpdates {
+  isVisible: Boolean
+  position: Float
+  size: Float
+  aggregateOperation: String
+  viewFieldGroupId: UUID
+}
+
+input UpdateViewFieldInput { id: UUID! update: UpdateViewFieldInputUpdates! }
+input DeleteViewFieldInput { id: UUID! }
+input DestroyViewFieldInput { id: UUID! }
+
+input CreateViewFilterInput {
+  id: UUID
+  viewId: UUID!
+  fieldMetadataId: UUID!
+  operand: String
+  value: JSON!
+  viewFilterGroupId: UUID
+  positionInViewFilterGroup: Float
+  subFieldName: String
+  relationTargetFieldMetadataId: UUID
+}
+
+input UpdateViewFilterInputUpdates {
+  fieldMetadataId: UUID
+  operand: String
+  value: JSON
+  viewFilterGroupId: UUID
+  positionInViewFilterGroup: Float
+  subFieldName: String
+  relationTargetFieldMetadataId: UUID
+}
+
+input UpdateViewFilterInput { id: UUID! update: UpdateViewFilterInputUpdates! }
+input DeleteViewFilterInput { id: UUID! }
+input DestroyViewFilterInput { id: UUID! }
+
+input CreateViewSortInput {
+  id: UUID
+  viewId: UUID!
+  fieldMetadataId: UUID!
+  direction: String
+  subFieldName: String
+}
+
+input UpdateViewSortInputUpdates { direction: String subFieldName: String }
+input UpdateViewSortInput { id: UUID! update: UpdateViewSortInputUpdates! }
+input DeleteViewSortInput { id: UUID! }
+input DestroyViewSortInput { id: UUID! }
+
+input CreateViewGroupInput {
+  id: UUID
+  viewId: UUID!
+  fieldValue: String!
+  isVisible: Boolean
   position: Float
 }
 
-input ViewUpdateInput {
-  name: String
-  type: String
-  icon: String
+input UpdateViewGroupInputUpdates {
+  fieldValue: String
+  isVisible: Boolean
   position: Float
+}
+
+input UpdateViewGroupInput { id: UUID! update: UpdateViewGroupInputUpdates! }
+input DeleteViewGroupInput { id: UUID! }
+input DestroyViewGroupInput { id: UUID! }
+
+input CreateViewFilterGroupInput {
+  id: UUID
+  viewId: UUID!
+  parentViewFilterGroupId: UUID
+  logicalOperator: String
+  positionInViewFilterGroup: Float
+}
+
+input UpdateViewFilterGroupInput {
+  id: UUID!
+  viewId: UUID
+  parentViewFilterGroupId: UUID
+  logicalOperator: String
+  positionInViewFilterGroup: Float
 }
 
 type Mutation {
@@ -577,9 +735,27 @@ type Mutation {
   createOneField(input: FieldCreateInput!): Field!
   deleteOneObject(id: UUID!): Object
   deleteOneField(id: UUID!): Field
-  createView(data: ViewCreateInput!): View!
-  updateView(id: UUID!, data: ViewUpdateInput!): View
-  deleteView(id: UUID!): View
+  createView(input: CreateViewInput!): View!
+  updateView(id: String!, input: UpdateViewInput!): View!
+  deleteView(id: String!): View!
+  destroyView(id: String!): Boolean!
+  createManyViewFields(inputs: [CreateViewFieldInput!]!): [ViewField!]!
+  updateViewField(input: UpdateViewFieldInput!): ViewField!
+  deleteViewField(input: DeleteViewFieldInput!): ViewField!
+  destroyViewField(input: DestroyViewFieldInput!): ViewField!
+  createViewFilter(input: CreateViewFilterInput!): ViewFilter!
+  updateViewFilter(input: UpdateViewFilterInput!): ViewFilter!
+  deleteViewFilter(input: DeleteViewFilterInput!): ViewFilter!
+  destroyViewFilter(input: DestroyViewFilterInput!): ViewFilter!
+  createViewSort(input: CreateViewSortInput!): ViewSort!
+  updateViewSort(input: UpdateViewSortInput!): ViewSort!
+  deleteViewSort(input: DeleteViewSortInput!): Boolean!
+  destroyViewSort(input: DestroyViewSortInput!): Boolean!
+  createManyViewGroups(inputs: [CreateViewGroupInput!]!): [ViewGroup!]!
+  updateManyViewGroups(inputs: [UpdateViewGroupInput!]!): [ViewGroup!]!
+  createViewFilterGroup(input: CreateViewFilterGroupInput!): ViewFilterGroup!
+  updateViewFilterGroup(input: UpdateViewFilterGroupInput!): ViewFilterGroup!
+  destroyViewFilterGroup(id: String!): Boolean!
   getLoginTokenFromCredentials(email: String!, password: String!, captchaToken: String, origin: String): LoginTokenWrapper!
   getAuthTokensFromLoginToken(loginToken: String!, origin: String): AuthTokensWrapper!
   signIn(email: String!, password: String!, captchaToken: String): SignInUpOutput!
@@ -769,83 +945,57 @@ const FILE_FOLDER_PATHS: Record<string, string> = {
   Dpa: 'dpa',
 };
 
-const VISIBLE_VIEW_FIELD_COUNT = 8;
-
 // Namespaces keep the three ids derived from one object distinct.
 const RECORD_PAGE_NAMESPACE = '00000000-0000-4000-8000-00000000900d';
 const RECORD_TAB_NAMESPACE = '00000000-0000-4000-8000-0000000090ab';
 const FIELDS_WIDGET_NAMESPACE = '00000000-0000-4000-8000-0000000090fe';
 
-const buildViewFields = (
-  viewId: string,
-  object: FlatObjectMetadata | undefined,
-) => {
-  if (object === undefined) {
-    return [];
-  }
-
-  const fields = object.fields.filter(
-    (field) => field.isActive && !field.isSystem,
-  );
-
-  // The label identifier leads the table; Twenty renders it as the record chip.
-  const ordered = [
-    ...fields.filter(
-      (field) => field.id === object.labelIdentifierFieldMetadataId,
-    ),
-    ...fields.filter(
-      (field) => field.id !== object.labelIdentifierFieldMetadataId,
-    ),
-  ];
-
-  return ordered.map((field, index) => ({
-    id: deriveStableId(viewId, field.id),
-    fieldMetadataId: field.id,
-    viewId,
-    isVisible: index < VISIBLE_VIEW_FIELD_COUNT,
-    position: index,
-    size: 150,
-    aggregateOperation: null,
-    viewFieldGroupId: null,
-    isActive: true,
-    createdAt: null,
-    updatedAt: null,
-    deletedAt: null,
-  }));
-};
-
-type ViewRow = {
-  id: string;
-  name: string;
-  type: string;
-  key: string | null;
-  icon: string | null;
-  position: number;
+type CreateViewArgs = ViewSettingsInput & {
+  id?: string | null;
   objectMetadataId: string;
-  isCompact?: boolean;
 };
 
-const toViewDto = (view: ViewRow, object: FlatObjectMetadata | undefined) => ({
+type CreateViewSortArgs = {
+  id?: string | null;
+  viewId: string;
+  fieldMetadataId: string;
+  direction?: string | null;
+  subFieldName?: string | null;
+};
+
+type CreateViewGroupArgs = {
+  id?: string | null;
+  viewId: string;
+  fieldValue: string;
+  isVisible?: boolean | null;
+  position?: number | null;
+};
+
+type CreateViewFilterGroupArgs = {
+  id?: string | null;
+  viewId: string;
+  parentViewFilterGroupId?: string | null;
+  logicalOperator?: string | null;
+  positionInViewFilterGroup?: number | null;
+};
+
+const toViewDto = (view: ViewRow, children: ViewChildren) => ({
   ...view,
-  isCompact: view.isCompact ?? false,
-  kanbanAggregateOperation: null,
-  kanbanAggregateOperationFieldMetadataId: null,
-  mainGroupByFieldMetadataId: null,
-  shouldHideEmptyGroups: false,
-  kanbanColumnWidth: null,
-  anyFieldFilterValue: null,
-  calendarFieldMetadataId: null,
-  calendarEndFieldMetadataId: null,
-  calendarLayout: null,
-  visibility: 'WORKSPACE',
+  viewFields: children.fieldsByViewId.get(view.id) ?? [],
+  viewFieldGroups: (children.fieldGroupsByViewId.get(view.id) ?? []).map(
+    (group) => ({
+      ...group,
+      viewFields: (children.fieldsByViewId.get(view.id) ?? []).filter(
+        (field) => field.viewFieldGroupId === group.id,
+      ),
+    }),
+  ),
+  viewFilters: children.filtersByViewId.get(view.id) ?? [],
+  viewFilterGroups: children.filterGroupsByViewId.get(view.id) ?? [],
+  viewSorts: children.sortsByViewId.get(view.id) ?? [],
+  viewGroups: children.groupsByViewId.get(view.id) ?? [],
   createdByUserWorkspaceId: null,
   isActive: true,
-  viewFields: buildViewFields(view.id, object),
-  viewFieldGroups: [],
-  viewFilters: [],
-  viewFilterGroups: [],
-  viewSorts: [],
-  viewGroups: [],
 });
 
 const toWorkspaceMemberDto = (member: WorkspaceMemberRow) => ({
@@ -1189,28 +1339,19 @@ export const METADATA_RESOLVERS = {
         return [];
       }
 
-      const { rows } = await context.client.query<ViewRow>(
-        `SELECT "id","name","type","key","icon","position","objectMetadataId","isCompact"
-         FROM core."view"
-         WHERE "workspaceId" = $1 AND "deletedAt" IS NULL
-           AND ($2::text[] IS NULL OR "type" = ANY($2))
-         ORDER BY "position" ASC`,
-        [membership.workspace.id, args.viewTypes ?? null],
-      );
+      const [views, children] = await Promise.all([
+        findViews({
+          client: context.client,
+          workspaceId: membership.workspace.id,
+          viewTypes: args.viewTypes ?? null,
+        }),
+        loadViewChildren({
+          client: context.client,
+          workspaceId: membership.workspace.id,
+        }),
+      ]);
 
-      const metadata = await loadWorkspaceMetadata({
-        client: context.client,
-        workspaceId: membership.workspace.id,
-        metadataVersion: membership.workspace.metadataVersion,
-      });
-
-      const objectById = new Map(
-        metadata.objects.map((object) => [object.id, object]),
-      );
-
-      return rows.map((view) =>
-        toViewDto(view, objectById.get(view.objectMetadataId)),
-      );
+      return views.map((view) => toViewDto(view, children));
     },
 
     // The sidebar is built entirely from these. With none, the app signs in to
@@ -1233,13 +1374,11 @@ export const METADATA_RESOLVERS = {
         metadataVersion: membership.workspace.metadataVersion,
       });
 
-      const { rows } = await context.client.query<ViewRow>(
-        `SELECT "id","name","type","key","icon","position","objectMetadataId","isCompact"
-         FROM core."view"
-         WHERE "workspaceId" = $1 AND "deletedAt" IS NULL AND "type" = 'TABLE'
-         ORDER BY "position" ASC`,
-        [membership.workspace.id],
-      );
+      const rows = await findViews({
+        client: context.client,
+        workspaceId: membership.workspace.id,
+        viewTypes: ['TABLE'],
+      });
 
       const objectById = new Map(
         metadata.objects.map((object) => [object.id, object]),
@@ -1426,19 +1565,15 @@ export const METADATA_RESOLVERS = {
     ) => {
       const metadata = await loadMetadataForSession(context);
 
-      const { rows } = await context.client.query<ViewRow>(
-        `SELECT "id","name","type","key","icon","position","objectMetadataId","isCompact"
-         FROM core."view" WHERE "workspaceId" = $1 AND "deletedAt" IS NULL`,
-        [metadata.workspaceId],
-      );
+      const [viewRows, children] = await Promise.all([
+        findViews({ client: context.client, workspaceId: metadata.workspaceId }),
+        loadViewChildren({
+          client: context.client,
+          workspaceId: metadata.workspaceId,
+        }),
+      ]);
 
-      const objectById = new Map(
-        metadata.objects.map((object) => [object.id, object]),
-      );
-
-      const views = rows.map((view) =>
-        toViewDto(view, objectById.get(view.objectMetadataId)),
-      );
+      const views = viewRows.map((view) => toViewDto(view, children));
 
       return {
         objectMetadataItems: withRelationRefs(metadata.objects),
@@ -1806,71 +1941,62 @@ export const METADATA_RESOLVERS = {
 
     createView: async (
       _parent: unknown,
-      args: {
-        data: {
-          objectMetadataId: string;
-          name: string;
-          type?: string;
-          key?: string;
-          icon?: string;
-          position?: number;
-        };
-      },
+      args: { input: CreateViewArgs },
       context: MetadataContext,
     ) => {
-      const workspaceId = await requireWorkspaceId(context);
+      const membership = requireMembership(context);
+      const metadata = await loadMetadataForSession(context);
 
-      const { rows } = await context.client.query(
-        `INSERT INTO core."view"
-           ("workspaceId","objectMetadataId","name","type","key","icon","position")
-         VALUES ($1,$2,$3,COALESCE($4,'TABLE'),$5,$6,COALESCE($7,0))
-         RETURNING "id","name","type","key","icon","position","objectMetadataId"`,
-        [
-          workspaceId,
-          args.data.objectMetadataId,
-          args.data.name,
-          args.data.type ?? null,
-          args.data.key ?? null,
-          args.data.icon ?? null,
-          args.data.position ?? null,
-        ],
+      const view = await insertView({
+        client: context.client,
+        workspaceId: membership.workspace.id,
+        input: args.input,
+      });
+
+      // A view with no fields renders a table with no columns, so the columns
+      // are seeded from the object the same way Twenty does at creation.
+      const object = metadata.objects.find(
+        (entry) => entry.id === view.objectMetadataId,
       );
 
-      return rows[0];
+      if (object !== undefined) {
+        await seedViewFields({
+          client: context.client,
+          workspaceId: membership.workspace.id,
+          viewId: view.id,
+          fields: orderedVisibleFields(object),
+          visibleCount: VISIBLE_VIEW_FIELD_COUNT,
+        });
+      }
+
+      const children = await loadViewChildren({
+        client: context.client,
+        workspaceId: membership.workspace.id,
+      });
+
+      return toViewDto(view, children);
     },
 
     updateView: async (
       _parent: unknown,
-      args: {
-        id: string;
-        data: { name?: string; type?: string; icon?: string; position?: number };
-      },
+      args: { id: string; input: ViewSettingsInput },
       context: MetadataContext,
     ) => {
-      const workspaceId = await requireWorkspaceId(context);
+      const membership = requireMembership(context);
 
-      // COALESCE keeps every column the caller omitted, so a partial update
-      // cannot blank the rest of the row.
-      const { rows } = await context.client.query(
-        `UPDATE core."view" SET
-           "name" = COALESCE($3,"name"),
-           "type" = COALESCE($4,"type"),
-           "icon" = COALESCE($5,"icon"),
-           "position" = COALESCE($6,"position"),
-           "updatedAt" = now()
-         WHERE "id" = $1 AND "workspaceId" = $2 AND "deletedAt" IS NULL
-         RETURNING "id","name","type","key","icon","position","objectMetadataId"`,
-        [
-          args.id,
-          workspaceId,
-          args.data.name ?? null,
-          args.data.type ?? null,
-          args.data.icon ?? null,
-          args.data.position ?? null,
-        ],
-      );
+      const view = await updateViewSettings({
+        client: context.client,
+        workspaceId: membership.workspace.id,
+        id: args.id,
+        input: args.input,
+      });
 
-      return rows[0] ?? null;
+      const children = await loadViewChildren({
+        client: context.client,
+        workspaceId: membership.workspace.id,
+      });
+
+      return toViewDto(view, children);
     },
 
     deleteView: async (
@@ -1878,16 +2004,237 @@ export const METADATA_RESOLVERS = {
       args: { id: string },
       context: MetadataContext,
     ) => {
-      const workspaceId = await requireWorkspaceId(context);
+      const membership = requireMembership(context);
 
-      const { rows } = await context.client.query(
-        `UPDATE core."view" SET "deletedAt" = now(), "updatedAt" = now()
-         WHERE "id" = $1 AND "workspaceId" = $2 AND "deletedAt" IS NULL
-         RETURNING "id","name","type","key","icon","position","objectMetadataId"`,
-        [args.id, workspaceId],
-      );
+      const view = await softDeleteView({
+        client: context.client,
+        workspaceId: membership.workspace.id,
+        id: args.id,
+      });
 
-      return rows[0] ?? null;
+      const children = await loadViewChildren({
+        client: context.client,
+        workspaceId: membership.workspace.id,
+      });
+
+      return toViewDto(view, children);
+    },
+
+    destroyView: (
+      _parent: unknown,
+      args: { id: string },
+      context: MetadataContext,
+    ) =>
+      destroyView({
+        client: context.client,
+        workspaceId: requireMembership(context).workspace.id,
+        id: args.id,
+      }),
+
+    createManyViewFields: (
+      _parent: unknown,
+      args: { inputs: CreateViewFieldArgs[] },
+      context: MetadataContext,
+    ) =>
+      createViewFields({
+        client: context.client,
+        workspaceId: requireMembership(context).workspace.id,
+        inputs: args.inputs,
+      }),
+
+    updateViewField: (
+      _parent: unknown,
+      args: { input: { id: string; update: Record<string, never> } },
+      context: MetadataContext,
+    ) =>
+      updateViewField({
+        client: context.client,
+        workspaceId: requireMembership(context).workspace.id,
+        id: args.input.id,
+        update: args.input.update,
+      }),
+
+    deleteViewField: (
+      _parent: unknown,
+      args: { input: { id: string } },
+      context: MetadataContext,
+    ) =>
+      softDeleteViewChild<ViewFieldRow>({
+        client: context.client,
+        workspaceId: requireMembership(context).workspace.id,
+        table: 'viewField',
+        id: args.input.id,
+      }),
+
+    destroyViewField: (
+      _parent: unknown,
+      args: { input: { id: string } },
+      context: MetadataContext,
+    ) =>
+      destroyViewChild<ViewFieldRow>({
+        client: context.client,
+        workspaceId: requireMembership(context).workspace.id,
+        table: 'viewField',
+        id: args.input.id,
+      }),
+
+    createViewFilter: (
+      _parent: unknown,
+      args: { input: CreateViewFilterArgs },
+      context: MetadataContext,
+    ) =>
+      createViewFilter({
+        client: context.client,
+        workspaceId: requireMembership(context).workspace.id,
+        input: args.input,
+      }),
+
+    updateViewFilter: (
+      _parent: unknown,
+      args: { input: { id: string; update: Record<string, never> } },
+      context: MetadataContext,
+    ) =>
+      updateViewFilter({
+        client: context.client,
+        workspaceId: requireMembership(context).workspace.id,
+        id: args.input.id,
+        update: args.input.update,
+      }),
+
+    deleteViewFilter: (
+      _parent: unknown,
+      args: { input: { id: string } },
+      context: MetadataContext,
+    ) =>
+      softDeleteViewChild<ViewFilterRow>({
+        client: context.client,
+        workspaceId: requireMembership(context).workspace.id,
+        table: 'viewFilter',
+        id: args.input.id,
+      }),
+
+    destroyViewFilter: (
+      _parent: unknown,
+      args: { input: { id: string } },
+      context: MetadataContext,
+    ) =>
+      destroyViewChild<ViewFilterRow>({
+        client: context.client,
+        workspaceId: requireMembership(context).workspace.id,
+        table: 'viewFilter',
+        id: args.input.id,
+      }),
+
+    createViewSort: (
+      _parent: unknown,
+      args: { input: CreateViewSortArgs },
+      context: MetadataContext,
+    ) =>
+      createViewSort({
+        client: context.client,
+        workspaceId: requireMembership(context).workspace.id,
+        input: args.input,
+      }),
+
+    updateViewSort: (
+      _parent: unknown,
+      args: { input: { id: string; update: Record<string, never> } },
+      context: MetadataContext,
+    ) =>
+      updateViewSort({
+        client: context.client,
+        workspaceId: requireMembership(context).workspace.id,
+        id: args.input.id,
+        update: args.input.update,
+      }),
+
+    deleteViewSort: async (
+      _parent: unknown,
+      args: { input: { id: string } },
+      context: MetadataContext,
+    ) => {
+      await softDeleteViewChild({
+        client: context.client,
+        workspaceId: requireMembership(context).workspace.id,
+        table: 'viewSort',
+        id: args.input.id,
+      });
+
+      return true;
+    },
+
+    destroyViewSort: async (
+      _parent: unknown,
+      args: { input: { id: string } },
+      context: MetadataContext,
+    ) => {
+      await destroyViewChild({
+        client: context.client,
+        workspaceId: requireMembership(context).workspace.id,
+        table: 'viewSort',
+        id: args.input.id,
+      });
+
+      return true;
+    },
+
+    createManyViewGroups: (
+      _parent: unknown,
+      args: { inputs: CreateViewGroupArgs[] },
+      context: MetadataContext,
+    ) =>
+      createViewGroups({
+        client: context.client,
+        workspaceId: requireMembership(context).workspace.id,
+        inputs: args.inputs,
+      }),
+
+    updateManyViewGroups: (
+      _parent: unknown,
+      args: { inputs: { id: string; update: Record<string, never> }[] },
+      context: MetadataContext,
+    ) =>
+      updateViewGroups({
+        client: context.client,
+        workspaceId: requireMembership(context).workspace.id,
+        inputs: args.inputs,
+      }),
+
+    createViewFilterGroup: (
+      _parent: unknown,
+      args: { input: CreateViewFilterGroupArgs },
+      context: MetadataContext,
+    ) =>
+      createViewFilterGroup({
+        client: context.client,
+        workspaceId: requireMembership(context).workspace.id,
+        input: args.input,
+      }),
+
+    updateViewFilterGroup: (
+      _parent: unknown,
+      args: { input: { id: string } & Record<string, never> },
+      context: MetadataContext,
+    ) =>
+      updateViewFilterGroup({
+        client: context.client,
+        workspaceId: requireMembership(context).workspace.id,
+        input: args.input,
+      }),
+
+    destroyViewFilterGroup: async (
+      _parent: unknown,
+      args: { id: string },
+      context: MetadataContext,
+    ) => {
+      await destroyViewChild({
+        client: context.client,
+        workspaceId: requireMembership(context).workspace.id,
+        table: 'viewFilterGroup',
+        id: args.id,
+      });
+
+      return true;
     },
 
     // The browser PUTs straight to the URL this hands back, then calls

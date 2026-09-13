@@ -1228,6 +1228,167 @@ export const runApiSuite = async (
     return { status: response.status };
   });
 
+  await recorder.step('a saved filter and sort survive the request', async () => {
+    const views = unwrap(
+      (
+        await client.graphql<{
+          getViews: {
+            id: string;
+            name: string;
+            objectMetadataId: string;
+            viewFields: { id: string; fieldMetadataId: string }[];
+          }[];
+        }>({
+          endpoint: '/metadata',
+          query: `query GetViews($viewTypes: [ViewType!]) {
+            getViews(viewTypes: $viewTypes) {
+              id name objectMetadataId
+              viewFields { id fieldMetadataId isVisible position }
+            }
+          }`,
+          variables: { viewTypes: ['TABLE'] },
+        })
+      ).body,
+      'getViews',
+    );
+
+    const companiesView = views.getViews.find((view) =>
+      view.name.includes('Companies'),
+    );
+
+    assert(companiesView !== undefined, 'the companies view exists');
+    assert(
+      (companiesView?.viewFields.length ?? 0) > 0,
+      'the view has columns of its own',
+    );
+
+    const fieldMetadataId = companiesView?.viewFields[0].fieldMetadataId ?? '';
+
+    const filter = unwrap(
+      (
+        await client.graphql<{
+          createViewFilter: { id: string; operand: string; value: unknown };
+        }>({
+          endpoint: '/metadata',
+          query: `mutation CreateViewFilter($input: CreateViewFilterInput!) {
+            createViewFilter(input: $input) {
+              id fieldMetadataId operand value viewId
+            }
+          }`,
+          variables: {
+            input: {
+              viewId: companiesView?.id,
+              fieldMetadataId,
+              operand: 'contains',
+              value: `Campuzz E2E ${runSuffix}`,
+            },
+          },
+        })
+      ).body,
+      'createViewFilter',
+    );
+
+    const sort = unwrap(
+      (
+        await client.graphql<{ createViewSort: { id: string; direction: string } }>({
+          endpoint: '/metadata',
+          query: `mutation CreateViewSort($input: CreateViewSortInput!) {
+            createViewSort(input: $input) { id fieldMetadataId direction viewId }
+          }`,
+          variables: {
+            input: {
+              viewId: companiesView?.id,
+              fieldMetadataId,
+              direction: 'desc',
+            },
+          },
+        })
+      ).body,
+      'createViewSort',
+    );
+
+    // Read them back through the same query the front boots on: a filter that
+    // only exists in the mutation's answer is a filter that dies with the tab.
+    const reloaded = unwrap(
+      (
+        await client.graphql<{
+          getViews: {
+            id: string;
+            viewFilters: { id: string; operand: string; value: unknown }[];
+            viewSorts: { id: string; direction: string }[];
+          }[];
+        }>({
+          endpoint: '/metadata',
+          query: `query GetViews($viewTypes: [ViewType!]) {
+            getViews(viewTypes: $viewTypes) {
+              id
+              viewFilters { id fieldMetadataId operand value }
+              viewSorts { id fieldMetadataId direction }
+            }
+          }`,
+          variables: { viewTypes: ['TABLE'] },
+        })
+      ).body,
+      'getViews after saving',
+    );
+
+    const savedView = reloaded.getViews.find(
+      (view) => view.id === companiesView?.id,
+    );
+
+    assertEqual(
+      savedView?.viewFilters.some(
+        (entry) => entry.id === filter.createViewFilter.id,
+      ),
+      true,
+      'the filter comes back',
+    );
+    assertEqual(
+      savedView?.viewSorts.some((entry) => entry.id === sort.createViewSort.id),
+      true,
+      'the sort comes back',
+    );
+    assertEqual(
+      savedView?.viewFilters.find(
+        (entry) => entry.id === filter.createViewFilter.id,
+      )?.value,
+      `Campuzz E2E ${runSuffix}`,
+      'the value round-trips as written',
+    );
+
+    // Clean up, and prove destroy actually removes them.
+    unwrap(
+      (
+        await client.graphql({
+          endpoint: '/metadata',
+          query: `mutation DestroyViewFilter($input: DestroyViewFilterInput!) {
+            destroyViewFilter(input: $input) { id }
+          }`,
+          variables: { input: { id: filter.createViewFilter.id } },
+        })
+      ).body,
+      'destroyViewFilter',
+    );
+
+    unwrap(
+      (
+        await client.graphql({
+          endpoint: '/metadata',
+          query: `mutation DestroyViewSort($input: DestroyViewSortInput!) {
+            destroyViewSort(input: $input)
+          }`,
+          variables: { input: { id: sort.createViewSort.id } },
+        })
+      ).body,
+      'destroyViewSort',
+    );
+
+    return {
+      viewId: companiesView?.id,
+      columns: companiesView?.viewFields.length,
+    };
+  });
+
   await recorder.step('REST mirrors the GraphQL data', async () => {
     const listResponse = await client.fetch('/rest/companies?limit=5');
     const list = (await listResponse.json()) as {

@@ -3,6 +3,7 @@ import { type Client } from 'pg';
 import { applyWorkspaceObjects } from 'src/ddl/create-workspace-schema';
 import { escapeIdentifier } from 'src/ddl/escape';
 import { persistObjectMetadata } from 'src/db/core/metadata-repository';
+import { seedViewFields } from 'src/db/core/view-repository';
 import { getWorkspaceSchemaName } from 'src/metadata/naming';
 import { type FlatObjectMetadata } from 'src/metadata/types';
 import { buildStandardObjects } from 'src/standard/objects';
@@ -81,9 +82,10 @@ export const seedDefaultViews = async ({
   const visibleObjects = objects.filter((object) => !object.isSystem);
 
   for (const [index, object] of visibleObjects.entries()) {
-    await client.query(
+    const { rows } = await client.query<{ id: string }>(
       `INSERT INTO core."view" ("workspaceId","objectMetadataId","name","type","key","icon","position")
-       VALUES ($1,$2,$3,'TABLE','INDEX',$4,$5)`,
+       VALUES ($1,$2,$3,'TABLE','INDEX',$4,$5)
+       RETURNING "id"`,
       [
         workspaceId,
         object.id,
@@ -92,7 +94,33 @@ export const seedDefaultViews = async ({
         positionOffset + index,
       ],
     );
+
+    await seedViewFields({
+      client,
+      workspaceId,
+      viewId: rows[0].id,
+      fields: orderedVisibleFields(object),
+      visibleCount: VISIBLE_VIEW_FIELD_COUNT,
+    });
   }
+};
+
+export const VISIBLE_VIEW_FIELD_COUNT = 8;
+
+// The label identifier leads the table; Twenty renders it as the record chip.
+export const orderedVisibleFields = (object: FlatObjectMetadata) => {
+  const fields = object.fields.filter(
+    (field) => field.isActive && !field.isSystem,
+  );
+
+  return [
+    ...fields.filter(
+      (field) => field.id === object.labelIdentifierFieldMetadataId,
+    ),
+    ...fields.filter(
+      (field) => field.id !== object.labelIdentifierFieldMetadataId,
+    ),
+  ];
 };
 
 export const seedWorkspaceMember = async ({

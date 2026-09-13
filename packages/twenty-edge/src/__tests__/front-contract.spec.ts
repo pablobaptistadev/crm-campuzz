@@ -593,6 +593,96 @@ describe('twenty-front metadata documents', () => {
     `);
   });
 
+  // The twenty mutations behind saved views, copied verbatim from
+  // packages/twenty-front/src/modules/views/graphql/mutations/**. A view whose
+  // filters cannot be written is a filter that dies with the browser tab.
+  it('validates the view mutations', () => {
+    const VIEW_CHILD_FRAGMENTS = `
+      fragment ViewFieldFragment on ViewField {
+        id fieldMetadataId viewId isVisible position size aggregateOperation
+        viewFieldGroupId isActive createdAt updatedAt deletedAt
+      }
+      fragment ViewFilterFragment on ViewFilter {
+        id fieldMetadataId operand value viewFilterGroupId positionInViewFilterGroup
+        subFieldName relationTargetFieldMetadataId viewId createdAt updatedAt deletedAt
+      }
+      fragment ViewFilterGroupFragment on ViewFilterGroup {
+        id parentViewFilterGroupId logicalOperator positionInViewFilterGroup viewId
+      }
+      fragment ViewSortFragment on ViewSort {
+        id fieldMetadataId direction subFieldName viewId createdAt deletedAt updatedAt
+      }
+      fragment ViewGroupFragment on ViewGroup {
+        id isVisible fieldValue position viewId createdAt updatedAt deletedAt
+      }
+    `;
+
+    for (const document of [
+      `mutation CreateManyViewFields($inputs: [CreateViewFieldInput!]!) {
+        createManyViewFields(inputs: $inputs) { ...ViewFieldFragment }
+      }`,
+      `mutation UpdateViewField($input: UpdateViewFieldInput!) {
+        updateViewField(input: $input) { ...ViewFieldFragment }
+      }`,
+      `mutation DeleteViewField($input: DeleteViewFieldInput!) {
+        deleteViewField(input: $input) { ...ViewFieldFragment }
+      }`,
+      `mutation DestroyViewField($input: DestroyViewFieldInput!) {
+        destroyViewField(input: $input) { ...ViewFieldFragment }
+      }`,
+      `mutation CreateViewFilter($input: CreateViewFilterInput!) {
+        createViewFilter(input: $input) { ...ViewFilterFragment }
+      }`,
+      `mutation UpdateViewFilter($input: UpdateViewFilterInput!) {
+        updateViewFilter(input: $input) { ...ViewFilterFragment }
+      }`,
+      `mutation DeleteViewFilter($input: DeleteViewFilterInput!) {
+        deleteViewFilter(input: $input) { ...ViewFilterFragment }
+      }`,
+      `mutation DestroyViewFilter($input: DestroyViewFilterInput!) {
+        destroyViewFilter(input: $input) { ...ViewFilterFragment }
+      }`,
+      `mutation CreateViewFilterGroup($input: CreateViewFilterGroupInput!) {
+        createViewFilterGroup(input: $input) { ...ViewFilterGroupFragment }
+      }`,
+      `mutation UpdateViewFilterGroup($input: UpdateViewFilterGroupInput!) {
+        updateViewFilterGroup(input: $input) { ...ViewFilterGroupFragment }
+      }`,
+      `mutation DestroyViewFilterGroup($id: String!) { destroyViewFilterGroup(id: $id) }`,
+      `mutation CreateViewSort($input: CreateViewSortInput!) {
+        createViewSort(input: $input) { ...ViewSortFragment }
+      }`,
+      `mutation UpdateViewSort($input: UpdateViewSortInput!) {
+        updateViewSort(input: $input) { ...ViewSortFragment }
+      }`,
+      `mutation DeleteViewSort($input: DeleteViewSortInput!) { deleteViewSort(input: $input) }`,
+      `mutation DestroyViewSort($input: DestroyViewSortInput!) { destroyViewSort(input: $input) }`,
+      `mutation CreateManyViewGroups($inputs: [CreateViewGroupInput!]!) {
+        createManyViewGroups(inputs: $inputs) { ...ViewGroupFragment }
+      }`,
+      `mutation UpdateManyViewGroups($inputs: [UpdateViewGroupInput!]!) {
+        updateManyViewGroups(inputs: $inputs) { ...ViewGroupFragment }
+      }`,
+      `mutation DestroyView($id: String!) { destroyView(id: $id) }`,
+    ]) {
+      expectValid(`${document}\n${VIEW_CHILD_FRAGMENTS}`);
+    }
+  });
+
+  it('validates createView and updateView', () => {
+    expectValid(`
+      mutation CreateView($input: CreateViewInput!) {
+        createView(input: $input) { id name type key icon position }
+      }
+    `);
+
+    expectValid(`
+      mutation UpdateView($id: String!, $input: UpdateViewInput!) {
+        updateView(id: $id, input: $input) { id name type key icon position }
+      }
+    `);
+  });
+
   it('validates the analytics mutation', () => {
     expectValid(`
       mutation TrackAnalytics(

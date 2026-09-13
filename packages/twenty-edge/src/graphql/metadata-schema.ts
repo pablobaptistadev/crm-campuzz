@@ -33,6 +33,9 @@ import {
 } from 'src/metadata/types';
 import { hashPassword, verifyPassword } from 'src/auth/password';
 import { issueLoginToken, verifyLoginToken } from 'src/auth/login-token';
+import { issueUploadToken } from 'src/auth/upload-token';
+import { insertFile, markFileUploaded } from 'src/db/core/file-repository';
+import { syncStandardMetadata } from 'src/services/sync-standard-metadata';
 
 export type MetadataContext = {
   client: Client;
@@ -583,6 +586,14 @@ type Mutation {
   signUp(email: String!, password: String!, captchaToken: String, locale: String, verifyEmailRedirectPath: String, firstName: String, lastName: String, workspaceName: String): SignInUpOutput!
   signOut(refreshToken: String): Boolean!
   trackAnalytics(type: AnalyticsType!, event: String, name: String, properties: JSON): Analytics!
+  createFileUpload(filename: String!, size: Float!, fileFolder: FileFolder!, fieldMetadataId: String): FileUploadTarget!
+  completeFileUpload(fileId: String!): FileWithSignedUrl!
+  syncStandardMetadata: SyncStandardMetadataResult!
+}
+
+type SyncStandardMetadataResult {
+  createdObjects: [String!]!
+  createdFields: [String!]!
 }
 `;
 
@@ -737,6 +748,25 @@ const ICON_BY_FIELD_TYPE: Record<string, string> = {
   TS_VECTOR: 'IconSearch',
   RELATION: 'IconRelationOneToMany',
   MORPH_RELATION: 'IconRelationOneToMany',
+};
+
+// The GraphQL enum name and the folder on disk differ: twenty-shared maps
+// CorePicture to "core-picture", and the front builds URLs from the folder.
+const FILE_FOLDER_PATHS: Record<string, string> = {
+  CorePicture: 'core-picture',
+  AgentChat: 'agent-chat',
+  BuiltLogicFunction: 'built-logic-function',
+  BuiltFrontComponent: 'built-front-component',
+  PublicAsset: 'public-asset',
+  Source: 'source',
+  FilesField: 'files-field',
+  Dependencies: 'dependencies',
+  Workflow: 'workflow',
+  EmailAttachment: 'email-attachment',
+  EmailImage: 'email-image',
+  AppTarball: 'app-tarball',
+  GeneratedSdkClient: 'generated-sdk-client',
+  Dpa: 'dpa',
 };
 
 const VISIBLE_VIEW_FIELD_COUNT = 8;
@@ -1858,6 +1888,98 @@ export const METADATA_RESOLVERS = {
       );
 
       return rows[0] ?? null;
+    },
+
+    // The browser PUTs straight to the URL this hands back, then calls
+    // completeFileUpload. Twenty presigns an S3 URL when storage is configured
+    // for it and otherwise points at its own endpoint; we do the latter, so the
+    // URL carries a short-lived token instead of a cookie.
+    createFileUpload: async (
+      _parent: unknown,
+      args: {
+        filename: string;
+        size: number;
+        fileFolder: string;
+        fieldMetadataId?: string | null;
+      },
+      context: MetadataContext,
+    ) => {
+      const membership = requireMembership(context);
+      const user = requireAuthenticatedUser(context);
+      const folder = FILE_FOLDER_PATHS[args.fileFolder];
+
+      if (folder === undefined) {
+        throw new Error(`UNKNOWN_FILE_FOLDER: ${args.fileFolder}`);
+      }
+
+      const file = await insertFile({
+        client: context.client,
+        workspaceId: membership.workspace.id,
+        name: args.filename,
+        folder,
+        size: args.size,
+        type: null,
+        fieldMetadataId: args.fieldMetadataId ?? null,
+        createdByUserId: user.id,
+      });
+
+      const { token, expiresAt } = await issueUploadToken({
+        appSecret: context.appSecret,
+        workspaceId: membership.workspace.id,
+        fileId: file.id,
+      });
+
+      return {
+        fileId: file.id,
+        uploadUrl: `${context.serverUrl}/files/${folder}/${file.id}?token=${token}`,
+        contentType: 'application/octet-stream',
+        expiresAt: expiresAt.toISOString(),
+      };
+    },
+
+    completeFileUpload: async (
+      _parent: unknown,
+      args: { fileId: string },
+      context: MetadataContext,
+    ) => {
+      const membership = requireMembership(context);
+
+      const file = await markFileUploaded({
+        client: context.client,
+        workspaceId: membership.workspace.id,
+        fileId: args.fileId,
+        size: null,
+      });
+
+      if (file === null) {
+        throw new Error('FILE_NOT_FOUND');
+      }
+
+      const path = `${file.folder}/${file.id}`;
+
+      return {
+        id: file.id,
+        path,
+        size: Number(file.size),
+        createdAt: file.createdAt,
+        url: `${context.serverUrl}/files/${path}`,
+      };
+    },
+
+    // Brings a workspace created before a standard object or field existed up
+    // to the current seed. Idempotent: the ids are derived, so a second run
+    // finds nothing missing.
+    syncStandardMetadata: async (
+      _parent: unknown,
+      _args: unknown,
+      context: MetadataContext,
+    ) => {
+      const membership = requireMembership(context);
+
+      return syncStandardMetadata({
+        client: context.client,
+        workspaceId: membership.workspace.id,
+      });
     },
 
     // Accepted and dropped: we keep no analytics pipeline, and the front only

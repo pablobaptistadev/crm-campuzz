@@ -181,7 +181,28 @@ export const createFieldMetadata = async ({
     workspaceId,
   });
 
-  // Enum types must exist before the column that references them.
+  await applyFieldColumns({ client, schemaName, tableName, field });
+
+  await persistFieldMetadata({ client, field });
+  await bumpMetadataVersion({ client, workspaceId });
+
+  return field;
+};
+
+// Shared by field creation and by the standard-metadata sync: both need the
+// enum type to exist before the column that references it, and a composite
+// field adds one column per property rather than a single ALTER.
+export const applyFieldColumns = async ({
+  client,
+  schemaName,
+  tableName,
+  field,
+}: {
+  client: Client;
+  schemaName: string;
+  tableName: string;
+  field: FlatFieldMetadata;
+}): Promise<void> => {
   for (const enumDefinition of collectEnumDefinitions({
     fields: [field],
     tableName,
@@ -197,8 +218,6 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
     );
   }
 
-  // A composite field adds one column per property, so this is a loop, not a
-  // single ALTER.
   for (const definition of generateColumnDefinitions({
     field,
     tableName,
@@ -209,11 +228,6 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
        ADD COLUMN IF NOT EXISTS ${buildColumnSql(definition)}`,
     );
   }
-
-  await persistFieldMetadata({ client, field });
-  await bumpMetadataVersion({ client, workspaceId });
-
-  return field;
 };
 
 // Only a custom object can be dropped. A standard one is part of the product's

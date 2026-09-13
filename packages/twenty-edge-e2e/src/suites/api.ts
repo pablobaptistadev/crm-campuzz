@@ -1056,6 +1056,178 @@ export const runApiSuite = async (
     return { error: body.errors?.[0]?.message };
   });
 
+  await recorder.step('syncStandardMetadata is idempotent', async () => {
+    const first = unwrap(
+      (
+        await client.graphql<{
+          syncStandardMetadata: {
+            createdObjects: string[];
+            createdFields: string[];
+          };
+        }>({
+          endpoint: '/metadata',
+          query: `mutation { syncStandardMetadata { createdObjects createdFields } }`,
+        })
+      ).body,
+      'syncStandardMetadata',
+    );
+
+    const second = unwrap(
+      (
+        await client.graphql<{
+          syncStandardMetadata: {
+            createdObjects: string[];
+            createdFields: string[];
+          };
+        }>({
+          endpoint: '/metadata',
+          query: `mutation { syncStandardMetadata { createdObjects createdFields } }`,
+        })
+      ).body,
+      'syncStandardMetadata again',
+    );
+
+    // Whatever the first run had to add, the second must find nothing: the
+    // ids are derived, so a re-run is a comparison, not a rewrite.
+    assertEqual(
+      second.syncStandardMetadata.createdObjects.length,
+      0,
+      'no object created twice',
+    );
+    assertEqual(
+      second.syncStandardMetadata.createdFields.length,
+      0,
+      'no field created twice',
+    );
+
+    return first.syncStandardMetadata;
+  });
+
+  await recorder.step('a file round-trips through R2', async () => {
+    const created = unwrap(
+      (
+        await client.graphql<{
+          createFileUpload: { fileId: string; uploadUrl: string };
+        }>({
+          endpoint: '/metadata',
+          query: `mutation CreateFileUpload($filename: String!, $size: Float!, $fileFolder: FileFolder!) {
+            createFileUpload(filename: $filename, size: $size, fileFolder: $fileFolder) {
+              fileId uploadUrl contentType expiresAt
+            }
+          }`,
+          variables: {
+            filename: `e2e-${runSuffix}.png`,
+            size: 23,
+            fileFolder: 'CorePicture',
+          },
+        })
+      ).body,
+      'createFileUpload',
+    );
+
+    const payload = new TextEncoder().encode(`campuzz-e2e-${runSuffix}`);
+
+    const uploadResponse = await fetch(created.createFileUpload.uploadUrl, {
+      method: 'PUT',
+      headers: {
+        Origin: bindings.TARGET_URL,
+        'Content-Type': 'image/png',
+      },
+      body: payload,
+    });
+
+    assertEqual(uploadResponse.status, 201, 'upload status');
+
+    const completed = unwrap(
+      (
+        await client.graphql<{
+          completeFileUpload: { id: string; path: string; size: number; url: string };
+        }>({
+          endpoint: '/metadata',
+          query: `mutation CompleteFileUpload($fileId: String!) {
+            completeFileUpload(fileId: $fileId) { id path size createdAt url }
+          }`,
+          variables: { fileId: created.createFileUpload.fileId },
+        })
+      ).body,
+      'completeFileUpload',
+    );
+
+    // The size the client declares is a claim; what is stored is what arrived.
+    assertEqual(
+      completed.completeFileUpload.size,
+      payload.byteLength,
+      'stored size is the bytes received',
+    );
+
+    const readBack = await client.fetch(
+      `/files/${completed.completeFileUpload.path}`,
+    );
+
+    assertEqual(readBack.status, 200, 'file is readable');
+    assertEqual(
+      await readBack.text(),
+      `campuzz-e2e-${runSuffix}`,
+      'bytes come back unchanged',
+    );
+
+    return completed.completeFileUpload;
+  });
+
+  await recorder.step('an upload token only writes its own file', async () => {
+    const first = unwrap(
+      (
+        await client.graphql<{
+          createFileUpload: { fileId: string; uploadUrl: string };
+        }>({
+          endpoint: '/metadata',
+          query: `mutation CreateFileUpload($filename: String!, $size: Float!, $fileFolder: FileFolder!) {
+            createFileUpload(filename: $filename, size: $size, fileFolder: $fileFolder) { fileId uploadUrl }
+          }`,
+          variables: {
+            filename: `token-a-${runSuffix}.bin`,
+            size: 4,
+            fileFolder: 'FilesField',
+          },
+        })
+      ).body,
+      'createFileUpload (a)',
+    );
+
+    const second = unwrap(
+      (
+        await client.graphql<{ createFileUpload: { fileId: string } }>({
+          endpoint: '/metadata',
+          query: `mutation CreateFileUpload($filename: String!, $size: Float!, $fileFolder: FileFolder!) {
+            createFileUpload(filename: $filename, size: $size, fileFolder: $fileFolder) { fileId }
+          }`,
+          variables: {
+            filename: `token-b-${runSuffix}.bin`,
+            size: 4,
+            fileFolder: 'FilesField',
+          },
+        })
+      ).body,
+      'createFileUpload (b)',
+    );
+
+    // Point the first file's token at the second file's path.
+    const hijacked = first.createFileUpload.uploadUrl.replace(
+      first.createFileUpload.fileId,
+      second.createFileUpload.fileId,
+    );
+
+    const response = await fetch(hijacked, {
+      method: 'PUT',
+      headers: { Origin: bindings.TARGET_URL },
+      body: 'nope',
+    });
+
+    assertEqual(response.status, 403, 'a token for another file is refused');
+
+    return { status: response.status };
+  });
+
   await recorder.step('REST mirrors the GraphQL data', async () => {
     const listResponse = await client.fetch('/rest/companies?limit=5');
     const list = (await listResponse.json()) as {

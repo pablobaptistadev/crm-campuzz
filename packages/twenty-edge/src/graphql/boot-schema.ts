@@ -25,6 +25,40 @@ scalar JSON
 
 enum AnalyticsType { PAGEVIEW TRACK }
 
+# Values come from twenty-shared's FileFolder: they are the folder names under
+# which the bytes are stored, so they have to match exactly.
+enum FileFolder {
+  CorePicture
+  AgentChat
+  BuiltLogicFunction
+  BuiltFrontComponent
+  PublicAsset
+  Source
+  FilesField
+  Dependencies
+  Workflow
+  EmailAttachment
+  EmailImage
+  AppTarball
+  GeneratedSdkClient
+  Dpa
+}
+
+type FileUploadTarget {
+  fileId: UUID!
+  uploadUrl: String!
+  contentType: String!
+  expiresAt: DateTime!
+}
+
+type FileWithSignedUrl {
+  id: UUID!
+  path: String!
+  size: Float!
+  createdAt: DateTime!
+  url: String!
+}
+
 type Analytics { success: Boolean! }
 
 type ViewField {

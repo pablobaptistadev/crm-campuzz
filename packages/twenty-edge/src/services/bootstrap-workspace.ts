@@ -71,10 +71,12 @@ export const seedDefaultViews = async ({
   client,
   workspaceId,
   objects,
+  positionOffset = 0,
 }: {
   client: Client;
   workspaceId: string;
   objects: FlatObjectMetadata[];
+  positionOffset?: number;
 }): Promise<void> => {
   const visibleObjects = objects.filter((object) => !object.isSystem);
 
@@ -87,7 +89,7 @@ export const seedDefaultViews = async ({
         object.id,
         `All ${object.labelPlural}`,
         object.icon,
-        index,
+        positionOffset + index,
       ],
     );
   }

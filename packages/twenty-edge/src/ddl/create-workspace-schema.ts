@@ -7,7 +7,17 @@ import {
 } from 'src/ddl/generate-column-definitions';
 import { escapeIdentifier, escapeLiteral } from 'src/ddl/escape';
 import { computeColumnName, computeTableName } from 'src/metadata/naming';
+import { type RelationOnDeleteAction } from 'src/metadata/field-metadata-type';
 import { type FlatObjectMetadata } from 'src/metadata/types';
+
+// The metadata values are underscored identifiers; Postgres wants the words
+// separated by a space, so they cannot be interpolated raw.
+const ON_DELETE_SQL: Record<RelationOnDeleteAction, string> = {
+  CASCADE: 'CASCADE',
+  RESTRICT: 'RESTRICT',
+  SET_NULL: 'SET NULL',
+  NO_ACTION: 'NO ACTION',
+};
 
 export const createWorkspaceSchema = async ({
   client,
@@ -112,7 +122,7 @@ export const buildForeignKeyStatements = ({
 
       const columnName = computeColumnName(field.name, { isForeignKey: true });
       const constraintName = `FK_${tableName}_${columnName}`;
-      const onDelete = field.settings.onDelete ?? 'CASCADE';
+      const onDelete = ON_DELETE_SQL[field.settings.onDelete ?? 'CASCADE'];
 
       statements.push(
         `DO $$ BEGIN

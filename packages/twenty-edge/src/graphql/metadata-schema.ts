@@ -19,6 +19,7 @@ import { issueLoginToken, verifyLoginToken } from 'src/auth/login-token';
 export type MetadataContext = {
   client: Client;
   appSecret: string;
+  throttle: (key: string, limit: number, windowMs: number) => Promise<boolean>;
   sessionUserId: string | null;
   sessionWorkspaceId: string | null;
   issueSession: (input: {
@@ -523,11 +524,26 @@ export const METADATA_RESOLVERS = {
   },
 };
 
+const LOGIN_ATTEMPT_LIMIT = 10;
+const LOGIN_ATTEMPT_WINDOW_MS = 10 * 60 * 1000;
+
 const authenticate = async (
   context: MetadataContext,
   email: string,
   password: string,
 ) => {
+  // Throttled per email, mirroring Twenty's ThrottlerService token bucket. PBKDF2
+  // is deliberately expensive, so an unthrottled login is also a CPU amplifier.
+  const withinLimit = await context.throttle(
+    `login:${email}`,
+    LOGIN_ATTEMPT_LIMIT,
+    LOGIN_ATTEMPT_WINDOW_MS,
+  );
+
+  if (!withinLimit) {
+    throw new Error('TOO_MANY_ATTEMPTS');
+  }
+
   const user = await findUserByEmail({ client: context.client, email });
 
   // Same error either way: distinguishing "no such user" from "wrong password"

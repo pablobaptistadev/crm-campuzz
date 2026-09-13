@@ -1,7 +1,12 @@
 // PBKDF2 over WebCrypto. bcrypt is a native addon and cannot load in an isolate;
 // starting from an empty database means we carry no $2a$/$2b$ hashes to verify,
 // so there is no reason to ship a pure-JS bcrypt.
-const PBKDF2_ITERATIONS = 600_000;
+// Workers hard-caps PBKDF2 at 100k iterations: asking for more fails with
+// "iteration counts above 100000 are not supported". That is below the 600k
+// OWASP recommends for PBKDF2-SHA256, so the count is stored inside the hash —
+// verification reads it back, and raising it later needs no migration.
+const PBKDF2_ITERATIONS = 100_000;
+const MAX_SUPPORTED_ITERATIONS = 100_000;
 const SALT_BYTE_LENGTH = 16;
 const DERIVED_KEY_BIT_LENGTH = 256;
 const HASH_PREFIX = 'pbkdf2-sha256';
@@ -81,7 +86,11 @@ export const verifyPassword = async (
 
   const iterations = Number(iterationsPart);
 
-  if (!Number.isInteger(iterations) || iterations <= 0) {
+  if (
+    !Number.isInteger(iterations) ||
+    iterations <= 0 ||
+    iterations > MAX_SUPPORTED_ITERATIONS
+  ) {
     return false;
   }
 

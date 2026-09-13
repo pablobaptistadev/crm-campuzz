@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 
+import { CACHE_NAMESPACES, createCacheStorage } from 'src/cache/cache-storage';
 import { withDatabaseClient } from 'src/db/client';
 import { type AppEnv } from 'src/env';
 
@@ -17,7 +18,29 @@ export const healthRoute = new Hono<AppEnv>().get('/', async (context) => {
       },
     );
 
-    return context.json({ status: 'ok', databaseLatencyMs });
+    const cache = createCacheStorage({
+      bindings: context.env,
+      namespace: CACHE_NAMESPACES.engineHealth,
+    });
+
+    let cacheLatencyMs: number | null = null;
+
+    if (cache.isAvailable) {
+      const cacheStartedAt = Date.now();
+
+      await cache.set('probe', Date.now(), 30_000);
+      const probe = await cache.get<number>('probe');
+
+      cacheLatencyMs = probe === null ? null : Date.now() - cacheStartedAt;
+    }
+
+    return context.json({
+      status: 'ok',
+      databaseLatencyMs,
+      cache: cache.isAvailable
+        ? { status: cacheLatencyMs === null ? 'error' : 'ok', latencyMs: cacheLatencyMs }
+        : { status: 'not_configured' },
+    });
   } catch (error) {
     return context.json(
       {

@@ -7,6 +7,7 @@ import {
   insertSession,
   revokeSession,
 } from 'src/db/core/auth-repository';
+import { CACHE_NAMESPACES, createCacheStorage } from 'src/cache/cache-storage';
 import { withDatabaseClient } from 'src/db/client';
 import {
   METADATA_RESOLVERS,
@@ -53,9 +54,29 @@ export const metadataRoute = new Hono<AppEnv>().all('/', async (context) => {
             tokenHash: await hashSessionToken(sessionToken),
           });
 
+    const throttleCache = createCacheStorage({
+      bindings: context.env,
+      namespace: CACHE_NAMESPACES.engineUsageLimit,
+    });
+
     const graphqlContext: MetadataContext = {
       client,
       appSecret,
+      throttle: async (key, limit, windowMs) => {
+        // Without Redis there is no shared counter, so the limiter opens rather
+        // than blocking every request.
+        if (!throttleCache.isAvailable) {
+          return true;
+        }
+
+        const attempts = await throttleCache.incrementBy(key, 1);
+
+        if (attempts === 1) {
+          await throttleCache.expire(key, windowMs);
+        }
+
+        return attempts <= limit;
+      },
       sessionUserId: session?.userId ?? null,
       sessionWorkspaceId: session?.workspaceId ?? null,
       issueSession: async ({ userId, workspaceId, userWorkspaceId }) => {
@@ -91,6 +112,7 @@ export const metadataRoute = new Hono<AppEnv>().all('/', async (context) => {
       schema: getMetadataSchema(),
       graphqlEndpoint: '/metadata',
       landingPage: false,
+      maskedErrors: context.env.DEBUG_ERRORS !== 'true',
       context: () => graphqlContext,
     });
 

@@ -10,6 +10,10 @@ import { buildWorkspaceSchemaSdl } from 'src/graphql/build-sdl';
 import { buildRecordResolvers } from 'src/graphql/record-resolvers';
 import { SCALAR_RESOLVERS } from 'src/graphql/scalars';
 import { hashSessionToken, readSessionToken } from 'src/auth/session';
+import {
+  readCachedMetadata,
+  writeCachedMetadata,
+} from 'src/cache/metadata-cache';
 import { type AppEnv } from 'src/env';
 import { type WorkspaceMetadata } from 'src/metadata/types';
 
@@ -65,16 +69,40 @@ export const graphqlRoute = new Hono<AppEnv>().all('/', async (context) =>
       return context.json({ errors: [{ message: 'WORKSPACE_NOT_READY' }] }, 409);
     }
 
-    const metadata = await loadWorkspaceMetadata({
-      client,
-      workspaceId: workspace.id,
-      metadataVersion: workspace.metadataVersion,
-    });
+    // Off by default, and deliberately so: measured from this Worker, Upstash
+    // answers in ~300ms while Hyperdrive answers in ~5ms, which makes the cache
+    // a pessimization. Turn it on only once the Redis lives in the same region
+    // as the users — the two queries it saves are cheap today.
+    const isMetadataCacheEnabled =
+      context.env.METADATA_CACHE_ENABLED === 'true';
+
+    const cachedMetadata = isMetadataCacheEnabled
+      ? await readCachedMetadata({
+          bindings: context.env,
+          workspaceId: workspace.id,
+          metadataVersion: workspace.metadataVersion,
+        })
+      : null;
+
+    const metadata =
+      cachedMetadata ??
+      (await loadWorkspaceMetadata({
+        client,
+        workspaceId: workspace.id,
+        metadataVersion: workspace.metadataVersion,
+      }));
+
+    if (isMetadataCacheEnabled && cachedMetadata === null) {
+      context.executionCtx.waitUntil(
+        writeCachedMetadata({ bindings: context.env, metadata }),
+      );
+    }
 
     const yoga = createYoga({
       schema: getWorkspaceSchema(metadata),
       graphqlEndpoint: '/graphql',
       landingPage: false,
+      maskedErrors: context.env.DEBUG_ERRORS !== 'true',
       context: () => ({ client, metadata }),
     });
 

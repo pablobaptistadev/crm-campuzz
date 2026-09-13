@@ -200,13 +200,117 @@ export const buildRecordResolvers = (
   const query: Record<string, unknown> = {};
   const mutation: Record<string, unknown> = {};
   const connectionResolvers: Record<string, Record<string, unknown>> = {};
+  const typeResolvers: Record<string, Record<string, unknown>> = {};
+
+  const objectById = new Map(
+    metadata.objects.map((entry) => [entry.id, entry]),
+  );
+  const fieldById = new Map(
+    metadata.objects.flatMap((entry) =>
+      entry.fields.map((field) => [field.id, field] as const),
+    ),
+  );
+  const shapeByObjectId = new Map(
+    metadata.objects.map((entry) => [
+      entry.id,
+      buildWorkspaceTableShape({ object: entry, workspaceId: metadata.workspaceId }),
+    ]),
+  );
 
   for (const object of metadata.objects.filter((entry) => entry.isActive)) {
-    const shape = buildWorkspaceTableShape({
-      object,
-      workspaceId: metadata.workspaceId,
-    });
+    const shape = shapeByObjectId.get(object.id) as WorkspaceTableShape;
     const singular = pascalCase(object.nameSingular);
+
+    // Relations are resolved per parent row rather than joined. Twenty does the
+    // same for to-many; the to-one case is a candidate for batching later.
+    const relationFields: Record<string, unknown> = {};
+
+    for (const field of object.fields) {
+      if (
+        (field.type !== 'RELATION' && field.type !== 'MORPH_RELATION') ||
+        field.relationTargetObjectMetadataId === null
+      ) {
+        continue;
+      }
+
+      const targetObject = objectById.get(field.relationTargetObjectMetadataId);
+      const targetShape = shapeByObjectId.get(
+        field.relationTargetObjectMetadataId,
+      );
+
+      if (targetObject === undefined || targetShape === undefined) {
+        continue;
+      }
+
+      if (field.settings?.relationType === 'MANY_TO_ONE') {
+        const joinColumnName = `${field.name}Id`;
+
+        relationFields[field.name] = async (
+          parent: Record<string, unknown>,
+          _args: unknown,
+          context: RecordResolverContext,
+        ) => {
+          const targetId = parent[joinColumnName];
+
+          if (typeof targetId !== 'string') {
+            return null;
+          }
+
+          const result = await findMany({
+            context,
+            shape: targetShape,
+            args: { filter: { id: { eq: targetId } }, first: 1 },
+          });
+
+          return result.edges[0]?.node ?? null;
+        };
+
+        continue;
+      }
+
+      // The inverse side owns the foreign key, so the column name comes from the
+      // field this one points back to.
+      const inverseField =
+        field.relationTargetFieldMetadataId === null
+          ? undefined
+          : fieldById.get(field.relationTargetFieldMetadataId);
+
+      if (inverseField === undefined) {
+        continue;
+      }
+
+      const inverseJoinColumnName = `${inverseField.name}Id`;
+
+      relationFields[field.name] = (
+        parent: Record<string, unknown>,
+        args: FindManyArguments,
+        context: RecordResolverContext,
+      ) => {
+        const parentId = parent.id;
+
+        if (typeof parentId !== 'string') {
+          return null;
+        }
+
+        const relationFilter = { [inverseJoinColumnName]: { eq: parentId } };
+
+        return findMany({
+          context,
+          shape: targetShape,
+          args: {
+            ...args,
+            filter:
+              args.filter === undefined
+                ? relationFilter
+                : { and: [args.filter, relationFilter] },
+          },
+        });
+      };
+    }
+
+    if (Object.keys(relationFields).length > 0) {
+      typeResolvers[singular] = relationFields;
+    }
 
     query[object.namePlural] = (
       _parent: unknown,
@@ -311,5 +415,10 @@ export const buildRecordResolvers = (
     ) => runMutation(context, buildDestroyQuery({ shape, id: args.id }));
   }
 
-  return { Query: query, Mutation: mutation, ...connectionResolvers };
+  return {
+    Query: query,
+    Mutation: mutation,
+    ...connectionResolvers,
+    ...typeResolvers,
+  };
 };

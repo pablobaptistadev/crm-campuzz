@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "campuzz-edge-stg",
+  "name": "campuzz-edge-prod",
   "main": "src/index.ts",
   "account_id": "51eb880ef71493c1e995c9fb5906e367",
   // nodejs_compat gives us node:crypto and the pg driver; Hyperdrive requires it.
@@ -19,47 +19,28 @@
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
-      "id": "<campuzz-pg-stg-id>",
+      "id": "77c37e8831d54d0bbe9a3f7df4239204",
       "localConnectionString": "postgres://postgres:postgres@localhost:5432/default"
     }
   ],
 
-  "r2_buckets": [{ "binding": "FILES", "bucket_name": "campuzz-files-stg" }],
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "campuzz-files-prod" }],
 
   // Metadata cache, versioned by workspace.metadataVersion.
   "kv_namespaces": [
-    { "binding": "METADATA_CACHE", "id": "<campuzz-metadata-cache-stg-id>" }
+    { "binding": "METADATA_CACHE", "id": "15eadf8700d649ce82ed0992471d5502" }
   ],
 
   "vars": {
-    "SERVER_URL": "http://localhost:8787",
-    "FRONT_DOMAIN": "localhost",
+    "SERVER_URL": "https://campuzz-edge-prod.andre-51e.workers.dev",
+    "FRONT_DOMAIN": "campuzz-edge-prod.andre-51e.workers.dev",
     "DEFAULT_SUBDOMAIN": "app",
     "IS_MULTIWORKSPACE_ENABLED": "false",
     "IS_EMAIL_VERIFICATION_REQUIRED": "false",
-    "SIGN_IN_PREFILLED": "true"
-  },
-
-  "env": {
-    "production": {
-      "name": "campuzz-edge-prod",
-      "hyperdrive": [
-        { "binding": "HYPERDRIVE", "id": "<campuzz-pg-prod-id>" }
-      ],
-      "r2_buckets": [
-        { "binding": "FILES", "bucket_name": "campuzz-files-prod" }
-      ],
-      "kv_namespaces": [
-        { "binding": "METADATA_CACHE", "id": "<campuzz-metadata-cache-prod-id>" }
-      ],
-      "vars": {
-        "SERVER_URL": "https://crm.example.com",
-        "FRONT_DOMAIN": "crm.example.com",
-        "DEFAULT_SUBDOMAIN": "app",
-        "IS_MULTIWORKSPACE_ENABLED": "false",
-        "IS_EMAIL_VERIFICATION_REQUIRED": "true",
-        "SIGN_IN_PREFILLED": "false"
-      }
-    }
+    "SIGN_IN_PREFILLED": "false",
+    "DEBUG_ERRORS": "true",
+    // Upstash currently answers in ~300ms from this Worker while Hyperdrive
+    // answers in ~5ms. Enable once the Redis is in the users' region.
+    "METADATA_CACHE_ENABLED": "false"
   }
 }

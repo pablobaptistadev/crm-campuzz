@@ -12,6 +12,12 @@ export type Bindings = {
   SIGN_IN_PREFILLED: string;
 
   APP_SECRET?: string;
+  // Yoga masks resolver errors by default, which hides the cause during a
+  // deploy-and-test loop. Never leave this on in front of real users.
+  DEBUG_ERRORS?: string;
+  METADATA_CACHE_ENABLED?: string;
+  UPSTASH_REDIS_REST_URL?: string;
+  UPSTASH_REDIS_REST_TOKEN?: string;
   SENTRY_FRONT_DSN?: string;
   CAPTCHA_SITE_KEY?: string;
   CAPTCHA_PROVIDER?: string;

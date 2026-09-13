@@ -277,7 +277,7 @@ export const runBrowserSuite = async (
         'TEST_PASSWORD secret is not set — run: wrangler secret put TEST_PASSWORD',
       );
     } else {
-      await recorder.step('seed a company through the API', async () => {
+      const seeded = await recorder.step('seed a company through the API', async () => {
         const login = unwrap(
           (
             await apiClient.graphql<{
@@ -344,6 +344,31 @@ export const runBrowserSuite = async (
 
         return { id: seededCompanyId, name: companyName };
       });
+
+      // Nothing after this can work without the session the seed established, and
+      // the throttle is the one cause worth naming: every later step would fail
+      // for want of a session and read as a broken app.
+      if (seeded === null) {
+        const reason = recorder.wasThrottled
+          ? 'the login is throttled — 10 attempts per 10 minutes per address, and a full run spends three or four. Wait ten minutes.'
+          : 'seeding failed, so there is no session and no record to look at';
+
+        for (const name of [
+          'log in through the UI',
+          'the Companies table renders the seeded row',
+          'the record page renders the record',
+          'the timeline shows what happened',
+          'people page renders',
+          'opportunities page renders',
+          'notes page renders',
+          'tasks page renders',
+          'settings-objects page renders',
+        ]) {
+          recorder.skip(name, reason);
+        }
+
+        return { steps: recorder.steps, artifacts };
+      }
 
       await recorder.step('log in through the UI', async () => {
         // A failed login is the one step worth a post-mortem: the screenshot and

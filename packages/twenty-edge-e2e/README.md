@@ -47,6 +47,17 @@ npx wrangler secret put UPSTASH_REDIS_REST_TOKEN
 Sem `TEST_PASSWORD` a suíte não falha: os passos que exigem sessão aparecem como
 `skipped` com o motivo.
 
+## Se a suíte inteira falhar de uma vez, é o throttle
+
+O login aceita 10 tentativas por 10 minutos, por endereço, e uma execução
+completa gasta três ou quatro. Duas execuções seguidas se estrangulam sozinhas —
+e sem sessão todo passo seguinte falha, o que **parece** um app quebrado: página
+em branco, timeout esperando texto, tabela vazia.
+
+A suíte diz isso em vez de cascatear: quando a semeadura toma
+`TOO_MANY_ATTEMPTS`, os passos que dependem dela aparecem como `skipped` com o
+motivo, e não como dez falhas. Espere dez minutos e rode de novo.
+
 ## Diagnóstico quando um passo do navegador quebra
 
 O passo de login guarda um post-mortem: URL final, texto da página, os últimos

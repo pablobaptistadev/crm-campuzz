@@ -186,6 +186,12 @@ Depois de medir, apague o usuário de teste: ele fica no workspace de verdade.
 
 ## Suíte de ponta a ponta — `packages/twenty-edge-e2e`
 
+O login aceita 10 tentativas por 10 minutos por endereço e uma execução gasta
+três ou quatro: duas seguidas se estrangulam sozinhas. A suíte marca os passos
+dependentes como `skipped` com o motivo quando isso acontece — se vier uma
+cascata de falha mesmo assim, é outra coisa.
+
+
 Um Worker separado que testa este aqui: Upstash por REST, a API inteira por HTTP
 e o app real dentro do Cloudflare Browser Rendering, com screenshot de cada
 passo gravado no R2.

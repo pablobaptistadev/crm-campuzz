@@ -77,6 +77,18 @@ export class Recorder {
     }
   }
 
+  // The login is throttled to 10 attempts per 10 minutes per address, and a
+  // full run spends three or four of them. Two runs back to back therefore
+  // throttle themselves, and every later step fails for want of a session —
+  // which reads as a broken app rather than as "wait ten minutes".
+  get wasThrottled(): boolean {
+    return this.steps.some(
+      (step) =>
+        step.status === 'failed' &&
+        (step.error ?? '').includes('TOO_MANY_ATTEMPTS'),
+    );
+  }
+
   skip(name: string, reason: string): void {
     this.steps.push({
       suite: this.suite,

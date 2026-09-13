@@ -150,6 +150,32 @@ const evaluateInPage = async <TValue>(
   source: string,
 ): Promise<TValue> => (await page.evaluate(source)) as TValue;
 
+// waitForFunction keeps its predicate inside the page, so a navigation that
+// destroys the execution context surfaces as a timeout even when the condition
+// is already true. Polling from the outside survives the redirect the login
+// flow performs.
+const waitInPage = async (
+  page: Page,
+  predicate: string,
+  timeoutMs: number,
+): Promise<void> => {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    try {
+      if (await evaluateInPage<boolean>(page, predicate)) {
+        return;
+      }
+    } catch {
+      // The context went away mid-navigation; the next poll gets the new one.
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  throw new Error(`Timed out after ${timeoutMs}ms waiting for: ${predicate}`);
+};
+
 const clickButtonContaining = async (
   page: Page,
   pattern: string,
@@ -365,14 +391,16 @@ export const runBrowserSuite = async (
 
           // The SPA swaps its route rather than navigating, so waiting on the
           // password field disappearing is what actually marks "signed in".
-          await page.waitForFunction(
+          await waitInPage(
+            page,
             `document.querySelector('input[type="password"]') === null`,
-            { timeout: LOGIN_TIMEOUT_MS },
+            LOGIN_TIMEOUT_MS,
           );
 
-          await page.waitForFunction(
+          await waitInPage(
+            page,
             `(document.body.innerText || '').length > 200`,
-            { timeout: LOGIN_TIMEOUT_MS },
+            LOGIN_TIMEOUT_MS,
           );
 
           const artifact = await capture({
@@ -407,9 +435,10 @@ export const runBrowserSuite = async (
             timeout: STEP_TIMEOUT_MS,
           });
 
-          await page.waitForFunction(
+          await waitInPage(
+            page,
             `(document.body.innerText || '').includes(${JSON.stringify(companyName)})`,
-            { timeout: LOGIN_TIMEOUT_MS },
+            LOGIN_TIMEOUT_MS,
           );
 
           const artifact = await capture({
@@ -449,9 +478,10 @@ export const runBrowserSuite = async (
 
             assertEqual(response?.status(), 200, `${label} document status`);
 
-            await sectionPage.waitForFunction(
+            await waitInPage(
+              sectionPage,
               `(document.body.innerText || '').length > 100`,
-              { timeout: STEP_TIMEOUT_MS },
+              STEP_TIMEOUT_MS,
             );
 
             const bodyText = await evaluateInPage<string>(

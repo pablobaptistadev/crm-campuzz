@@ -23,6 +23,8 @@ import {
 import {
   createFieldMetadata,
   createObjectMetadata,
+  deleteFieldMetadata,
+  deleteObjectMetadata,
 } from 'src/services/metadata-mutations';
 import { type FieldMetadataType } from 'src/metadata/field-metadata-type';
 import {
@@ -570,6 +572,8 @@ type Mutation {
   setWorkspaceCustomDomain(customDomain: String): Workspace!
   createOneObject(input: ObjectCreateInput!): Object!
   createOneField(input: FieldCreateInput!): Field!
+  deleteOneObject(id: UUID!): Object
+  deleteOneField(id: UUID!): Field
   createView(data: ViewCreateInput!): View!
   updateView(id: UUID!, data: ViewUpdateInput!): View
   deleteView(id: UUID!): View
@@ -1514,6 +1518,50 @@ export const METADATA_RESOLVERS = {
           ...args.input,
           type: args.input.type as FieldMetadataType,
         },
+      });
+    },
+
+    deleteOneObject: async (
+      _parent: unknown,
+      args: { id: string },
+      context: MetadataContext,
+    ) => {
+      const workspaceId = requireWorkspaceId(context);
+      const metadata = await loadMetadataForSession(context);
+      const object = metadata.objects.find((entry) => entry.id === args.id);
+
+      if (object === undefined) {
+        throw new Error('OBJECT_NOT_FOUND');
+      }
+
+      return deleteObjectMetadata({
+        client: context.client,
+        workspaceId,
+        object,
+      });
+    },
+
+    deleteOneField: async (
+      _parent: unknown,
+      args: { id: string },
+      context: MetadataContext,
+    ) => {
+      const workspaceId = requireWorkspaceId(context);
+      const metadata = await loadMetadataForSession(context);
+      const object = metadata.objects.find((entry) =>
+        entry.fields.some((field) => field.id === args.id),
+      );
+      const field = object?.fields.find((entry) => entry.id === args.id);
+
+      if (object === undefined || field === undefined) {
+        throw new Error('FIELD_NOT_FOUND');
+      }
+
+      return deleteFieldMetadata({
+        client: context.client,
+        workspaceId,
+        object,
+        field,
       });
     },
 

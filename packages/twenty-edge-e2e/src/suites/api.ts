@@ -958,6 +958,104 @@ export const runApiSuite = async (
     },
   );
 
+  await recorder.step('deleteOneField drops the column', async () => {
+    assert(customObject !== null, 'custom object created');
+
+    const fields = unwrap(
+      (
+        await client.graphql<{
+          object: { fields: { edges: { node: { id: string; name: string } }[] } };
+        }>({
+          endpoint: '/metadata',
+          query: `query ObjectFields($id: UUID!) {
+            object(id: $id) {
+              id
+              fields(paging: { first: 200 }) { edges { node { id name } } }
+            }
+          }`,
+          variables: { id: customObject?.id },
+        })
+      ).body,
+      'object fields',
+    );
+
+    const target = fields.object.fields.edges.find(
+      (edge) => edge.node.name === 'anotacoes',
+    );
+
+    assert(target !== undefined, 'the field to drop exists');
+
+    const deleted = unwrap(
+      (
+        await client.graphql<{ deleteOneField: { id: string; name: string } }>({
+          endpoint: '/metadata',
+          query: `mutation DeleteOneField($id: UUID!) {
+            deleteOneField(id: $id) { id name }
+          }`,
+          variables: { id: target?.node.id },
+        })
+      ).body,
+      'deleteOneField',
+    );
+
+    assertEqual(deleted.deleteOneField.name, 'anotacoes', 'dropped field name');
+
+    const after = unwrap(
+      (
+        await client.graphql<{
+          object: { fields: { edges: { node: { name: string } }[] } };
+        }>({
+          endpoint: '/metadata',
+          query: `query ObjectFields($id: UUID!) {
+            object(id: $id) {
+              fields(paging: { first: 200 }) { edges { node { name } } }
+            }
+          }`,
+          variables: { id: customObject?.id },
+        })
+      ).body,
+      'object fields after delete',
+    );
+
+    assert(
+      !after.object.fields.edges.some((edge) => edge.node.name === 'anotacoes'),
+      'the field is gone from the metadata',
+    );
+
+    return { deleted: deleted.deleteOneField.id };
+  });
+
+  await recorder.step('a standard object cannot be deleted', async () => {
+    const objects = unwrap(
+      (
+        await client.graphql<{
+          objects: { edges: { node: { id: string; nameSingular: string } }[] };
+        }>({
+          endpoint: '/metadata',
+          query: `query { objects(paging: { first: 100 }) { edges { node { id nameSingular } } } }`,
+        })
+      ).body,
+      'objects',
+    );
+
+    const company = objects.objects.edges.find(
+      (edge) => edge.node.nameSingular === 'company',
+    );
+
+    const { body } = await client.graphql({
+      endpoint: '/metadata',
+      query: `mutation DeleteOneObject($id: UUID!) { deleteOneObject(id: $id) { id } }`,
+      variables: { id: company?.node.id },
+    });
+
+    assert(
+      body.errors !== undefined && body.errors.length > 0,
+      'deleting a standard object is refused',
+    );
+
+    return { error: body.errors?.[0]?.message };
+  });
+
   await recorder.step('REST mirrors the GraphQL data', async () => {
     const listResponse = await client.fetch('/rest/companies?limit=5');
     const list = (await listResponse.json()) as {
@@ -1031,7 +1129,26 @@ export const runApiSuite = async (
         'hard delete removed the rows',
       );
 
-      return { destroyed: destroyed.length, customRecordId };
+      if (customObject !== null) {
+        unwrap(
+          (
+            await client.graphql({
+              endpoint: '/metadata',
+              query: `mutation DeleteOneObject($id: UUID!) {
+                deleteOneObject(id: $id) { id nameSingular }
+              }`,
+              variables: { id: customObject.id },
+            })
+          ).body,
+          'deleteOneObject',
+        );
+      }
+
+      return {
+        destroyed: destroyed.length,
+        customRecordId,
+        droppedObject: customObject?.nameSingular ?? null,
+      };
     },
   );
 

@@ -215,3 +215,89 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
 
   return field;
 };
+
+// Only a custom object can be dropped. A standard one is part of the product's
+// own data model, and dropping it would leave the seed unable to describe the
+// workspace it created.
+export const deleteObjectMetadata = async ({
+  client,
+  workspaceId,
+  object,
+}: {
+  client: Client;
+  workspaceId: string;
+  object: FlatObjectMetadata;
+}): Promise<FlatObjectMetadata> => {
+  if (!object.isCustom) {
+    throw new Error(`Object "${object.nameSingular}" is standard and cannot be deleted`);
+  }
+
+  const schemaName = getWorkspaceSchemaName(workspaceId);
+  const tableName = computeTableName(object.nameSingular, object.isCustom);
+
+  // CASCADE takes the foreign keys other tables hold on this one; their own
+  // metadata rows go next, or they would describe a column that no longer
+  // exists.
+  await client.query(
+    `DROP TABLE IF EXISTS ${escapeIdentifier(schemaName)}.${escapeIdentifier(tableName)} CASCADE`,
+  );
+
+  await client.query(
+    `DELETE FROM core."fieldMetadata"
+     WHERE "objectMetadataId" = $1 OR "relationTargetObjectMetadataId" = $1`,
+    [object.id],
+  );
+
+  await client.query(`DELETE FROM core."view" WHERE "objectMetadataId" = $1`, [
+    object.id,
+  ]);
+
+  await client.query(`DELETE FROM core."objectMetadata" WHERE "id" = $1`, [
+    object.id,
+  ]);
+
+  await bumpMetadataVersion({ client, workspaceId });
+
+  return object;
+};
+
+export const deleteFieldMetadata = async ({
+  client,
+  workspaceId,
+  object,
+  field,
+}: {
+  client: Client;
+  workspaceId: string;
+  object: FlatObjectMetadata;
+  field: FlatFieldMetadata;
+}): Promise<FlatFieldMetadata> => {
+  if (field.isSystem) {
+    throw new Error(`Field "${field.name}" is a system field and cannot be deleted`);
+  }
+
+  const schemaName = getWorkspaceSchemaName(workspaceId);
+  const tableName = computeTableName(object.nameSingular, object.isCustom);
+
+  // A composite field owns one column per property, so this is a loop for the
+  // same reason creating it was.
+  for (const definition of generateColumnDefinitions({
+    field,
+    tableName,
+    schemaName,
+  })) {
+    await client.query(
+      `ALTER TABLE ${escapeIdentifier(schemaName)}.${escapeIdentifier(tableName)}
+       DROP COLUMN IF EXISTS ${escapeIdentifier(definition.columnName)}`,
+    );
+  }
+
+  await client.query(
+    `DELETE FROM core."fieldMetadata" WHERE "id" = $1 OR "relationTargetFieldMetadataId" = $1`,
+    [field.id],
+  );
+
+  await bumpMetadataVersion({ client, workspaceId });
+
+  return field;
+};

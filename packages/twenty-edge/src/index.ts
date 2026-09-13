@@ -8,6 +8,7 @@ import { filesRoute } from 'src/routes/files';
 import { graphqlRoute } from 'src/routes/graphql';
 import { healthRoute } from 'src/routes/health';
 import { metadataRoute } from 'src/routes/metadata';
+import { restRoute } from 'src/routes/rest';
 
 const app = new Hono<AppEnv>();
 
@@ -57,6 +58,7 @@ app.route('/client-config', clientConfigRoute);
 app.route('/healthz', healthRoute);
 app.route('/metadata', metadataRoute);
 app.route('/graphql', graphqlRoute);
+app.route('/rest', restRoute);
 app.route('/files', filesRoute);
 app.route('/file', filesRoute);
 

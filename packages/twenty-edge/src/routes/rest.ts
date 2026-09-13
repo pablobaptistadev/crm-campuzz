@@ -1,0 +1,176 @@
+import { Hono } from 'hono';
+
+import { findActiveSession, findWorkspaceById } from 'src/db/core/auth-repository';
+import { loadWorkspaceMetadata } from 'src/db/core/metadata-repository';
+import { withDatabaseClient } from 'src/db/client';
+import { hashSessionToken, readSessionToken } from 'src/auth/session';
+import { type AppEnv } from 'src/env';
+import { buildInsertQuery, buildSoftDeleteQuery, buildUpdateQuery } from 'src/orm/mutations';
+import {
+  buildCountQuery,
+  buildSelectQuery,
+  hydrateRecord,
+  type OrderByClause,
+  type OrderByDirection,
+} from 'src/orm/select';
+import { buildWorkspaceTableShape } from 'src/orm/table-shape';
+import { type RecordFilter } from 'src/orm/where';
+
+const DEFAULT_LIMIT = 60;
+const MAX_LIMIT = 1000;
+
+// order_by=field,-other — a leading minus means descending, matching the REST
+// convention Twenty's parsers accept.
+const parseOrderBy = (value: string | undefined): OrderByClause[] => {
+  if (value === undefined || value.length === 0) {
+    return [];
+  }
+
+  return value.split(',').map((entry) => {
+    const isDescending = entry.startsWith('-');
+    const fieldName = isDescending ? entry.slice(1) : entry;
+    const direction: OrderByDirection = isDescending
+      ? 'DescNullsLast'
+      : 'AscNullsLast';
+
+    return { fieldName, direction };
+  });
+};
+
+const parseFilter = (value: string | undefined): RecordFilter | undefined => {
+  if (value === undefined || value.length === 0) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(value) as RecordFilter;
+  } catch {
+    return undefined;
+  }
+};
+
+export const restRoute = new Hono<AppEnv>().all('/*', async (context) =>
+  withDatabaseClient(context.env, context.executionCtx, async (client) => {
+    const sessionToken = readSessionToken(context);
+
+    if (sessionToken === null) {
+      return context.json({ error: 'UNAUTHENTICATED' }, 401);
+    }
+
+    const session = await findActiveSession({
+      client,
+      tokenHash: await hashSessionToken(sessionToken),
+    });
+
+    if (session === null || session.workspaceId === null) {
+      return context.json({ error: 'UNAUTHENTICATED' }, 401);
+    }
+
+    const workspace = await findWorkspaceById({
+      client,
+      workspaceId: session.workspaceId,
+    });
+
+    if (workspace === null) {
+      return context.json({ error: 'WORKSPACE_NOT_READY' }, 409);
+    }
+
+    const metadata = await loadWorkspaceMetadata({
+      client,
+      workspaceId: workspace.id,
+      metadataVersion: workspace.metadataVersion,
+    });
+
+    const segments = new URL(context.req.url).pathname
+      .split('/')
+      .filter((segment) => segment.length > 0)
+      .slice(1);
+
+    const [namePlural, recordId] = segments;
+    const object = metadata.objects.find(
+      (entry) => entry.namePlural === namePlural,
+    );
+
+    if (object === undefined) {
+      return context.json({ error: `Unknown object: ${namePlural}` }, 404);
+    }
+
+    const shape = buildWorkspaceTableShape({
+      object,
+      workspaceId: metadata.workspaceId,
+    });
+
+    const runQuery = async (query: { text: string; values: unknown[] }) => {
+      const { rows } = await client.query(query.text, query.values);
+
+      return rows.map((row) =>
+        hydrateRecord({ shape, alias: shape.nameSingular, row }),
+      );
+    };
+
+    if (context.req.method === 'GET') {
+      const url = new URL(context.req.url);
+      const limit = Math.min(
+        Number(url.searchParams.get('limit') ?? DEFAULT_LIMIT) || DEFAULT_LIMIT,
+        MAX_LIMIT,
+      );
+
+      const filter =
+        recordId === undefined
+          ? parseFilter(url.searchParams.get('filter') ?? undefined)
+          : { id: { eq: recordId } };
+
+      const records = await runQuery(
+        buildSelectQuery({
+          shape,
+          filter,
+          orderBy: parseOrderBy(url.searchParams.get('order_by') ?? undefined),
+          limit: recordId === undefined ? limit : 1,
+        }),
+      );
+
+      if (recordId !== undefined) {
+        return records[0] === undefined
+          ? context.json({ error: 'Not found' }, 404)
+          : context.json({ data: { [object.nameSingular]: records[0] } });
+      }
+
+      const countQuery = buildCountQuery({ shape, filter });
+      const { rows } = await client.query(countQuery.text, countQuery.values);
+
+      // Flat shape, not Relay: the REST API mirrors Twenty's own response body.
+      return context.json({
+        data: { [object.namePlural]: records },
+        totalCount: Number(rows[0]?.count ?? 0),
+      });
+    }
+
+    if (context.req.method === 'POST') {
+      const body = (await context.req.json()) as Record<string, unknown>;
+      const records = await runQuery(buildInsertQuery({ shape, input: body }));
+
+      return context.json({ data: { [object.nameSingular]: records[0] } }, 201);
+    }
+
+    if (context.req.method === 'PATCH' && recordId !== undefined) {
+      const body = (await context.req.json()) as Record<string, unknown>;
+      const records = await runQuery(
+        buildUpdateQuery({ shape, id: recordId, input: body }),
+      );
+
+      return records[0] === undefined
+        ? context.json({ error: 'Not found' }, 404)
+        : context.json({ data: { [object.nameSingular]: records[0] } });
+    }
+
+    if (context.req.method === 'DELETE' && recordId !== undefined) {
+      const records = await runQuery(buildSoftDeleteQuery({ shape, id: recordId }));
+
+      return records[0] === undefined
+        ? context.json({ error: 'Not found' }, 404)
+        : context.json({ data: { [object.nameSingular]: records[0] } });
+    }
+
+    return context.json({ error: 'Method not allowed' }, 405);
+  }),
+);

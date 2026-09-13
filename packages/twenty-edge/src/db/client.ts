@@ -30,9 +30,13 @@ export const createDatabaseClient = async (
   return client;
 };
 
+// Typed by what it actually needs, not by ExecutionContext: Hono and
+// workers-types each declare their own, and they are not assignable.
+export type WaitUntilCapable = { waitUntil: (promise: Promise<unknown>) => void };
+
 export const withDatabaseClient = async <TResult>(
   bindings: Bindings,
-  executionContext: ExecutionContext,
+  executionContext: WaitUntilCapable,
   run: (client: Client) => Promise<TResult>,
 ): Promise<TResult> => {
   const client = await createDatabaseClient(bindings);

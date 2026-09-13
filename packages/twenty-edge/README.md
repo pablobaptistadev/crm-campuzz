@@ -60,12 +60,19 @@ webhooks, billing, SSO, 2FA, atualização ao vivo por SSE. Cada um é um projet
 próprio, e os primeiros não cabem num isolate sem peça nova (fila, Durable
 Object, ou um serviço fora do Worker).
 
-Sobre o SSE em particular: a subscription `onEventSubscription` **existe** e
-abre, mas nunca emite. O front trata um stream aberto como "atualização ao vivo
-ligada" e trata uma falha como algo para reportar no Sentry e tentar de novo —
-abrir e ficar quieto é o comportamento menos ruim dos dois. Cada pessoa vê as
-próprias mudanças, pelos eventos que o front dispara localmente; o que falta é
-a mudança de outra pessoa aparecer sem recarregar.
+Sobre o SSE em particular: o stream **existe** — as três operações que o front
+usa respondem — mas nada é emitido depois do primeiro evento. São três, não uma:
+a subscription abre o stream, e `addQueryToEventStream` /
+`removeQueryFromEventStream` registram as queries que querem atualização.
+Faltar qualquer uma é 400 em toda tabela que o app abre.
+
+O primeiro evento não é decoração: é nele que o front liga
+`sseEventStreamReadyState`, e os efeitos que registram query esperam por essa
+flag. Um stream que abre e fica calado deixa o app inteiro no esqueleto de
+carregamento — foi exatamente o que aconteceu aqui antes de o handshake existir.
+
+Cada pessoa vê as próprias mudanças, pelos eventos que o front dispara
+localmente; o que falta é a mudança de outra pessoa aparecer sem recarregar.
 
 ## Rodar
 

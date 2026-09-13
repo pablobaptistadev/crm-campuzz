@@ -673,6 +673,17 @@ type Subscription {
   onEventSubscription(eventStreamId: String!): EventSubscription!
 }
 
+input AddQuerySubscriptionInput {
+  eventStreamId: String!
+  queryId: String!
+  operationSignature: JSON!
+}
+
+input RemoveQueryFromEventStreamInput {
+  eventStreamId: String!
+  queryId: String!
+}
+
 type WorkspaceInvitation {
   id: UUID!
   email: String!
@@ -1091,6 +1102,8 @@ type Mutation {
   sendInvitations(emails: [String!]!, roleId: UUID): SendInvitationsOutput!
   resendWorkspaceInvitation(appTokenId: String!): SendInvitationsOutput!
   deleteWorkspaceInvitation(appTokenId: String!): String!
+  addQueryToEventStream(input: AddQuerySubscriptionInput!): Boolean!
+  removeQueryFromEventStream(input: RemoveQueryFromEventStreamInput!): Boolean!
 }
 
 type SyncStandardMetadataResult {
@@ -2364,27 +2377,31 @@ export const METADATA_RESOLVERS = {
     relation: (field: { relation?: unknown }) => field.relation ?? null,
   },
 
-  // The stream opens, says nothing, and closes when the client goes away. The
-  // front takes an open stream as "live updates are on"; it takes a failure as
-  // something to report and retry, which is worse for everyone.
+  // One empty event, then silence. The first event is not decoration: the front
+  // flips sseEventStreamReadyState on it, and the effects that register a query
+  // for live updates wait on that flag — a stream that opens and says nothing
+  // leaves the whole app on its loading skeleton forever. After the handshake
+  // there is nothing to send, and closing would start the front's retry loop.
   Subscription: {
     onEventSubscription: {
-      subscribe: () => ({
-        [Symbol.asyncIterator]() {
-          return {
-            next: () =>
-              new Promise<IteratorResult<never>>(() => {
-                // Never resolves: there is nothing to emit, and resolving with
-                // done would close the stream and start the front's retry loop.
-              }),
-            return: () =>
-              Promise.resolve<IteratorResult<never>>({
-                value: undefined,
-                done: true,
-              }),
-          };
-        },
-      }),
+      subscribe: async function* (
+        _parent: unknown,
+        args: { eventStreamId: string },
+      ) {
+        yield {
+          onEventSubscription: {
+            eventStreamId: args.eventStreamId,
+            objectRecordEventsWithQueryIds: [],
+            metadataEvents: [],
+            queueJobEvents: [],
+          },
+        };
+
+        await new Promise(() => {
+          // Held open for the life of the connection; the client closing it is
+          // what ends the generator.
+        });
+      },
     },
   },
 
@@ -3358,6 +3375,13 @@ export const METADATA_RESOLVERS = {
         roleId: args.upsertPermissionFlagsInput.roleId,
         flags: args.upsertPermissionFlagsInput.permissionFlagKeys,
       }),
+
+    // The other half of the event stream: the front registers every query it
+    // wants live updates for, and unregisters them as views close. We keep no
+    // registry — nothing ever emits — but the calls have to succeed, or the
+    // front takes a 400 on every table it opens.
+    addQueryToEventStream: () => true,
+    removeQueryFromEventStream: () => true,
 
     sendInvitations: async (
       _parent: unknown,

@@ -1103,4 +1103,50 @@ describe('twenty-front metadata documents', () => {
       }
     `);
   });
+  // The event stream is three operations, not one: the subscription opens it and
+  // these register and unregister the queries that want updates on it. A
+  // missing one is a 400 on every table the app opens.
+  it('validates the event-stream documents', () => {
+    expectValid(`
+      subscription OnEventSubscription($eventStreamId: String!) {
+        onEventSubscription(eventStreamId: $eventStreamId) {
+          eventStreamId
+          objectRecordEventsWithQueryIds {
+            objectRecordEvent {
+              action
+              objectNameSingular
+              recordId
+              userId
+              workspaceMemberId
+              properties { updatedFields before after diff }
+            }
+            queryIds
+          }
+          metadataEvents {
+            type
+            metadataName
+            recordId
+            updatedCollectionHash
+            properties { updatedFields before after diff }
+          }
+          queueJobEvents {
+            jobId state attemptsMade failedReason
+            enqueuedAt startedAt finishedAt
+          }
+        }
+      }
+    `);
+
+    expectValid(`
+      mutation AddQueryToEventStream($input: AddQuerySubscriptionInput!) {
+        addQueryToEventStream(input: $input)
+      }
+    `);
+
+    expectValid(`
+      mutation RemoveQueryFromEventStream($input: RemoveQueryFromEventStreamInput!) {
+        removeQueryFromEventStream(input: $input)
+      }
+    `);
+  });
 });

@@ -1,6 +1,6 @@
 # Como testar — fase a fase
 
-Estado em 13/09/2026. 108 testes de unidade passando, typecheck limpo, e a suíte
+Estado em 13/09/2026. 118 testes de unidade passando, typecheck limpo, e a suíte
 de ponta a ponta (`packages/twenty-edge-e2e`) verde — Redis, API, navegador de
 verdade e iPhone.
 
@@ -9,7 +9,7 @@ verdade e iPhone.
 ```bash
 cd packages/twenty-edge
 npm install
-npm test          # 108 testes
+npm test          # 118 testes
 npm run typecheck
 npx wrangler deploy --dry-run --env=""   # prova que empacota para o Worker
 ```

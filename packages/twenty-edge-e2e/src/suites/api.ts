@@ -1720,6 +1720,158 @@ export const runApiSuite = async (
     },
   );
 
+  await recorder.step('duplicates are found and merged', async () => {
+    const firstName = `Dup${runSuffix}`;
+
+    const seeded = unwrap(
+      (
+        await client.graphql<{
+          survivor: { id: string };
+          loser: { id: string };
+          unrelated: { id: string };
+        }>({
+          endpoint: '/graphql',
+          query: `mutation SeedDuplicates($name: FullNameCreateInput!, $other: FullNameCreateInput!) {
+            survivor: createPerson(data: { name: $name, city: "Recife" }) { id }
+            loser: createPerson(data: { name: $name, jobTitle: "Gerente" }) { id }
+            unrelated: createPerson(data: { name: $other }) { id }
+          }`,
+          variables: {
+            name: { firstName, lastName: 'Teste' },
+            other: { firstName: `Outro${runSuffix}`, lastName: 'Nome' },
+          },
+        })
+      ).body,
+      'seed duplicates',
+    );
+
+    const findDuplicates = async (id: string) =>
+      unwrap(
+        (
+          await client.graphql<{
+            personDuplicates: { edges: { node: { id: string } }[] };
+          }>({
+            endpoint: '/graphql',
+            query: `query FindDuplicatePerson($ids: [UUID!]!) {
+              personDuplicates(ids: $ids) {
+                edges { node { id name { firstName lastName } city jobTitle } cursor }
+                pageInfo { hasNextPage startCursor endCursor }
+              }
+            }`,
+            variables: { ids: [id] },
+          })
+        ).body,
+        'personDuplicates',
+      );
+
+    const duplicates = await findDuplicates(seeded.survivor.id);
+    const foundIds = duplicates.personDuplicates.edges.map(
+      (edge) => edge.node.id,
+    );
+
+    assert(foundIds.includes(seeded.loser.id), 'the matching record is found');
+    assert(
+      !foundIds.includes(seeded.unrelated.id),
+      'a record that matches no criterion is left out',
+    );
+    assert(
+      !foundIds.includes(seeded.survivor.id),
+      'a record is not its own duplicate',
+    );
+
+    // dryRun previews the result without writing: the front shows it while the
+    // person is still choosing which record wins.
+    const preview = unwrap(
+      (
+        await client.graphql<{
+          mergePeople: { id: string; city: string | null; jobTitle: string | null };
+        }>({
+          endpoint: '/graphql',
+          query: `mutation MergePeople($ids: [UUID!]!, $conflictPriorityIndex: Int!, $dryRun: Boolean) {
+            mergePeople(ids: $ids, conflictPriorityIndex: $conflictPriorityIndex, dryRun: $dryRun) {
+              id city jobTitle name { firstName lastName }
+            }
+          }`,
+          variables: {
+            ids: [seeded.survivor.id, seeded.loser.id],
+            conflictPriorityIndex: 0,
+            dryRun: true,
+          },
+        })
+      ).body,
+      'mergePeople dryRun',
+    );
+
+    // What each record was missing, the other supplied.
+    assertEqual(preview.mergePeople.city, 'Recife', 'the survivor keeps its city');
+    assertEqual(
+      preview.mergePeople.jobTitle,
+      'Gerente',
+      'the gap is filled from the other record',
+    );
+
+    const stillThere = unwrap(
+      (
+        await client.graphql<{ person: { id: string } | null }>({
+          endpoint: '/graphql',
+          query: `query StillThere($id: UUID!) {
+            person(filter: { id: { eq: $id } }) { id deletedAt }
+          }`,
+          variables: { id: seeded.loser.id },
+        })
+      ).body,
+      'person after dryRun',
+    );
+
+    assert(stillThere.person !== null, 'a dry run writes nothing');
+
+    unwrap(
+      (
+        await client.graphql({
+          endpoint: '/graphql',
+          query: `mutation MergePeople($ids: [UUID!]!, $conflictPriorityIndex: Int!) {
+            mergePeople(ids: $ids, conflictPriorityIndex: $conflictPriorityIndex) { id }
+          }`,
+          variables: {
+            ids: [seeded.survivor.id, seeded.loser.id],
+            conflictPriorityIndex: 0,
+          },
+        })
+      ).body,
+      'mergePeople',
+    );
+
+    const afterMerge = unwrap(
+      (
+        await client.graphql<{ person: { id: string } | null }>({
+          endpoint: '/graphql',
+          query: `query AfterMerge($id: UUID!) {
+            person(filter: { id: { eq: $id } }) { id }
+          }`,
+          variables: { id: seeded.loser.id },
+        })
+      ).body,
+      'person after merge',
+    );
+
+    assert(afterMerge.person === null, 'the losing record is gone');
+
+    for (const id of [seeded.survivor.id, seeded.unrelated.id]) {
+      unwrap(
+        (
+          await client.graphql({
+            endpoint: '/graphql',
+            query: `mutation DestroyPerson($id: UUID!) { destroyPerson(id: $id) { id } }`,
+            variables: { id },
+          })
+        ).body,
+        'merge cleanup',
+      );
+    }
+
+    return { survivor: seeded.survivor.id };
+  });
+
   // The role machinery, without swapping the test account's own role: a role
   // created here starts with nothing, and what it answers proves the fallbacks
   // and the overrides without anyone losing access to the workspace.

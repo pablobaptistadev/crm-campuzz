@@ -31,6 +31,9 @@ export type StandardObjectInput = {
   icon: string;
   labelIdentifierFieldName?: string;
   isSystem?: boolean;
+  // Column names, not field names — a person matches on nameFirstName AND
+  // nameLastName, or on emailsPrimaryEmail alone.
+  duplicateCriteria?: string[][];
   fields: StandardFieldInput[];
 };
 
@@ -174,6 +177,7 @@ export const buildStandardObject = ({
       fields.find((field) => field.name === 'id')?.id ??
       null,
     imageIdentifierFieldMetadataId: null,
+    duplicateCriteria: input.duplicateCriteria ?? null,
     fields,
   };
 };

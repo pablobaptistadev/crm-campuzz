@@ -21,6 +21,7 @@ type ObjectRow = {
   isCustom: boolean;
   isSearchable: boolean;
   labelIdentifierFieldMetadataId: string | null;
+  duplicateCriteria: string[][] | null;
   imageIdentifierFieldMetadataId: string | null;
 };
 
@@ -113,14 +114,16 @@ export const persistObjectMetadata = async ({
     `INSERT INTO core."objectMetadata"
        ("id","workspaceId","nameSingular","namePlural","labelSingular","labelPlural",
         "description","icon","isActive","isSystem","isCustom","isSearchable",
-        "labelIdentifierFieldMetadataId","imageIdentifierFieldMetadataId")
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+        "labelIdentifierFieldMetadataId","imageIdentifierFieldMetadataId",
+        "duplicateCriteria")
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
      ON CONFLICT ("id") DO UPDATE SET
        "labelSingular" = EXCLUDED."labelSingular",
        "labelPlural" = EXCLUDED."labelPlural",
        "icon" = EXCLUDED."icon",
        "isActive" = EXCLUDED."isActive",
        "labelIdentifierFieldMetadataId" = EXCLUDED."labelIdentifierFieldMetadataId",
+       "duplicateCriteria" = EXCLUDED."duplicateCriteria",
        "updatedAt" = now()`,
     [
       object.id,
@@ -137,6 +140,9 @@ export const persistObjectMetadata = async ({
       object.isSearchable,
       object.labelIdentifierFieldMetadataId,
       object.imageIdentifierFieldMetadataId,
+      object.duplicateCriteria === null
+        ? null
+        : JSON.stringify(object.duplicateCriteria),
     ],
   );
 

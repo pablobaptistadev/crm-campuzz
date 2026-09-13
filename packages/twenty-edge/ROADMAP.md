@@ -6,7 +6,8 @@ ser usável no dia a dia, na ordem em que pretendo fazer.
 
 **Feitos:** 0 (sync do metadata padrão), 1 (upload), 4 (views salvas),
 2 (notas e tarefas no registro), 6 (timeline), 7 (CSV), 3 (busca global),
-5 (kanban e agrupamento), 8 (papéis e permissões). **Falta:** 9, 10.
+5 (kanban e agrupamento), 8 (papéis e permissões), 10 (duplicados e merge).
+**Falta:** 9.
 
 ## Decisões tomadas antes de começar
 
@@ -196,7 +197,7 @@ entrega atrás da própria licença), agentes e API keys.
 
 **Tamanho:** médio. **Depende de:** 8. **Key nova:** sim.
 
-## 10. Duplicados e merge
+## 10. Duplicados e merge — FEITO
 
 - `${singular}Duplicates` usando o `duplicateCriteria` do objeto (nome, e-mail,
   domínio).
@@ -204,6 +205,19 @@ entrega atrás da própria licença), agentes e API keys.
   resto — numa transação só.
 
 **Tamanho:** médio. **Depende de:** 3 (usa o mesmo índice de texto).
+
+**Como ficou:** não usa o índice de texto — `duplicateCriteria` é igualdade
+exata sobre colunas, não similaridade, então é uma coluna nova em
+`objectMetadata` e um `WHERE` montado a partir dela. Um grupo em que qualquer
+coluna está vazia é ignorado: duas empresas sem domínio não são a mesma empresa,
+e sem essa regra o grupo casaria com toda linha igualmente vazia.
+
+No merge, o primeiro id é o sobrevivente e `conflictPriorityIndex` aponta para
+quem ganha os conflitos; o que falta em um, o outro preenche. Identidade e
+carimbos de tempo não entram na fusão — levar o id do perdedor moveria o
+registro de debaixo de tudo que aponta para ele. As relações são reapontadas
+*antes* do soft delete, senão ficariam órfãs. `dryRun` para antes de qualquer
+escrita, que é o que a tela mostra enquanto a pessoa ainda está escolhendo.
 
 ---
 

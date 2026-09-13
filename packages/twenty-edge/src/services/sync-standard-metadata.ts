@@ -60,6 +60,7 @@ export const syncStandardMetadata = async ({
 
   const createdObjects: string[] = [];
   const createdFields: string[] = [];
+  const refreshedObjects: string[] = [];
 
   for (const object of standardObjects) {
     const existing = currentObjectById.get(object.id);
@@ -76,6 +77,28 @@ export const syncStandardMetadata = async ({
 
       createdObjects.push(object.nameSingular);
       continue;
+    }
+
+    // The seed is the source of truth for the object's own attributes, so an
+    // object that already exists still gets them refreshed — that is how a
+    // workspace created before duplicateCriteria existed gets one.
+    if (
+      JSON.stringify(existing.duplicateCriteria) !==
+      JSON.stringify(object.duplicateCriteria)
+    ) {
+      await client.query(
+        `UPDATE core."objectMetadata"
+         SET "duplicateCriteria" = $2, "updatedAt" = now()
+         WHERE "id" = $1`,
+        [
+          object.id,
+          object.duplicateCriteria === null
+            ? null
+            : JSON.stringify(object.duplicateCriteria),
+        ],
+      );
+
+      refreshedObjects.push(object.nameSingular);
     }
 
     const existingFieldIds = new Set(existing.fields.map((field) => field.id));
@@ -121,6 +144,7 @@ export const syncStandardMetadata = async ({
   if (
     createdObjects.length === 0 &&
     createdFields.length === 0 &&
+    refreshedObjects.length === 0 &&
     backfilledViews === 0
   ) {
     return { createdObjects, createdFields, searchableObjects, createdRoles };

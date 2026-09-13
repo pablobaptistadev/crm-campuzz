@@ -1,5 +1,6 @@
 import { type Client } from 'pg';
 
+import { escapeIdentifier } from 'src/ddl/escape';
 import { buildMorphFieldNames } from 'src/graphql/build-sdl';
 import { pascalCase } from 'src/metadata/naming';
 import { type WorkspaceMetadata } from 'src/metadata/types';
@@ -31,6 +32,12 @@ import {
   canPerform,
   type WorkspacePermissions,
 } from 'src/services/permissions';
+import {
+  buildDuplicateConditions,
+  buildDuplicatesQuery,
+  findReferencingColumns,
+  mergeRecordValues,
+} from 'src/services/duplicates';
 import {
   runGroupBy,
   type GroupByInput,
@@ -530,6 +537,93 @@ export const buildRecordResolvers = (
       );
     };
 
+    query[`${object.nameSingular}Duplicates`] = async (
+      _parent: unknown,
+      args: { ids: string[] },
+      context: RecordResolverContext,
+    ) => {
+      assertAllowed(context, 'read');
+
+      const empty = {
+        edges: [],
+        pageInfo: {
+          hasNextPage: false,
+          hasPreviousPage: false,
+          startCursor: null,
+          endCursor: null,
+        },
+        __countQuery: { shape, filter: { id: { in: [] } } },
+      };
+
+      if (object.duplicateCriteria === null || args.ids.length === 0) {
+        return empty;
+      }
+
+      const sourceRows = await context.client.query<Record<string, unknown>>(
+        ...(() => {
+          const query = buildSelectQuery({
+            shape,
+            filter: { id: { in: args.ids } },
+            limit: args.ids.length,
+          });
+
+          return [query.text, query.values] as const;
+        })(),
+      );
+
+      const sources = sourceRows.rows.map((row) =>
+        hydrateRecord({ shape, alias: shape.nameSingular, row }),
+      );
+
+      const { groups } = buildDuplicateConditions({
+        object,
+        shape,
+        records: sourceRows.rows.map((row) =>
+          Object.fromEntries(
+            [...shape.columnShapeByColumnName.values()].map((column) => [
+              column.columnName,
+              row[`${shape.nameSingular}_${column.columnName}`],
+            ]),
+          ),
+        ),
+      });
+
+      const query = buildDuplicatesQuery({
+        shape,
+        groups,
+        excludedIds: sources.map((record) => String(record.id)),
+        limit: DEFAULT_PAGE_SIZE,
+      });
+
+      if (query === null) {
+        return empty;
+      }
+
+      const { rows } = await context.client.query(query.text, query.values);
+      const records = rows.map((row) =>
+        hydrateRecord({ shape, alias: shape.nameSingular, row }),
+      );
+
+      const edges = records.map((node) => ({
+        node,
+        cursor: encodeCursor({ id: node.id ?? null }),
+      }));
+
+      return {
+        edges,
+        pageInfo: {
+          hasNextPage: false,
+          hasPreviousPage: false,
+          startCursor: edges[0]?.cursor ?? null,
+          endCursor: edges.at(-1)?.cursor ?? null,
+        },
+        __countQuery: {
+          shape,
+          filter: { id: { in: records.map((record) => record.id) } },
+        },
+      };
+    };
+
     // totalCount is resolved lazily: the count query only runs when the client
     // actually selects the field.
     connectionResolvers[`${singular}GroupByConnection`] = {
@@ -739,6 +833,145 @@ export const buildRecordResolvers = (
       await writeTimelineActivity(context, 'restored', args.id);
 
       return result.record;
+    };
+
+    // Merge keeps the first id as the survivor and soft-deletes the rest, after
+    // carrying their relations over. dryRun stops before any write: the front
+    // uses it to preview the result while the person is still choosing.
+    mutation[`merge${pascalCase(object.namePlural)}`] = async (
+      _parent: unknown,
+      args: {
+        ids: string[];
+        conflictPriorityIndex: number;
+        dryRun?: boolean;
+      },
+      context: RecordResolverContext,
+    ) => {
+      assertAllowed(context, 'update');
+
+      if (!(args.dryRun === true)) {
+        // Merging destroys information in the losing records, so it needs the
+        // delete permission too, not only the write one.
+        assertAllowed(context, 'softDelete');
+      }
+
+      if (args.ids.length < 2) {
+        throw new Error('Merging needs at least two records');
+      }
+
+      const selectQuery = buildSelectQuery({
+        shape,
+        filter: { id: { in: args.ids } },
+        limit: args.ids.length,
+      });
+
+      const { rows } = await context.client.query(
+        selectQuery.text,
+        selectQuery.values,
+      );
+
+      const byId = new Map(
+        rows.map((row) => {
+          const record = hydrateRecord({
+            shape,
+            alias: shape.nameSingular,
+            row,
+          });
+
+          return [String(record.id), { record, row }];
+        }),
+      );
+
+      // In the order the caller gave them: conflictPriorityIndex points into
+      // that list, so reordering here would hand the wrong record priority.
+      const ordered = args.ids
+        .map((id) => byId.get(id))
+        .filter((entry): entry is NonNullable<typeof entry> => entry !== undefined);
+
+      if (ordered.length < 2) {
+        throw new Error('Merging needs at least two records that still exist');
+      }
+
+      const columnRecords = ordered.map((entry) =>
+        Object.fromEntries(
+          [...shape.columnShapeByColumnName.values()].map((column) => [
+            column.columnName,
+            entry.row[`${shape.nameSingular}_${column.columnName}`],
+          ]),
+        ),
+      );
+
+      const merged = mergeRecordValues({
+        shape,
+        records: columnRecords,
+        conflictPriorityIndex: args.conflictPriorityIndex,
+      });
+
+      const survivorId = String(ordered[0].record.id);
+      const losingIds = ordered
+        .slice(1)
+        .map((entry) => String(entry.record.id));
+
+      if (args.dryRun === true) {
+        return hydrateRecord({
+          shape,
+          alias: shape.nameSingular,
+          row: Object.fromEntries(
+            Object.entries({ ...columnRecords[0], ...merged, id: survivorId }).map(
+              ([columnName, value]) => [
+                `${shape.nameSingular}_${columnName}`,
+                value,
+              ],
+            ),
+          ),
+        });
+      }
+
+      // Relations first: a losing record's rows have to find the survivor
+      // before the record they point at goes away.
+      for (const reference of findReferencingColumns({
+        metadata: context.metadata,
+        objectMetadataId: object.id,
+        objectById,
+      })) {
+        const referenceShape = shapeByObjectId.get(
+          context.metadata.objects.find(
+            (entry) => entry.nameSingular === reference.tableName,
+          )?.id ?? '',
+        );
+
+        if (referenceShape === undefined) {
+          continue;
+        }
+
+        await context.client.query(
+          `UPDATE ${escapeIdentifier(referenceShape.schemaName)}.${escapeIdentifier(referenceShape.tableName)}
+           SET ${escapeIdentifier(reference.columnName)} = $1
+           WHERE ${escapeIdentifier(reference.columnName)} = ANY($2::uuid[])`,
+          [survivorId, losingIds],
+        );
+      }
+
+      const updateResult = await runMutation(
+        context,
+        buildUpdateQuery({ shape, id: survivorId, input: merged }),
+      );
+
+      for (const id of losingIds) {
+        await context.client.query(
+          ...(() => {
+            const query = buildSoftDeleteQuery({ shape, id });
+
+            return [query.text, query.values] as const;
+          })(),
+        );
+      }
+
+      await writeTimelineActivity(context, 'updated', survivorId, {
+        mergedFrom: { before: null, after: losingIds },
+      });
+
+      return updateResult?.record ?? null;
     };
 
     // No timeline row for a destroy: the record is gone, so the event would

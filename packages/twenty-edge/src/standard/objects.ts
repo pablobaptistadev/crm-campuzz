@@ -63,6 +63,7 @@ export const STANDARD_OBJECT_INPUTS: StandardObjectInput[] = [
     labelSingular: 'Company',
     labelPlural: 'Companies',
     icon: 'IconBuildingSkyscraper',
+    duplicateCriteria: [['name'], ['domainNamePrimaryLinkUrl']],
     fields: [
       { name: 'name', label: 'Name', type: 'TEXT' },
       { name: 'domainName', label: 'Domain Name', type: 'LINKS' },
@@ -127,6 +128,11 @@ export const STANDARD_OBJECT_INPUTS: StandardObjectInput[] = [
     labelSingular: 'Person',
     labelPlural: 'People',
     icon: 'IconUser',
+    duplicateCriteria: [
+      ['nameFirstName', 'nameLastName'],
+      ['linkedinLinkPrimaryLinkUrl'],
+      ['emailsPrimaryEmail'],
+    ],
     fields: [
       { name: 'name', label: 'Name', type: 'FULL_NAME' },
       { name: 'emails', label: 'Emails', type: 'EMAILS' },

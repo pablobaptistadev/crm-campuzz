@@ -64,6 +64,9 @@ export type FlatObjectMetadata = {
   isCustom: boolean;
   isSearchable: boolean;
   labelIdentifierFieldMetadataId: string | null;
+  // Column names, not field names: an inner array is a conjunction, the outer
+  // one a disjunction. null means the object has no duplicate detection.
+  duplicateCriteria: string[][] | null;
   imageIdentifierFieldMetadataId: string | null;
   fields: FlatFieldMetadata[];
 };

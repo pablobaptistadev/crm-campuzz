@@ -48,6 +48,7 @@ const buildObject = (
     isCustom: false,
     isSearchable: true,
     labelIdentifierFieldMetadataId: `field-${labelFieldName}`,
+    duplicateCriteria: null,
     imageIdentifierFieldMetadataId: null,
     fields: built,
   };

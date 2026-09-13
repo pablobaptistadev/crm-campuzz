@@ -2128,7 +2128,8 @@ export const METADATA_RESOLVERS = {
     shortcut: () => null,
     isLabelSyncedWithName: () => false,
     applicationId: () => null,
-    duplicateCriteria: () => null,
+    duplicateCriteria: (object: { duplicateCriteria: string[][] | null }) =>
+      object.duplicateCriteria,
     createdAt: () => new Date().toISOString(),
     updatedAt: () => new Date().toISOString(),
   },

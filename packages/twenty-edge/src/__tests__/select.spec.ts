@@ -44,6 +44,7 @@ const personObject: FlatObjectMetadata = {
   isCustom: false,
   isSearchable: true,
   labelIdentifierFieldMetadataId: null,
+  duplicateCriteria: null,
   imageIdentifierFieldMetadataId: null,
   fields: [
     buildField({ name: 'id', type: 'UUID', isNullable: false }),

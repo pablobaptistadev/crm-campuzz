@@ -611,6 +611,7 @@ const buildRootSdl = (objects: FlatObjectMetadata[]): string => {
 
       return `  ${object.namePlural}(filter: ${typeName}FilterInput, orderBy: [${typeName}OrderByInput], first: Int, last: Int, before: String, after: String, offset: Int): ${typeName}Connection!
   ${object.nameSingular}(filter: ${typeName}FilterInput): ${typeName}
+  ${object.nameSingular}Duplicates(ids: [UUID!]!): ${typeName}Connection!
   ${object.namePlural}GroupBy(groupBy: [${typeName}GroupByInput!]!, filter: ${typeName}FilterInput, orderBy: [${typeName}OrderByWithGroupByInput!], orderByForRecords: [${typeName}OrderByInput], viewId: UUID, limit: Int, offsetForRecords: Int): [${typeName}GroupByConnection!]!`;
     })
     .join('\n');
@@ -620,7 +621,8 @@ const buildRootSdl = (objects: FlatObjectMetadata[]): string => {
       const singular = pascalCase(object.nameSingular);
       const plural = pascalCase(object.namePlural);
 
-      return `  create${singular}(data: ${singular}CreateInput!, upsert: Boolean): ${singular}
+      return `  merge${plural}(ids: [UUID!]!, conflictPriorityIndex: Int!, dryRun: Boolean): ${singular}
+  create${singular}(data: ${singular}CreateInput!, upsert: Boolean): ${singular}
   create${plural}(data: [${singular}CreateInput!]!, upsert: Boolean): [${singular}!]!
   update${singular}(id: UUID!, data: ${singular}UpdateInput!): ${singular}
   delete${singular}(id: UUID!): ${singular}

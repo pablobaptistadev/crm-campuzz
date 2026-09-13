@@ -20,6 +20,7 @@ const object: FlatObjectMetadata = {
   isCustom: false,
   isSearchable: true,
   labelIdentifierFieldMetadataId: null,
+  duplicateCriteria: null,
   imageIdentifierFieldMetadataId: null,
   fields: (
     [

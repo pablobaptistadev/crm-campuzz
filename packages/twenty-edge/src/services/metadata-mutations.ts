@@ -137,6 +137,9 @@ export const createObjectMetadata = async ({
       fields.find((field) => field.name === 'id')?.id ??
       null,
     imageIdentifierFieldMetadataId: null,
+    // No duplicate detection on a custom object: Twenty only ships criteria for
+    // the standard ones, and guessing them here would flag unrelated rows.
+    duplicateCriteria: null,
     fields,
   };
 

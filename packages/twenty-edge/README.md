@@ -44,10 +44,11 @@ No ar em `https://crm.campuzz.com.br`, servindo o `twenty-front` sem modificaç�
 - Busca global em Postgres, com acento dobrado dos dois lados.
 - Kanban e agrupamento, com granularidade de data e fuso.
 - Papéis e permissões, aplicados na API — `/graphql`, `/rest/*` e a busca.
+- Duplicados e merge, com `dryRun` e as relações reapontadas antes do delete.
 - REST e um subconjunto do OpenAPI derivados do mesmo metadata.
 
 **Não existe ainda:** convite por e-mail (item 9 — a única key nova do plano
-inteiro), duplicados e merge (item 10). Ver `ROADMAP.md`.
+inteiro). Ver `ROADMAP.md`.
 
 **Fora do plano, e por quê:** sincronização de e-mail e agenda, workflows,
 webhooks, billing, SSO, 2FA, atualização ao vivo por SSE. Cada um é um projeto

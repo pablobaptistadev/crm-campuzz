@@ -30,25 +30,35 @@ Três coisas tornam a reescrita barata:
 
 ## Estado
 
-**Pronto (fase 0–1 parcial):**
-- Roteamento por `ApiPath` com match de primeiro segmento exato — resolve o prefixo
-  de uma letra `s` sem capturar `/static/*`
-- `GET /client-config` com o shape completo que o `useClientConfig` do front lê
-- `GET /healthz` medindo latência real Worker→Postgres
-- Cliente Hyperdrive por request, com `DATE` devolvido como string
-- Hash de senha PBKDF2 com comparação em tempo constante
-- Token de sessão + cookie `__Host-`, limpando os dois nomes no logout
-- DDL baseline do `core` para auth (`sql/0001_core_baseline.sql`)
+No ar em `https://crm.campuzz.com.br`, servindo o `twenty-front` sem modificação.
 
-**Próximo:** resolvers de auth no `/metadata` (`checkUserExists`,
-`getLoginTokenFromCredentials`, `getAuthTokensFromLoginToken`, `signIn`, `signUp`,
-`signOut`, `currentUser`), depois metadata read, depois o motor de records.
+**Funciona:**
+- Auth completa — senha em PBKDF2, sessão no Postgres, cookie `__Host-`, CSRF por
+  `Origin`, throttle no Redis. Uma ida ao banco por request.
+- Metadata dinâmica: objetos e campos criados pela tela, com DDL real.
+- Records: CRUD, compostos, relações, relações morph, paginação por cursor,
+  soft delete, restore, destroy, upsert.
+- Views salvas: colunas, filtros, ordenações, grupos — as 20 mutations do front.
+- Anexos no R2, com token de upload que só escreve o próprio arquivo.
+- Timeline com diff de verdade em toda criação, alteração, exclusão e restauração.
+- Busca global em Postgres, com acento dobrado dos dois lados.
+- Kanban e agrupamento, com granularidade de data e fuso.
+- Papéis e permissões, aplicados na API — `/graphql`, `/rest/*` e a busca.
+- REST e um subconjunto do OpenAPI derivados do mesmo metadata.
+
+**Não existe ainda:** convite por e-mail (item 9 — a única key nova do plano
+inteiro), duplicados e merge (item 10). Ver `ROADMAP.md`.
+
+**Fora do plano, e por quê:** sincronização de e-mail e agenda, workflows,
+webhooks, billing, SSO, 2FA, atualização ao vivo por SSE. Cada um é um projeto
+próprio, e os primeiros não cabem num isolate sem peça nova (fila, Durable
+Object, ou um serviço fora do Worker).
 
 ## Rodar
 
 ```bash
-# 1. aplicar o baseline no Postgres
-psql "$PG_DATABASE_URL" -f sql/0001_core_baseline.sql
+# 1. aplicar o baseline no Postgres, em ordem
+for f in sql/*.sql; do psql "$PG_DATABASE_URL" -f "$f"; done
 
 # 2. criar o Hyperdrive e preencher o id no wrangler.jsonc
 npx wrangler hyperdrive create twenty --connection-string="$PG_DATABASE_URL"
@@ -71,3 +81,7 @@ curl localhost:8787/client-config
 | `isUnique` e `isSearchable` não são colunas, são derivados | `field-metadata.entity.ts:184-186` |
 | Só o lado MANY_TO_ONE de uma relação gera coluna | `generate-column-definitions.util.ts:123` |
 | `twenty-shared/utils` é barrel e arrasta `handlebars` (usa eval) — importar por subcaminho | `twenty-shared/src/utils/index.ts` |
+| Uma coluna gerada só chama função imutável — `unaccent` não é uma, daí `public.unaccent_immutable()` | `setup-db.ts` |
+| O Postgres recusa derrubar uma coluna de que uma coluna gerada depende: reconstruir o `searchVector` antes | — |
+| `ON CONFLICT` contra índice único parcial precisa repetir o `WHERE` do índice | — |
+| `client.end()` do pg destrói o socket se houver query em voo — nada de `waitUntil` com o client da request | — |

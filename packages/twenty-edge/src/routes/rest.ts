@@ -15,6 +15,11 @@ import {
   type OrderByDirection,
 } from 'src/orm/select';
 import { buildWorkspaceTableShape } from 'src/orm/table-shape';
+import {
+  canPerform,
+  loadWorkspacePermissions,
+  type ObjectAction,
+} from 'src/services/permissions';
 import { type RecordFilter } from 'src/orm/where';
 
 const DEFAULT_LIMIT = 60;
@@ -106,6 +111,30 @@ export const restRoute = new Hono<AppEnv>().all('/*', async (context) =>
       workspaceId: metadata.workspaceId,
     });
 
+    // The REST route builds its own SQL rather than going through the GraphQL
+    // resolvers, so it needs its own gate — otherwise a role that cannot read
+    // an object through /graphql reads it here instead.
+    const permissions =
+      session.userWorkspaceId === null
+        ? null
+        : await loadWorkspacePermissions({
+            client,
+            workspaceId: workspace.id,
+            userWorkspaceId: session.userWorkspaceId,
+            objectMetadataIds: metadata.objects.map((entry) => entry.id),
+          });
+
+    const refuse = (action: ObjectAction) =>
+      permissions !== null &&
+      !canPerform({ permissions, objectMetadataId: object.id, action })
+        ? context.json(
+            {
+              error: `Not allowed to ${action} records of ${object.nameSingular} with your role`,
+            },
+            403,
+          )
+        : null;
+
     const runQuery = async (query: { text: string; values: unknown[] }) => {
       const { rows } = await client.query(query.text, query.values);
 
@@ -115,6 +144,12 @@ export const restRoute = new Hono<AppEnv>().all('/*', async (context) =>
     };
 
     if (context.req.method === 'GET') {
+      const refused = refuse('read');
+
+      if (refused !== null) {
+        return refused;
+      }
+
       const url = new URL(context.req.url);
       const limit = Math.min(
         Number(url.searchParams.get('limit') ?? DEFAULT_LIMIT) || DEFAULT_LIMIT,
@@ -152,6 +187,12 @@ export const restRoute = new Hono<AppEnv>().all('/*', async (context) =>
     }
 
     if (context.req.method === 'POST') {
+      const refused = refuse('update');
+
+      if (refused !== null) {
+        return refused;
+      }
+
       const body = (await context.req.json()) as Record<string, unknown>;
       const records = await runQuery(buildInsertQuery({ shape, input: body }));
 
@@ -159,6 +200,12 @@ export const restRoute = new Hono<AppEnv>().all('/*', async (context) =>
     }
 
     if (context.req.method === 'PATCH' && recordId !== undefined) {
+      const refused = refuse('update');
+
+      if (refused !== null) {
+        return refused;
+      }
+
       const body = (await context.req.json()) as Record<string, unknown>;
       const records = await runQuery(
         buildUpdateQuery({ shape, id: recordId, input: body }),
@@ -170,6 +217,12 @@ export const restRoute = new Hono<AppEnv>().all('/*', async (context) =>
     }
 
     if (context.req.method === 'DELETE' && recordId !== undefined) {
+      const refused = refuse('softDelete');
+
+      if (refused !== null) {
+        return refused;
+      }
+
       const records = await runQuery(buildSoftDeleteQuery({ shape, id: recordId }));
 
       return records[0] === undefined

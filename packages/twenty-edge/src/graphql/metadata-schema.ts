@@ -65,6 +65,20 @@ import { hashPassword, verifyPassword } from 'src/auth/password';
 import { issueLoginToken, verifyLoginToken } from 'src/auth/login-token';
 import { issueUploadToken } from 'src/auth/upload-token';
 import { insertFile, markFileUploaded } from 'src/db/core/file-repository';
+import {
+  findRoles,
+  loadRolePermissions,
+} from 'src/db/core/role-repository';
+import { loadWorkspacePermissions } from 'src/services/permissions';
+import {
+  assignRoleToWorkspaceMember,
+  createRole,
+  deleteRole,
+  updateRole,
+  upsertFieldPermissions,
+  upsertObjectPermissions,
+  upsertPermissionFlags,
+} from 'src/services/role-mutations';
 import { syncStandardMetadata } from 'src/services/sync-standard-metadata';
 import {
   orderedVisibleFields,
@@ -188,6 +202,7 @@ type WorkspaceMember {
   timeFormat: String
   calendarStartDay: Float
   numberFormat: String
+  roles: [Role!]
 }
 
 type DeletedWorkspaceMember {
@@ -214,6 +229,14 @@ type Role {
   canBeAssignedToUsers: Boolean
   canBeAssignedToAgents: Boolean
   canBeAssignedToApiKeys: Boolean
+  workspaceMembers: [WorkspaceMember!]!
+  agents: [Agent!]!
+  apiKeys: [ApiKeyForRole!]!
+  permissionFlags: [RolePermissionFlag!]!
+  objectPermissions: [ObjectPermission!]!
+  fieldPermissions: [FieldPermission!]!
+  rowLevelPermissionPredicates: [RowLevelPermissionPredicate!]!
+  rowLevelPermissionPredicateGroups: [RowLevelPermissionPredicateGroup!]!
 }
 
 type FeatureFlag { key: String! value: Boolean! }
@@ -570,6 +593,114 @@ type Query {
   myConnectedAccounts: [ConnectedAccount!]!
   myMessageChannels(connectedAccountId: UUID): [MessageChannel!]!
   myCalendarChannels(connectedAccountId: UUID): [CalendarChannel!]!
+  getRoles: [Role!]!
+}
+
+type RolePermissionFlag {
+  id: UUID!
+  flag: String!
+  roleId: UUID!
+}
+
+type FieldPermission {
+  id: UUID!
+  roleId: UUID!
+  objectMetadataId: UUID!
+  fieldMetadataId: UUID!
+  canReadFieldValue: Boolean
+  canUpdateFieldValue: Boolean
+}
+
+# We run no agents, but the settings page asks a role for them and one unknown
+# field fails the whole document.
+type Agent {
+  id: UUID!
+  name: String
+  label: String
+  description: String
+  icon: String
+  prompt: String
+  modelId: String
+  responseFormat: RawJSON
+  roleId: UUID
+  isCustom: Boolean
+  modelConfiguration: RawJSON
+  evaluationInputs: RawJSON
+  applicationId: UUID
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type ApiKeyForRole {
+  id: UUID!
+  name: String!
+  expiresAt: DateTime
+  revokedAt: DateTime
+}
+
+input CreateRoleInput {
+  label: String!
+  description: String
+  icon: String
+  canReadAllObjectRecords: Boolean
+  canUpdateAllObjectRecords: Boolean
+  canSoftDeleteAllObjectRecords: Boolean
+  canDestroyAllObjectRecords: Boolean
+  canUpdateAllSettings: Boolean
+  canAccessAllTools: Boolean
+  canBeAssignedToUsers: Boolean
+  canBeAssignedToAgents: Boolean
+  canBeAssignedToApiKeys: Boolean
+}
+
+input UpdateRoleInput {
+  id: UUID!
+  update: UpdateRolePayload!
+}
+
+input UpdateRolePayload {
+  label: String
+  description: String
+  icon: String
+  canReadAllObjectRecords: Boolean
+  canUpdateAllObjectRecords: Boolean
+  canSoftDeleteAllObjectRecords: Boolean
+  canDestroyAllObjectRecords: Boolean
+  canUpdateAllSettings: Boolean
+  canAccessAllTools: Boolean
+  canBeAssignedToUsers: Boolean
+  canBeAssignedToAgents: Boolean
+  canBeAssignedToApiKeys: Boolean
+}
+
+input ObjectPermissionInput {
+  objectMetadataId: UUID!
+  canReadObjectRecords: Boolean
+  canUpdateObjectRecords: Boolean
+  canSoftDeleteObjectRecords: Boolean
+  canDestroyObjectRecords: Boolean
+}
+
+input UpsertObjectPermissionsInput {
+  roleId: UUID!
+  objectPermissions: [ObjectPermissionInput!]!
+}
+
+input FieldPermissionInput {
+  objectMetadataId: UUID!
+  fieldMetadataId: UUID!
+  canReadFieldValue: Boolean
+  canUpdateFieldValue: Boolean
+}
+
+input UpsertFieldPermissionsInput {
+  roleId: UUID!
+  fieldPermissions: [FieldPermissionInput!]!
+}
+
+input UpsertPermissionFlagsInput {
+  roleId: UUID!
+  permissionFlagKeys: [String!]!
 }
 
 type MessageChannel {
@@ -855,12 +986,20 @@ type Mutation {
   createFileUpload(filename: String!, size: Float!, fileFolder: FileFolder!, fieldMetadataId: String): FileUploadTarget!
   completeFileUpload(fileId: String!): FileWithSignedUrl!
   syncStandardMetadata: SyncStandardMetadataResult!
+  createOneRole(createRoleInput: CreateRoleInput!): Role!
+  updateOneRole(updateRoleInput: UpdateRoleInput!): Role!
+  deleteOneRole(roleId: UUID!): UUID!
+  updateWorkspaceMemberRole(workspaceMemberId: UUID!, roleId: UUID!): WorkspaceMember!
+  upsertObjectPermissions(upsertObjectPermissionsInput: UpsertObjectPermissionsInput!): [ObjectPermission!]!
+  upsertFieldPermissions(upsertFieldPermissionsInput: UpsertFieldPermissionsInput!): [FieldPermission!]!
+  upsertPermissionFlags(upsertPermissionFlagsInput: UpsertPermissionFlagsInput!): [RolePermissionFlag!]!
 }
 
 type SyncStandardMetadataResult {
   createdObjects: [String!]!
   createdFields: [String!]!
   searchableObjects: [String!]!
+  createdRoles: [String!]!
 }
 `;
 
@@ -1001,6 +1140,47 @@ const withRelationRefs = (objects: FlatObjectMetadata[]) => {
 // There is no viewField table yet, so a view's columns are derived from the
 // object's own fields. The id has to be stable across requests — the front keys
 // its store by it — which rules out a random UUID.
+// A role the caller has not read back carries no children; returning them empty
+// keeps the mutation's payload valid without a second round trip the front
+// throws away anyway.
+// Changing who can do what is itself a settings change, so the caller needs the
+// settings permission — not merely a session. Without this, any signed-in member
+// could grant themselves the admin role. One extra round trip, on mutations that
+// happen a handful of times in a workspace's life.
+const requireSettingsAccess = async (
+  context: MetadataContext,
+): Promise<string> => {
+  const membership = context.sessionContext?.membership ?? null;
+
+  if (membership === null) {
+    throw new Error('UNAUTHENTICATED');
+  }
+
+  const permissions = await loadWorkspacePermissions({
+    client: context.client,
+    workspaceId: membership.workspace.id,
+    userWorkspaceId: membership.userWorkspaceId,
+    objectMetadataIds: [],
+  });
+
+  if (!permissions.canUpdateAllSettings) {
+    throw new Error('Not allowed to change settings with your role');
+  }
+
+  return membership.workspace.id;
+};
+
+const EMPTY_ROLE_CHILDREN = {
+  workspaceMembers: [],
+  agents: [],
+  apiKeys: [],
+  permissionFlags: [],
+  objectPermissions: [],
+  fieldPermissions: [],
+  rowLevelPermissionPredicates: [],
+  rowLevelPermissionPredicateGroups: [],
+};
+
 const deriveStableId = (left: string, right: string): string => {
   const leftHex = left.replace(/-/g, '');
   const rightHex = right.replace(/-/g, '');
@@ -1378,29 +1558,41 @@ export const METADATA_RESOLVERS = {
       const { user, membership } = context.sessionContext;
 
       // The front hides an object whose permission entry is missing, so every
-      // object needs one. Until roles exist, the only member of a workspace is
-      // its creator and gets full access.
-      const objectsPermissions =
+      // object needs one — including the ones the role cannot read, which it
+      // needs in order to know to hide them.
+      const workspacePermissions =
         membership === null
+          ? null
+          : await loadWorkspacePermissions({
+              client: context.client,
+              workspaceId: membership.workspace.id,
+              userWorkspaceId: membership.userWorkspaceId,
+              objectMetadataIds: (
+                await loadWorkspaceMetadata({
+                  client: context.client,
+                  workspaceId: membership.workspace.id,
+                  metadataVersion: membership.workspace.metadataVersion,
+                })
+              ).objects.map((object) => object.id),
+            });
+
+      const objectsPermissions =
+        workspacePermissions === null
           ? []
-          : (
-              await loadWorkspaceMetadata({
-                client: context.client,
-                workspaceId: membership.workspace.id,
-                metadataVersion: membership.workspace.metadataVersion,
-              })
-            ).objects.map((object) => ({
-              objectMetadataId: object.id,
-              canReadObjectRecords: true,
-              canUpdateObjectRecords: true,
-              canSoftDeleteObjectRecords: true,
-              canDestroyObjectRecords: true,
-              // The front runs Object.entries on restrictedFields without a
-              // guard, so null here crashes the app after a successful login.
-              restrictedFields: {},
-              rowLevelPermissionPredicates: [],
-              rowLevelPermissionPredicateGroups: [],
-            }));
+          : [...workspacePermissions.byObjectMetadataId.entries()].map(
+              ([objectMetadataId, permission]) => ({
+                objectMetadataId,
+                canReadObjectRecords: permission.canReadObjectRecords,
+                canUpdateObjectRecords: permission.canUpdateObjectRecords,
+                canSoftDeleteObjectRecords: permission.canSoftDeleteObjectRecords,
+                canDestroyObjectRecords: permission.canDestroyObjectRecords,
+                // The front runs Object.entries on restrictedFields without a
+                // guard, so null here crashes the app after a successful login.
+                restrictedFields: permission.restrictedFields,
+                rowLevelPermissionPredicates: [],
+                rowLevelPermissionPredicateGroups: [],
+              }),
+            );
 
       const workspaceMember =
         membership === null
@@ -1444,7 +1636,7 @@ export const METADATA_RESOLVERS = {
             ? null
             : {
                 id: membership.userWorkspaceId,
-                permissionFlags: [],
+                permissionFlags: workspacePermissions?.permissionFlags ?? [],
                 isImpersonating: false,
                 objectsPermissions,
                 twoFactorAuthenticationMethodSummary: [],
@@ -1762,6 +1954,79 @@ export const METADATA_RESOLVERS = {
     myConnectedAccounts: () => [],
     myMessageChannels: () => [],
     myCalendarChannels: () => [],
+
+    getRoles: async (
+      _parent: unknown,
+      _args: unknown,
+      context: MetadataContext,
+    ) => {
+      const membership = context.sessionContext?.membership ?? null;
+
+      if (membership === null) {
+        return [];
+      }
+
+      const workspaceId = membership.workspace.id;
+
+      const [roles, permissionData, members] = await Promise.all([
+        findRoles({ client: context.client, workspaceId }),
+        loadRolePermissions({ client: context.client, workspaceId }),
+        findWorkspaceMembers({ client: context.client, workspaceId }),
+      ]);
+
+      // A roleTarget points at a userWorkspace; the front wants the
+      // workspaceMember, and the two are linked through the user.
+      const { rows: userWorkspaces } = await context.client.query<{
+        id: string;
+        userId: string;
+      }>(
+        `SELECT "id","userId" FROM core."userWorkspace" WHERE "workspaceId" = $1`,
+        [workspaceId],
+      );
+
+      const userIdByUserWorkspaceId = new Map(
+        userWorkspaces.map((entry) => [entry.id, entry.userId]),
+      );
+      const memberByUserId = new Map(
+        members
+          .filter((member) => member.userId !== null)
+          .map((member) => [member.userId as string, member]),
+      );
+
+      return roles.map((role) => ({
+        ...role,
+        workspaceMembers: permissionData.roleTargets
+          .filter((target) => target.roleId === role.id)
+          .flatMap((target) => {
+            const userId =
+              target.userWorkspaceId === null
+                ? undefined
+                : userIdByUserWorkspaceId.get(target.userWorkspaceId);
+            const member =
+              userId === undefined ? undefined : memberByUserId.get(userId);
+
+            return member === undefined ? [] : [toWorkspaceMemberDto(member)];
+          }),
+        agents: [],
+        apiKeys: [],
+        permissionFlags: permissionData.permissionFlags.filter(
+          (flag) => flag.roleId === role.id,
+        ),
+        objectPermissions: permissionData.objectPermissions
+          .filter((permission) => permission.roleId === role.id)
+          .map((permission) => ({
+            ...permission,
+            restrictedFields: {},
+            rowLevelPermissionPredicates: [],
+            rowLevelPermissionPredicateGroups: [],
+          })),
+        fieldPermissions: permissionData.fieldPermissions.filter(
+          (permission) => permission.roleId === role.id,
+        ),
+        rowLevelPermissionPredicates: [],
+        rowLevelPermissionPredicateGroups: [],
+      }));
+    },
 
     // The front keys a timeline row to its type by universalIdentifier, then
     // takes the label and the icon from here — and builds the timeline's filter
@@ -2577,6 +2842,157 @@ export const METADATA_RESOLVERS = {
     // Brings a workspace created before a standard object or field existed up
     // to the current seed. Idempotent: the ids are derived, so a second run
     // finds nothing missing.
+    createOneRole: async (
+      _parent: unknown,
+      args: { createRoleInput: Parameters<typeof createRole>[0]['input'] },
+      context: MetadataContext,
+    ) => ({
+      ...(await createRole({
+        client: context.client,
+        workspaceId: await requireSettingsAccess(context),
+        input: args.createRoleInput,
+      })),
+      ...EMPTY_ROLE_CHILDREN,
+    }),
+
+    updateOneRole: async (
+      _parent: unknown,
+      args: {
+        updateRoleInput: {
+          id: string;
+          update: Parameters<typeof updateRole>[0]['input'];
+        };
+      },
+      context: MetadataContext,
+    ) => ({
+      ...(await updateRole({
+        client: context.client,
+        workspaceId: await requireSettingsAccess(context),
+        roleId: args.updateRoleInput.id,
+        input: args.updateRoleInput.update,
+      })),
+      ...EMPTY_ROLE_CHILDREN,
+    }),
+
+    deleteOneRole: async (
+      _parent: unknown,
+      args: { roleId: string },
+      context: MetadataContext,
+    ) =>
+      deleteRole({
+        client: context.client,
+        workspaceId: await requireSettingsAccess(context),
+        roleId: args.roleId,
+      }),
+
+    updateWorkspaceMemberRole: async (
+      _parent: unknown,
+      args: { workspaceMemberId: string; roleId: string },
+      context: MetadataContext,
+    ) => {
+      const workspaceId = await requireSettingsAccess(context);
+
+      const members = await findWorkspaceMembers({
+        client: context.client,
+        workspaceId,
+      });
+
+      const member = members.find((entry) => entry.id === args.workspaceMemberId);
+
+      if (member === undefined || member.userId === null) {
+        throw new Error('Workspace member not found');
+      }
+
+      const { rows } = await context.client.query<{ id: string }>(
+        `SELECT "id" FROM core."userWorkspace"
+         WHERE "workspaceId" = $1 AND "userId" = $2 LIMIT 1`,
+        [workspaceId, member.userId],
+      );
+
+      if (rows[0] === undefined) {
+        throw new Error('Workspace member has no membership row');
+      }
+
+      await assignRoleToWorkspaceMember({
+        client: context.client,
+        workspaceId,
+        userWorkspaceId: rows[0].id,
+        roleId: args.roleId,
+      });
+
+      const roles = await findRoles({ client: context.client, workspaceId });
+
+      return {
+        ...toWorkspaceMemberDto(member),
+        roles: roles
+          .filter((role) => role.id === args.roleId)
+          .map((role) => ({ ...role, ...EMPTY_ROLE_CHILDREN })),
+      };
+    },
+
+    upsertObjectPermissions: async (
+      _parent: unknown,
+      args: {
+        upsertObjectPermissionsInput: {
+          roleId: string;
+          objectPermissions: Parameters<
+            typeof upsertObjectPermissions
+          >[0]['objectPermissions'];
+        };
+      },
+      context: MetadataContext,
+    ) =>
+      (
+        await upsertObjectPermissions({
+          client: context.client,
+          workspaceId: await requireSettingsAccess(context),
+          roleId: args.upsertObjectPermissionsInput.roleId,
+          objectPermissions:
+            args.upsertObjectPermissionsInput.objectPermissions,
+        })
+      ).map((permission) => ({
+        ...permission,
+        restrictedFields: {},
+        rowLevelPermissionPredicates: [],
+        rowLevelPermissionPredicateGroups: [],
+      })),
+
+    upsertFieldPermissions: async (
+      _parent: unknown,
+      args: {
+        upsertFieldPermissionsInput: {
+          roleId: string;
+          fieldPermissions: Parameters<
+            typeof upsertFieldPermissions
+          >[0]['fieldPermissions'];
+        };
+      },
+      context: MetadataContext,
+    ) =>
+      upsertFieldPermissions({
+        client: context.client,
+        workspaceId: await requireSettingsAccess(context),
+        roleId: args.upsertFieldPermissionsInput.roleId,
+        fieldPermissions: args.upsertFieldPermissionsInput.fieldPermissions,
+      }),
+
+    upsertPermissionFlags: async (
+      _parent: unknown,
+      args: {
+        upsertPermissionFlagsInput: {
+          roleId: string;
+          permissionFlagKeys: string[];
+        };
+      },
+      context: MetadataContext,
+    ) =>
+      upsertPermissionFlags({
+        client: context.client,
+        workspaceId: await requireSettingsAccess(context),
+        roleId: args.upsertPermissionFlagsInput.roleId,
+        flags: args.upsertPermissionFlagsInput.permissionFlagKeys,
+      }),
+
     syncStandardMetadata: async (
       _parent: unknown,
       _args: unknown,

@@ -879,4 +879,158 @@ describe('twenty-front metadata documents', () => {
       }
     `);
   });
+  it('validates the roles query the settings page sends', () => {
+    expectValid(`
+      fragment PartialWorkspaceMemberQueryFragment on WorkspaceMember {
+        id
+        name { firstName lastName }
+        colorScheme
+        avatarUrl
+        locale
+        userEmail
+        userWorkspaceId
+        timeZone
+        dateFormat
+        timeFormat
+      }
+      fragment RoleFragment on Role {
+        id
+        label
+        description
+        icon
+        canUpdateAllSettings
+        canAccessAllTools
+        isEditable
+        canReadAllObjectRecords
+        canUpdateAllObjectRecords
+        canSoftDeleteAllObjectRecords
+        canDestroyAllObjectRecords
+        canBeAssignedToUsers
+        canBeAssignedToAgents
+        canBeAssignedToApiKeys
+      }
+      fragment AgentFields on Agent {
+        id name label description icon prompt modelId responseFormat roleId
+        isCustom modelConfiguration evaluationInputs applicationId
+        createdAt updatedAt
+      }
+      fragment ApiKeyForRoleFragment on ApiKeyForRole {
+        id name expiresAt revokedAt
+      }
+      fragment RolePermissionFlagFragment on RolePermissionFlag {
+        id flag roleId
+      }
+      fragment RowLevelPermissionPredicateFragment on RowLevelPermissionPredicate {
+        id fieldMetadataId objectMetadataId operand subFieldName
+        workspaceMemberFieldMetadataId workspaceMemberSubFieldName
+        rowLevelPermissionPredicateGroupId
+        positionInRowLevelPermissionPredicateGroup roleId value
+      }
+      fragment RowLevelPermissionPredicateGroupFragment on RowLevelPermissionPredicateGroup {
+        id parentRowLevelPermissionPredicateGroupId logicalOperator
+        positionInRowLevelPermissionPredicateGroup roleId objectMetadataId
+      }
+      fragment ObjectPermissionFragment on ObjectPermission {
+        objectMetadataId
+        canReadObjectRecords
+        canUpdateObjectRecords
+        canSoftDeleteObjectRecords
+        canDestroyObjectRecords
+        restrictedFields
+        rowLevelPermissionPredicates { ...RowLevelPermissionPredicateFragment }
+        rowLevelPermissionPredicateGroups { ...RowLevelPermissionPredicateGroupFragment }
+      }
+      fragment FieldPermissionFragment on FieldPermission {
+        objectMetadataId fieldMetadataId canReadFieldValue canUpdateFieldValue id roleId
+      }
+      query GetRoles {
+        getRoles {
+          ...RoleFragment
+          workspaceMembers { ...PartialWorkspaceMemberQueryFragment }
+          agents { ...AgentFields }
+          apiKeys { ...ApiKeyForRoleFragment }
+          permissionFlags { ...RolePermissionFlagFragment }
+          objectPermissions { ...ObjectPermissionFragment }
+          fieldPermissions { ...FieldPermissionFragment }
+          rowLevelPermissionPredicates { ...RowLevelPermissionPredicateFragment }
+          rowLevelPermissionPredicateGroups { ...RowLevelPermissionPredicateGroupFragment }
+        }
+      }
+    `);
+  });
+
+  it('validates the role mutations the settings page sends', () => {
+    const roleFragment = `
+      fragment RoleFragment on Role {
+        id label description icon canUpdateAllSettings canAccessAllTools
+        isEditable canReadAllObjectRecords canUpdateAllObjectRecords
+        canSoftDeleteAllObjectRecords canDestroyAllObjectRecords
+        canBeAssignedToUsers canBeAssignedToAgents canBeAssignedToApiKeys
+      }
+    `;
+
+    expectValid(`
+      ${roleFragment}
+      mutation CreateOneRole($createRoleInput: CreateRoleInput!) {
+        createOneRole(createRoleInput: $createRoleInput) { ...RoleFragment }
+      }
+    `);
+
+    expectValid(`
+      ${roleFragment}
+      mutation UpdateOneRole($updateRoleInput: UpdateRoleInput!) {
+        updateOneRole(updateRoleInput: $updateRoleInput) { ...RoleFragment }
+      }
+    `);
+
+    expectValid(`
+      mutation DeleteOneRole($roleId: UUID!) {
+        deleteOneRole(roleId: $roleId)
+      }
+    `);
+
+    expectValid(`
+      fragment ObjectPermissionFragment on ObjectPermission {
+        objectMetadataId
+        canReadObjectRecords
+        canUpdateObjectRecords
+        canSoftDeleteObjectRecords
+        canDestroyObjectRecords
+        restrictedFields
+      }
+      mutation UpsertObjectPermissions(
+        $upsertObjectPermissionsInput: UpsertObjectPermissionsInput!
+      ) {
+        upsertObjectPermissions(
+          upsertObjectPermissionsInput: $upsertObjectPermissionsInput
+        ) { ...ObjectPermissionFragment }
+      }
+    `);
+
+    expectValid(`
+      fragment FieldPermissionFragment on FieldPermission {
+        objectMetadataId fieldMetadataId canReadFieldValue canUpdateFieldValue id roleId
+      }
+      mutation UpsertFieldPermissions(
+        $upsertFieldPermissionsInput: UpsertFieldPermissionsInput!
+      ) {
+        upsertFieldPermissions(
+          upsertFieldPermissionsInput: $upsertFieldPermissionsInput
+        ) { ...FieldPermissionFragment }
+      }
+    `);
+
+    expectValid(`
+      fragment RolePermissionFlagFragment on RolePermissionFlag {
+        id flag roleId
+      }
+      mutation UpsertPermissionFlags(
+        $upsertPermissionFlagsInput: UpsertPermissionFlagsInput!
+      ) {
+        upsertPermissionFlags(
+          upsertPermissionFlagsInput: $upsertPermissionFlagsInput
+        ) { ...RolePermissionFlagFragment }
+      }
+    `);
+  });
 });

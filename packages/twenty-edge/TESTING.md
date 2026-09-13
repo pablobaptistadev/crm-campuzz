@@ -1,6 +1,6 @@
 # Como testar — fase a fase
 
-Estado em 13/09/2026. 98 testes de unidade passando, typecheck limpo, e a suíte
+Estado em 13/09/2026. 108 testes de unidade passando, typecheck limpo, e a suíte
 de ponta a ponta (`packages/twenty-edge-e2e`) verde — Redis, API, navegador de
 verdade e iPhone.
 
@@ -9,7 +9,7 @@ verdade e iPhone.
 ```bash
 cd packages/twenty-edge
 npm install
-npm test          # 98 testes
+npm test          # 108 testes
 npm run typecheck
 npx wrangler deploy --dry-run --env=""   # prova que empacota para o Worker
 ```
@@ -129,6 +129,36 @@ skeleton e chegar na tela de login.
 - Permissões, roles e row-level security: o schema não foi criado ainda.
 
 
+## Permissões — como conferir sem trancar ninguém para fora
+
+A checagem só vale se for medida de verdade, e medir significa assumir um papel
+restrito. O caminho seguro:
+
+```sql
+-- 1. anote o papel atual antes de qualquer coisa
+select rt."id", r."label", u."email"
+from core."roleTarget" rt
+join core."role" r on r."id" = rt."roleId"
+join core."userWorkspace" uw on uw."id" = rt."userWorkspaceId"
+join core."user" u on u."id" = uw."userId";
+```
+
+Crie um papel restrito pela API, aponte seu `roleTarget` para ele, meça, e volte
+pelo SQL — **não pela API**: um papel sem `canUpdateAllSettings` não consegue
+mudar o próprio papel de volta, que é exatamente o ponto.
+
+O que deve acontecer, e aconteceu:
+
+| Tentativa | Resposta |
+|---|---|
+| Ler um objeto sem leitura no papel | `FORBIDDEN — Not allowed to read records of company with your role` |
+| Ler um objeto que o papel libera | Passa |
+| Criar registro sem escrita | `FORBIDDEN — Not allowed to update records of person` |
+| Apagar de vez sem `canDestroy` | `FORBIDDEN — Not allowed to destroy records of person` |
+| `GET /rest/companies` | `403` |
+| Busca global | Não devolve linha nenhuma do objeto escondido |
+| Criar papel sem permissão de configuração | `Not allowed to change settings with your role` |
+
 ## Suíte de ponta a ponta — `packages/twenty-edge-e2e`
 
 Um Worker separado que testa este aqui: Upstash por REST, a API inteira por HTTP
@@ -166,6 +196,7 @@ faltando derruba tudo. Os defeitos que ela encontrou e que já estão corrigidos
 | `myConnectedAccounts`, `myMessageChannels`, `myCalendarChannels` ausentes | 400 na tela de configurações |
 | `timelineActivityTypes` ausente | 400 em toda página de registro |
 | `create<Objetos>` sem o argumento `upsert` | A importação de CSV era recusada inteira |
+| `ON CONFLICT` contra um índice único parcial | O seed dos papéis morria com "no unique or exclusion constraint matching" — a inferência precisa repetir o `WHERE` do índice |
 
 E dois defeitos do próprio arnês, que o faziam mentir:
 

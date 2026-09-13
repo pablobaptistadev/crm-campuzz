@@ -17,6 +17,7 @@ import {
 } from 'src/cache/metadata-cache';
 import { type AppEnv } from 'src/env';
 import { type WorkspaceMetadata } from 'src/metadata/types';
+import { loadWorkspacePermissions } from 'src/services/permissions';
 
 // Keyed by workspace and metadata version, so a schema change invalidates the
 // entry instead of serving a stale schema for the life of the isolate.
@@ -104,6 +105,13 @@ export const graphqlRoute = new Hono<AppEnv>().all('/', async (context) =>
       );
     }
 
+    const permissions = await loadWorkspacePermissions({
+      client,
+      workspaceId: workspace.id,
+      userWorkspaceId: sessionContext.membership.userWorkspaceId,
+      objectMetadataIds: metadata.objects.map((object) => object.id),
+    });
+
     const yoga = createYoga({
       schema: getWorkspaceSchema(metadata),
       graphqlEndpoint: '/graphql',
@@ -113,6 +121,7 @@ export const graphqlRoute = new Hono<AppEnv>().all('/', async (context) =>
         client,
         metadata,
         userId: sessionContext.user.id,
+        permissions,
       }),
     });
 

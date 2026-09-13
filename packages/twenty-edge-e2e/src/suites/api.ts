@@ -1720,6 +1720,184 @@ export const runApiSuite = async (
     },
   );
 
+  // The role machinery, without swapping the test account's own role: a role
+  // created here starts with nothing, and what it answers proves the fallbacks
+  // and the overrides without anyone losing access to the workspace.
+  await recorder.step('a role denies what it does not grant', async () => {
+    const created = unwrap(
+      (
+        await client.graphql<{
+          createOneRole: {
+            id: string;
+            isEditable: boolean;
+            canReadAllObjectRecords: boolean;
+            canDestroyAllObjectRecords: boolean;
+          };
+        }>({
+          endpoint: '/metadata',
+          query: `mutation CreateOneRole($createRoleInput: CreateRoleInput!) {
+            createOneRole(createRoleInput: $createRoleInput) {
+              id label isEditable canReadAllObjectRecords
+              canUpdateAllObjectRecords canDestroyAllObjectRecords
+              canUpdateAllSettings
+            }
+          }`,
+          variables: {
+            createRoleInput: {
+              label: `E2E ${runSuffix}`,
+              canReadAllObjectRecords: true,
+              canUpdateAllObjectRecords: false,
+              canDestroyAllObjectRecords: false,
+              canUpdateAllSettings: false,
+            },
+          },
+        })
+      ).body,
+      'createOneRole',
+    );
+
+    const roleId = created.createOneRole.id;
+
+    assert(created.createOneRole.isEditable, 'a role we made is editable');
+    assert(
+      created.createOneRole.canReadAllObjectRecords &&
+        !created.createOneRole.canDestroyAllObjectRecords,
+      'the switches are stored as sent',
+    );
+
+    const objects = unwrap(
+      (
+        await client.graphql<{
+          objects: { edges: { node: { id: string; nameSingular: string } }[] };
+        }>({
+          endpoint: '/metadata',
+          query: `query ObjectsForPermissions {
+            objects(paging: { first: 200 }) { edges { node { id nameSingular } } }
+          }`,
+        })
+      ).body,
+      'objects for permissions',
+    );
+
+    const companyObjectId = objects.objects.edges.find(
+      (edge) => edge.node.nameSingular === 'company',
+    )?.node.id;
+
+    assert(companyObjectId !== undefined, 'company is in the metadata');
+
+    const upserted = unwrap(
+      (
+        await client.graphql<{
+          upsertObjectPermissions: {
+            objectMetadataId: string;
+            canReadObjectRecords: boolean | null;
+          }[];
+        }>({
+          endpoint: '/metadata',
+          query: `mutation UpsertObjectPermissions(
+            $upsertObjectPermissionsInput: UpsertObjectPermissionsInput!
+          ) {
+            upsertObjectPermissions(
+              upsertObjectPermissionsInput: $upsertObjectPermissionsInput
+            ) {
+              objectMetadataId canReadObjectRecords canUpdateObjectRecords
+              canSoftDeleteObjectRecords canDestroyObjectRecords restrictedFields
+            }
+          }`,
+          variables: {
+            upsertObjectPermissionsInput: {
+              roleId,
+              objectPermissions: [
+                { objectMetadataId: companyObjectId, canReadObjectRecords: false },
+              ],
+            },
+          },
+        })
+      ).body,
+      'upsertObjectPermissions',
+    );
+
+    assertEqual(
+      upserted.upsertObjectPermissions[0]?.canReadObjectRecords,
+      false,
+      'the object override is stored',
+    );
+
+    // Read it back through getRoles, which is what the settings page renders.
+    const roles = unwrap(
+      (
+        await client.graphql<{
+          getRoles: {
+            id: string;
+            isEditable: boolean;
+            objectPermissions: { objectMetadataId: string }[];
+          }[];
+        }>({
+          endpoint: '/metadata',
+          query: `query GetRolesForPermissions {
+            getRoles {
+              id label isEditable
+              objectPermissions { objectMetadataId canReadObjectRecords }
+              workspaceMembers { id }
+              permissionFlags { flag }
+            }
+          }`,
+        })
+      ).body,
+      'getRoles',
+    );
+
+    const role = roles.getRoles.find((entry) => entry.id === roleId);
+
+    assert(role !== undefined, 'the new role is listed');
+    assertEqual(
+      role?.objectPermissions.length,
+      1,
+      'the role carries its override',
+    );
+
+    // A built-in role cannot be edited: losing Admin would lock the workspace
+    // out of its own settings with no way back in.
+    const builtIn = roles.getRoles.find((entry) => entry.isEditable === false);
+
+    assert(builtIn !== undefined, 'the built-in roles were seeded');
+
+    const refusedEdit = (
+      await client.graphql({
+        endpoint: '/metadata',
+        query: `mutation UpdateOneRole($updateRoleInput: UpdateRoleInput!) {
+          updateOneRole(updateRoleInput: $updateRoleInput) { id label }
+        }`,
+        variables: {
+          updateRoleInput: {
+            id: builtIn?.id,
+            update: { label: 'should not stick' },
+          },
+        },
+      })
+    ).body as { errors?: { message: string }[] };
+
+    assert(
+      (refusedEdit.errors ?? []).some((error) =>
+        error.message.includes('built-in'),
+      ),
+      `editing a built-in role is refused: ${JSON.stringify(refusedEdit).slice(0, 200)}`,
+    );
+
+    unwrap(
+      (
+        await client.graphql({
+          endpoint: '/metadata',
+          query: `mutation DeleteOneRole($roleId: UUID!) { deleteOneRole(roleId: $roleId) }`,
+          variables: { roleId },
+        })
+      ).body,
+      'deleteOneRole',
+    );
+
+    return { roleId };
+  });
+
   await recorder.step('signOut invalidates the session', async () => {
     unwrap(
       (

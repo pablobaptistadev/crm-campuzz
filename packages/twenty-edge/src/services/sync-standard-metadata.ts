@@ -21,6 +21,7 @@ import {
   VISIBLE_VIEW_FIELD_COUNT,
 } from 'src/services/bootstrap-workspace';
 import { seedViewFields } from 'src/db/core/view-repository';
+import { syncRoles } from 'src/services/sync-roles';
 import { syncSearchVectors } from 'src/services/sync-search-vectors';
 import { buildStandardObjects } from 'src/standard/objects';
 
@@ -28,6 +29,7 @@ export type SyncStandardMetadataResult = {
   createdObjects: string[];
   createdFields: string[];
   searchableObjects: string[];
+  createdRoles: string[];
 };
 
 // The seed only ran when a workspace was created, so every standard object or
@@ -112,12 +114,16 @@ export const syncStandardMetadata = async ({
     objects: currentObjects,
   });
 
+  // Also always: a workspace that predates roles has none, and until it has one
+  // every member is treated as an administrator.
+  const { createdRoles } = await syncRoles({ client, workspaceId });
+
   if (
     createdObjects.length === 0 &&
     createdFields.length === 0 &&
     backfilledViews === 0
   ) {
-    return { createdObjects, createdFields, searchableObjects };
+    return { createdObjects, createdFields, searchableObjects, createdRoles };
   }
 
   // Foreign keys run over the whole set: a new object's relation can point at
@@ -144,7 +150,7 @@ export const syncStandardMetadata = async ({
 
   await bumpMetadataVersion({ client, workspaceId });
 
-  return { createdObjects, createdFields, searchableObjects };
+  return { createdObjects, createdFields, searchableObjects, createdRoles };
 };
 
 const backfillViewFields = async ({

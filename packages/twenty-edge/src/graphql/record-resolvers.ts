@@ -27,6 +27,11 @@ import {
 } from 'src/orm/table-shape';
 import { type RecordFilter } from 'src/orm/where';
 import {
+  assertCanPerform,
+  canPerform,
+  type WorkspacePermissions,
+} from 'src/services/permissions';
+import {
   runGroupBy,
   type GroupByInput,
 } from 'src/services/group-by';
@@ -45,6 +50,7 @@ export type RecordResolverContext = {
   client: Client;
   metadata: WorkspaceMetadata;
   userId: string | null;
+  permissions: WorkspacePermissions;
 };
 
 const DEFAULT_PAGE_SIZE = 60;
@@ -274,6 +280,19 @@ export const buildRecordResolvers = (
               return null;
             }
 
+            // A relation reads the other object's rows, so it answers null
+            // rather than throwing: one unreadable target must not fail the
+            // whole document the way an error on a nullable field would.
+            if (
+              !canPerform({
+                permissions: context.permissions,
+                objectMetadataId: target.id,
+                action: 'read',
+              })
+            ) {
+              return null;
+            }
+
             const result = await findMany({
               context,
               shape: morphShape,
@@ -311,6 +330,16 @@ export const buildRecordResolvers = (
           const targetId = parent[joinColumnName];
 
           if (typeof targetId !== 'string') {
+            return null;
+          }
+
+          if (
+            !canPerform({
+              permissions: context.permissions,
+              objectMetadataId: targetObject.id,
+              action: 'read',
+            })
+          ) {
             return null;
           }
 
@@ -363,6 +392,16 @@ export const buildRecordResolvers = (
           return null;
         }
 
+        if (
+          !canPerform({
+            permissions: context.permissions,
+            objectMetadataId: targetObject.id,
+            action: 'read',
+          })
+        ) {
+          return null;
+        }
+
         const relationFilter = { [inverseJoinColumnName]: { eq: parentId } };
 
         return findMany({
@@ -383,17 +422,37 @@ export const buildRecordResolvers = (
       typeResolvers[singular] = relationFields;
     }
 
+    // Enforced here rather than only in the schema: the front hides what a role
+    // cannot read, but the schema is the same for everyone, so a hand-written
+    // query would otherwise reach the rows anyway.
+    const assertAllowed = (
+      context: RecordResolverContext,
+      action: Parameters<typeof assertCanPerform>[0]['action'],
+    ) =>
+      assertCanPerform({
+        permissions: context.permissions,
+        objectMetadataId: object.id,
+        objectNameSingular: object.nameSingular,
+        action,
+      });
+
     query[object.namePlural] = (
       _parent: unknown,
       args: FindManyArguments,
       context: RecordResolverContext,
-    ) => findMany({ context, shape, args });
+    ) => {
+      assertAllowed(context, 'read');
+
+      return findMany({ context, shape, args });
+    };
 
     query[object.nameSingular] = async (
       _parent: unknown,
       args: { filter?: RecordFilter },
       context: RecordResolverContext,
     ) => {
+      assertAllowed(context, 'read');
+
       const result = await findMany({
         context,
         shape,
@@ -417,6 +476,8 @@ export const buildRecordResolvers = (
       },
       context: RecordResolverContext,
     ) => {
+      assertAllowed(context, 'read');
+
       const { dimensions, buckets } = await runGroupBy({
         client: context.client,
         shape,
@@ -543,6 +604,8 @@ export const buildRecordResolvers = (
       data: Record<string, unknown>,
       upsert: boolean,
     ) => {
+      assertAllowed(context, 'update');
+
       const result = await runMutation(
         context,
         upsert
@@ -590,6 +653,8 @@ export const buildRecordResolvers = (
       args: { id: string; data: Record<string, unknown> },
       context: RecordResolverContext,
     ) => {
+      assertAllowed(context, 'update');
+
       const result = await runMutation(
         context,
         buildUpdateQuery({ shape, id: args.id, input: args.data }),
@@ -637,6 +702,8 @@ export const buildRecordResolvers = (
       args: { id: string },
       context: RecordResolverContext,
     ) => {
+      assertAllowed(context, 'softDelete');
+
       const result = await runMutation(
         context,
         buildSoftDeleteQuery({ shape, id: args.id }),
@@ -656,6 +723,10 @@ export const buildRecordResolvers = (
       args: { id: string },
       context: RecordResolverContext,
     ) => {
+      // Restoring puts a row back where everyone can see it, so it is the
+      // delete permission that gates it, not the update one.
+      assertAllowed(context, 'softDelete');
+
       const result = await runMutation(
         context,
         buildRestoreQuery({ shape, id: args.id }),
@@ -677,6 +748,8 @@ export const buildRecordResolvers = (
       args: { id: string },
       context: RecordResolverContext,
     ) => {
+      assertAllowed(context, 'destroy');
+
       const result = await runMutation(
         context,
         buildDestroyQuery({ shape, id: args.id }),
@@ -694,6 +767,7 @@ export const buildRecordResolvers = (
     const { records, hasNextPage } = await searchRecords({
       client: context.client,
       metadata: context.metadata,
+      permissions: context.permissions,
       args,
     });
 

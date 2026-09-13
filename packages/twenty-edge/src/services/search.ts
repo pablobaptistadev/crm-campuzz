@@ -7,6 +7,7 @@ import { createParameterBag } from 'src/orm/params';
 import { buildWhereClause } from 'src/orm/select';
 import { buildWorkspaceTableShape } from 'src/orm/table-shape';
 import { type RecordFilter } from 'src/orm/where';
+import { canPerform, type WorkspacePermissions } from 'src/services/permissions';
 
 export type SearchRecord = {
   recordId: string;
@@ -86,10 +87,12 @@ type SearchRow = {
 export const searchRecords = async ({
   client,
   metadata,
+  permissions,
   args,
 }: {
   client: Client;
   metadata: WorkspaceMetadata;
+  permissions: WorkspacePermissions;
   args: SearchArguments;
 }): Promise<{ records: SearchRecord[]; hasNextPage: boolean }> => {
   const tsQuery = buildTsQuery(args.searchInput);
@@ -107,6 +110,19 @@ export const searchRecords = async ({
     }
 
     if (excluded.has(object.nameSingular)) {
+      return false;
+    }
+
+    // Search reaches every table at once, which makes it the easiest way to
+    // read rows a role cannot see. An object without read permission is simply
+    // not one of the tables the UNION covers.
+    if (
+      !canPerform({
+        permissions,
+        objectMetadataId: object.id,
+        action: 'read',
+      })
+    ) {
       return false;
     }
 

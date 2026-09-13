@@ -6,7 +6,7 @@ ser usável no dia a dia, na ordem em que pretendo fazer.
 
 **Feitos:** 0 (sync do metadata padrão), 1 (upload), 4 (views salvas),
 2 (notas e tarefas no registro), 6 (timeline), 7 (CSV), 3 (busca global),
-5 (kanban e agrupamento). **Falta:** 8, 9, 10.
+5 (kanban e agrupamento), 8 (papéis e permissões). **Falta:** 9, 10.
 
 ## Decisões tomadas antes de começar
 
@@ -152,7 +152,7 @@ no schema o documento inteiro era recusado. Upsert casa por `id` — nenhuma out
 coluna tem índice único hoje — e devolve `xmax = 0` para o timeline saber se
 inseriu ou atualizou.
 
-## 8. Papéis e permissões
+## 8. Papéis e permissões — FEITO
 
 Hoje `objectsPermissions` é `true` fixo no código: qualquer pessoa autenticada
 faz tudo. É o item com peso de segurança de verdade.
@@ -165,6 +165,25 @@ faz tudo. É o item com peso de segurança de verdade.
 - Teste: um segundo usuário com papel restrito não enxerga o que não deve.
 
 **Tamanho:** grande.
+
+**Como ficou:** dois papéis embutidos, Admin e Membro, semeados pelo mesmo
+`syncStandardMetadata` e nenhum dos dois editável — perder o Admin tranca todo
+mundo para fora das configurações sem volta. Quem criou o workspace vira Admin,
+quem entra depois vira Membro.
+
+Cada permissão tem três estados, não dois: a linha de `objectPermission` pode
+dizer sim, não, ou `NULL` para herdar o interruptor do papel. O front desenha os
+três, então tratar `NULL` como `false` mudaria o significado.
+
+A checagem mora na API, não no schema: o schema é o mesmo para todo mundo, então
+uma query escrita à mão chegaria nas linhas de qualquer jeito. Estão cobertos
+`/graphql` (queries, mutations, relações e `groupBy`), `/rest/*` — que monta o
+próprio SQL e por isso precisa do próprio portão — e a busca global, que é o
+caminho mais fácil de ler tudo de uma vez. Relação responde `null` em vez de
+erro: um alvo sem leitura não pode derrubar o documento inteiro.
+
+Fora daqui, de propósito: predicados de linha (o front marca Enterprise e
+entrega atrás da própria licença), agentes e API keys.
 
 ## 9. Convidar usuário (e-mail)
 

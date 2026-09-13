@@ -74,7 +74,7 @@ STORAGE_S3_ACCESS_KEY_ID        # R2
 STORAGE_S3_SECRET_ACCESS_KEY    # R2
 INTERNAL_API_TOKEN              # consumer/cron → endpoints internos (fase 8)
 CF_QUEUES_PRODUCER_TOKEN        # publicar nas filas (fase 8)
-RESEND_API_KEY                  # e-mail transacional
+SENDGRID_API_KEY                # e-mail transacional (SendGrid v3, HTTP)
 ```
 
 A connection string do Supabase **não vira segredo**: ela fica dentro do

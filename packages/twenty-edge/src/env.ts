@@ -16,7 +16,9 @@ export type Bindings = {
   APP_SECRET?: string;
   // The only credential the whole roadmap adds. Without it an invitation is
   // still created and its link still works — we just cannot deliver it.
-  RESEND_API_KEY?: string;
+  // A SendGrid key, the one that starts with SG. — the same secret their SMTP
+  // block carries as the password.
+  SENDGRID_API_KEY?: string;
   EMAIL_FROM?: string;
   // Yoga masks resolver errors by default, which hides the cause during a
   // deploy-and-test loop. Never leave this on in front of real users.

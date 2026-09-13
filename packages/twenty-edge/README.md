@@ -51,9 +51,15 @@ No ar em `https://crm.campuzz.com.br`, servindo o `twenty-front` sem modificaç�
 - Erros mascarados: só os deliberados chegam ao navegador com mensagem; um erro
   do Postgres vira `Unexpected error.`
 
-**A única credencial que falta** é a do provedor de e-mail: `RESEND_API_KEY` e
-`EMAIL_FROM`, por `wrangler secret put`. Sem elas tudo funciona, menos a entrega
-da mensagem — o link do convite volta na resposta para quem convidou.
+**A única credencial que falta** é a do provedor de e-mail: `SENDGRID_API_KEY`
+e `EMAIL_FROM`, por `wrangler secret put`. Sem elas tudo funciona, menos a
+entrega da mensagem — o link do convite volta na resposta para quem convidou.
+
+A key é a do SendGrid, a que começa com `SG.`. Se o que você tem é o bloco SMTP
+deles, é o mesmo segredo: o usuário é literalmente `apikey` e a senha é a key.
+SMTP em si não serve — não existe socket na 587 dentro de um Worker.
+`EMAIL_FROM` precisa ser um remetente ou domínio verificado no SendGrid, senão
+a API recusa com 403.
 
 **Fora do plano, e por quê:** sincronização de e-mail e agenda, workflows,
 webhooks, billing, SSO, 2FA, atualização ao vivo por SSE. Cada um é um projeto

@@ -12,9 +12,33 @@ export type EmailResult =
   | { delivered: false; reason: string };
 
 // SMTP does not exist inside a Worker — there are no raw sockets on port 587 —
-// so the provider has to speak HTTP. Resend is the default; the shape below is
-// small enough that swapping it for Postmark is a different URL and body.
-const RESEND_ENDPOINT = 'https://api.resend.com/emails';
+// so the provider has to speak HTTP. SendGrid's v3 API it is. Its SMTP
+// credentials are the same secret wearing a different hat: the username is
+// literally "apikey" and the password is the API key, so a SendGrid SMTP block
+// already contains what this needs.
+const SENDGRID_ENDPOINT = 'https://api.sendgrid.com/v3/mail/send';
+
+// SendGrid answers 202 Accepted, not 200, and with an empty body. Anything else
+// carries {errors: [{message, field}]} worth reading back to whoever invited.
+const readFailureReason = async (response: Response): Promise<string> => {
+  const body = await response.text().catch(() => '');
+
+  try {
+    const parsed: unknown = JSON.parse(body);
+    const errors = (parsed as { errors?: { message?: string }[] }).errors;
+
+    if (Array.isArray(errors) && errors.length > 0) {
+      return errors
+        .map((error) => error.message ?? '')
+        .filter((message) => message.length > 0)
+        .join('; ');
+    }
+  } catch {
+    // Not JSON — the raw body is still the most useful thing we have.
+  }
+
+  return body.slice(0, 200);
+};
 
 export const sendEmail = async ({
   bindings,
@@ -23,7 +47,7 @@ export const sendEmail = async ({
   bindings: Bindings;
   message: EmailMessage;
 }): Promise<EmailResult> => {
-  const apiKey = bindings.RESEND_API_KEY ?? '';
+  const apiKey = bindings.SENDGRID_API_KEY ?? '';
   const from = bindings.EMAIL_FROM ?? '';
 
   // Not configured is not an error: an invitation is still created and its link
@@ -33,31 +57,33 @@ export const sendEmail = async ({
     return {
       delivered: false,
       reason:
-        'E-mail não configurado: defina RESEND_API_KEY e EMAIL_FROM para enviarmos o convite',
+        'E-mail não configurado: defina SENDGRID_API_KEY e EMAIL_FROM para enviarmos o convite',
     };
   }
 
-  const response = await fetch(RESEND_ENDPOINT, {
+  const response = await fetch(SENDGRID_ENDPOINT, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from,
-      to: [message.to],
+      personalizations: [{ to: [{ email: message.to }] }],
+      from: { email: from },
       subject: message.subject,
-      html: message.html,
-      text: message.text,
+      // Order matters to SendGrid: it sends the last part as the preferred one,
+      // so text/plain has to come before text/html.
+      content: [
+        { type: 'text/plain', value: message.text },
+        { type: 'text/html', value: message.html },
+      ],
     }),
   });
 
   if (!response.ok) {
-    const body = await response.text();
-
     return {
       delivered: false,
-      reason: `Não conseguimos enviar o e-mail (${response.status}): ${body.slice(0, 200)}`,
+      reason: `Não conseguimos enviar o e-mail (${response.status}): ${await readFailureReason(response)}`,
     };
   }
 

@@ -189,8 +189,7 @@ entrega atrás da própria licença), agentes e API keys.
 ## 9. Convidar usuário (e-mail) — FEITO
 
 - Provedor com API HTTP — SMTP não existe dentro de um Worker. Resend ou
-  Postmark. **Key nova:** `RESEND_API_KEY` (ou equivalente) e um domínio
-  verificado.
+  SendGrid. **Key nova:** `SENDGRID_API_KEY` e um remetente verificado.
 - Tabelas `appToken` / `workspaceInvitation`.
 - Mutations de convite, reenvio e aceite; e, de quebra, recuperação de senha e
   verificação de e-mail, que dependem do mesmo canal.
@@ -200,7 +199,8 @@ entrega atrás da própria licença), agentes e API keys.
 **Como ficou:** o convite existe com ou sem provedor de e-mail. Sem a key, a
 mutation devolve o link junto do erro, para quem convidou mandar por onde
 quiser — falhar a mutation inteira deixaria a função inútil até a key chegar.
-Com `RESEND_API_KEY` e `EMAIL_FROM` o mesmo caminho passa a enviar de verdade.
+Com `SENDGRID_API_KEY` e `EMAIL_FROM` o mesmo caminho passa a enviar de
+verdade.
 SMTP não existe dentro de um Worker (não há socket na 587), então o provedor
 tem que falar HTTP.
 

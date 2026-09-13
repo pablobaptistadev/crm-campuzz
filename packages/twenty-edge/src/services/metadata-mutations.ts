@@ -14,13 +14,16 @@ import {
 } from 'src/db/core/metadata-repository';
 import { type FieldMetadataType } from 'src/metadata/field-metadata-type';
 import {
+  computeMorphFieldName,
   computeTableName,
   getWorkspaceSchemaName,
+  pascalCase,
   toCamelCase,
 } from 'src/metadata/naming';
 import {
   type FlatFieldMetadata,
   type FlatObjectMetadata,
+  type MorphTarget,
 } from 'src/metadata/types';
 import { syncSearchVector } from 'src/services/sync-search-vectors';
 import { SYSTEM_FIELDS } from 'src/standard/build';
@@ -157,6 +160,147 @@ export const createObjectMetadata = async ({
   await bumpMetadataVersion({ client, workspaceId });
 
   return object;
+};
+
+// Notes, tasks, files and the timeline all hang off one MORPH_RELATION whose
+// targets are fixed when the standard objects are seeded. A custom object
+// created afterwards is not in that list, so its record page would show none of
+// those tabs and createNoteTarget would have no column to write. Adding the
+// object to each morph field, and the matching inverse on the object itself, is
+// what Twenty does when you create an object through the UI.
+const ACTIVITY_RELATIONS = [
+  { objectNameSingular: 'noteTarget', inverseName: 'noteTargets', inverseLabel: 'Notes', icon: 'IconNotes' },
+  { objectNameSingular: 'taskTarget', inverseName: 'taskTargets', inverseLabel: 'Tasks', icon: 'IconCheckbox' },
+  { objectNameSingular: 'attachment', inverseName: 'attachments', inverseLabel: 'Attachments', icon: 'IconFileImport' },
+  { objectNameSingular: 'timelineActivity', inverseName: 'timelineActivities', inverseLabel: 'Timeline Activities', icon: 'IconTimeline' },
+] as const;
+
+const MORPH_FIELD_NAME = 'target';
+
+export const attachActivityRelations = async ({
+  client,
+  workspaceId,
+  object,
+  objects,
+}: {
+  client: Client;
+  workspaceId: string;
+  object: FlatObjectMetadata;
+  objects: FlatObjectMetadata[];
+}): Promise<void> => {
+  const schemaName = getWorkspaceSchemaName(workspaceId);
+
+  for (const relation of ACTIVITY_RELATIONS) {
+    const activityObject = objects.find(
+      (candidate) => candidate.nameSingular === relation.objectNameSingular,
+    );
+
+    if (activityObject === undefined) {
+      continue;
+    }
+
+    const morphField = activityObject.fields.find(
+      (field) =>
+        field.name === MORPH_FIELD_NAME && field.type === 'MORPH_RELATION',
+    );
+
+    if (morphField === undefined) {
+      continue;
+    }
+
+    const existingTargets = morphField.settings?.morphTargets ?? [];
+
+    if (
+      existingTargets.some(
+        (target) => target.objectMetadataId === object.id,
+      )
+    ) {
+      continue;
+    }
+
+    // A repair run reaches an object whose inverse field was written before the
+    // morph target was lost; (objectMetadataId, name) is unique, so reuse it
+    // rather than trying to insert a second one under a new id.
+    const existingInverse = object.fields.find(
+      (field) => field.name === relation.inverseName,
+    );
+    const inverseFieldId = existingInverse?.id ?? crypto.randomUUID();
+
+    const inverseField: FlatFieldMetadata = {
+      id: inverseFieldId,
+      objectMetadataId: object.id,
+      workspaceId,
+      name: relation.inverseName,
+      label: relation.inverseLabel,
+      type: 'RELATION',
+      description: null,
+      icon: relation.icon,
+      isActive: true,
+      isSystem: false,
+      isNullable: true,
+      isUnique: false,
+      defaultValue: null,
+      options: null,
+      settings: { relationType: 'ONE_TO_MANY' },
+      relationTargetFieldMetadataId: morphField.id,
+      relationTargetObjectMetadataId: activityObject.id,
+    };
+
+    const newTarget: MorphTarget = {
+      objectMetadataId: object.id,
+      targetFieldMetadataId: inverseFieldId,
+      nameSingular: object.nameSingular,
+      namePlural: object.namePlural,
+    };
+
+    // Written back onto the field the caller handed us, not onto a copy: a
+    // backfill loops over every custom object against the same metadata, and a
+    // copy would make each object overwrite the previous one's target.
+    morphField.settings = {
+      ...morphField.settings,
+      morphTargets: [...existingTargets, newTarget],
+    };
+
+    await persistFieldMetadata({ client, field: inverseField });
+    await persistFieldMetadata({ client, field: morphField });
+
+    const activityTable = computeTableName(
+      activityObject.nameSingular,
+      activityObject.isCustom,
+    );
+    const objectTable = computeTableName(object.nameSingular, object.isCustom);
+    const joinColumn = `${computeMorphFieldName({
+      fieldName: MORPH_FIELD_NAME,
+      relationType: 'MANY_TO_ONE',
+      nameSingular: object.nameSingular,
+      namePlural: object.namePlural,
+    })}Id`;
+
+    await client.query(
+      `ALTER TABLE ${escapeIdentifier(schemaName)}.${escapeIdentifier(activityTable)}
+       ADD COLUMN IF NOT EXISTS ${escapeIdentifier(joinColumn)} uuid`,
+    );
+
+    const constraintName = escapeIdentifier(
+      `FK_${activityTable}_${pascalCase(object.nameSingular)}`,
+    );
+
+    // Postgres has no ADD CONSTRAINT IF NOT EXISTS, and a repair run reaches a
+    // table whose column was added but whose morph target was lost, so the
+    // constraint may already be there.
+    await client.query(
+      `ALTER TABLE ${escapeIdentifier(schemaName)}.${escapeIdentifier(activityTable)}
+       DROP CONSTRAINT IF EXISTS ${constraintName},
+       ADD CONSTRAINT ${constraintName}
+       FOREIGN KEY (${escapeIdentifier(joinColumn)})
+       REFERENCES ${escapeIdentifier(schemaName)}.${escapeIdentifier(objectTable)}("id")
+       ON DELETE CASCADE`,
+    );
+
+    if (existingInverse === undefined) {
+      object.fields.push(inverseField);
+    }
+  }
 };
 
 export type RelationCreationPayload = {

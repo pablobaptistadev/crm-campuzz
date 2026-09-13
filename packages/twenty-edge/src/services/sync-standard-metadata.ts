@@ -14,7 +14,10 @@ import {
   computeTableName,
   getWorkspaceSchemaName,
 } from 'src/metadata/naming';
-import { applyFieldColumns } from 'src/services/metadata-mutations';
+import {
+  applyFieldColumns,
+  attachActivityRelations,
+} from 'src/services/metadata-mutations';
 import {
   orderedVisibleFields,
   seedDefaultViews,
@@ -140,6 +143,24 @@ export const syncStandardMetadata = async ({
   // Also always: a workspace that predates roles has none, and until it has one
   // every member is treated as an administrator.
   const { createdRoles } = await syncRoles({ client, workspaceId });
+
+  // A custom object created before this ran has no Notes, Tasks, Files or
+  // Timeline tab. Repairing it here is idempotent — a target already in the
+  // morph field is skipped — so the sync doubles as the backfill.
+  const customObjects = currentObjects.filter((object) => object.isCustom);
+
+  for (const object of customObjects) {
+    await attachActivityRelations({
+      client,
+      workspaceId,
+      object,
+      objects: currentObjects,
+    });
+  }
+
+  if (customObjects.length > 0) {
+    await bumpMetadataVersion({ client, workspaceId });
+  }
 
   if (
     createdObjects.length === 0 &&

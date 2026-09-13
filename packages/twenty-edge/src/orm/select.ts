@@ -2,6 +2,7 @@ import { escapeIdentifier, qualifiedTableName } from 'src/ddl/escape';
 import { type ParameterBag, createParameterBag } from 'src/orm/params';
 import {
   buildColumnResultAlias,
+  type ColumnShape,
   type WorkspaceTableShape,
 } from 'src/orm/table-shape';
 import {
@@ -315,6 +316,19 @@ export const buildCountQuery = ({
 
 // Result rows come back with flattened `alias_column` keys; composites are
 // rebuilt into nested objects here.
+// pg hands a numeric column back as a string to keep arbitrary precision. The
+// front validates a currency's amountMicros with z.number(), so a string reads
+// as an empty field — the amount is there and simply never renders.
+const hydrateColumnValue = (column: ColumnShape, value: unknown): unknown => {
+  if (column.fieldType !== 'NUMERIC' || typeof value !== 'string') {
+    return value ?? null;
+  }
+
+  const parsed = Number(value);
+
+  return Number.isFinite(parsed) ? parsed : value;
+};
+
 export const hydrateRecord = ({
   shape,
   alias,
@@ -327,7 +341,10 @@ export const hydrateRecord = ({
   const record: Record<string, unknown> = {};
 
   for (const column of shape.columnShapeByColumnName.values()) {
-    const value = row[buildColumnResultAlias({ alias, columnName: column.columnName })];
+    const value = hydrateColumnValue(
+      column,
+      row[buildColumnResultAlias({ alias, columnName: column.columnName })],
+    );
 
     if (column.compositeParentFieldName !== null) {
       const parent = (record[column.compositeParentFieldName] ??= {}) as Record<
@@ -335,12 +352,12 @@ export const hydrateRecord = ({
         unknown
       >;
 
-      parent[column.compositePropertyName as string] = value ?? null;
+      parent[column.compositePropertyName as string] = value;
 
       continue;
     }
 
-    record[column.columnName] = value ?? null;
+    record[column.columnName] = value;
   }
 
   return record;

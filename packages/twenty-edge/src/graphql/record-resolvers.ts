@@ -82,6 +82,7 @@ type FindManyArguments = {
 // [{name: {firstName: Direction}}]; flatten both into a single ordered list.
 const normalizeOrderBy = (
   orderBy: Record<string, unknown>[] | undefined,
+  shape?: WorkspaceTableShape,
 ): OrderByClause[] => {
   const clauses: OrderByClause[] = [];
 
@@ -100,6 +101,16 @@ const normalizeOrderBy = (
         }
       }
     }
+  }
+
+  // The front appends position to every sort it builds (turnSortsIntoOrderBy),
+  // so a list it asks for without one — a relation table on a record page —
+  // still has to come back in the order the user dragged the rows into.
+  if (
+    shape?.columnShapeByColumnName.get('position')?.fieldType === 'POSITION' &&
+    !clauses.some((clause) => clause.fieldName === 'position')
+  ) {
+    clauses.push({ fieldName: 'position', direction: 'AscNullsFirst' });
   }
 
   // id is always the tie-breaker, otherwise the keyset cursor is ambiguous
@@ -165,7 +176,7 @@ const findMany = async ({
   args: FindManyArguments;
 }) => {
   const isBackward = args.last !== undefined || args.before !== undefined;
-  const orderBy = normalizeOrderBy(args.orderBy);
+  const orderBy = normalizeOrderBy(args.orderBy, shape);
   const pageSize = Math.min(
     args.first ?? args.last ?? DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE,

@@ -237,3 +237,62 @@ describe('hydrateRecord', () => {
     expect(record.jobTitle).toBeNull();
   });
 });
+
+describe('hydrateRecord numeric columns', () => {
+  const currencyShape = buildWorkspaceTableShape({
+    object: {
+      ...personObject,
+      fields: [
+        ...personObject.fields,
+        {
+          id: 'field-amount',
+          objectMetadataId: personObject.id,
+          workspaceId: WORKSPACE_ID,
+          name: 'amount',
+          label: 'Amount',
+          type: 'CURRENCY',
+          description: null,
+          icon: null,
+          isActive: true,
+          isSystem: false,
+          isNullable: true,
+          isUnique: false,
+          defaultValue: null,
+          options: null,
+          settings: null,
+          relationTargetFieldMetadataId: null,
+          relationTargetObjectMetadataId: null,
+        },
+      ],
+    },
+    workspaceId: WORKSPACE_ID,
+  });
+
+  // pg returns numeric as a string; the front validates amountMicros with
+  // z.number() and renders the whole field empty when it is not one.
+  it('returns amountMicros as a number', () => {
+    const record = hydrateRecord({
+      shape: currencyShape,
+      alias: currencyShape.nameSingular,
+      row: {
+        [`${currencyShape.nameSingular}_amountAmountMicros`]: '60000000000',
+        [`${currencyShape.nameSingular}_amountCurrencyCode`]: 'BRL',
+      },
+    });
+
+    expect(record.amount).toEqual({
+      amountMicros: 60000000000,
+      currencyCode: 'BRL',
+    });
+  });
+
+  it('keeps a missing amount null', () => {
+    const record = hydrateRecord({
+      shape: currencyShape,
+      alias: currencyShape.nameSingular,
+      row: { [`${currencyShape.nameSingular}_amountCurrencyCode`]: null },
+    });
+
+    expect(record.amount).toEqual({ amountMicros: null, currencyCode: null });
+  });
+});

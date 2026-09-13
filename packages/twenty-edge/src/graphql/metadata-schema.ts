@@ -53,6 +53,7 @@ import {
 } from 'src/services/bootstrap-workspace';
 import {
   type RelationCreationPayload,
+  attachActivityRelations,
   createFieldMetadata,
   createObjectMetadata,
   deleteFieldMetadata,
@@ -1500,48 +1501,91 @@ const RELATION_WIDGETS: {
   },
 ];
 
+// Namespace for the per-relation widgets; the field's own id makes each one
+// distinct, so one namespace covers them all.
+const RELATION_FIELD_WIDGET_NAMESPACE =
+  '00000000-0000-4000-8000-000000009f1e';
+
+const ACTIVITY_RELATION_FIELD_NAMES = new Set(
+  RELATION_WIDGETS.map((widget) => widget.relationFieldName),
+);
+
+const buildWidgetPosition = (index: number) => ({
+  gridPosition: { column: 0, columnSpan: 12, row: index, rowSpan: 1 },
+  position: {
+    __type: 'PageLayoutWidgetVerticalListPosition',
+    layoutMode: 'VERTICAL_LIST',
+    index,
+    heightBehavior: 'FIT_CONTENT',
+  },
+});
+
 const buildRelationWidgets = ({
   object,
   tabId,
 }: {
   object: FlatObjectMetadata;
   tabId: string;
-}) =>
-  RELATION_WIDGETS.filter((widget) =>
+}) => {
+  const activityWidgets = RELATION_WIDGETS.filter((widget) =>
     object.fields.some(
       (field) => field.name === widget.relationFieldName && field.isActive,
     ),
-  ).map((widget, index) => {
-    const widgetId = deriveStableId(object.id, widget.namespace);
+  ).map((widget) => ({
+    id: deriveStableId(object.id, widget.namespace),
+    title: widget.type,
+    type: widget.type,
+    configuration: {
+      __type: `${widget.configurationType.charAt(0)}${widget.configurationType.slice(1).toLowerCase()}Configuration`,
+      configurationType: widget.configurationType,
+    },
+  }));
 
-    return {
-      id: widgetId,
-      applicationId: null,
-      universalIdentifier: widgetId,
-      isSystemSideEffect: false,
-      title: widget.type,
-      type: widget.type,
-      objectMetadataId: object.id,
-      createdAt: null,
-      updatedAt: null,
-      isActive: true,
-      deletedAt: null,
-      conditionalDisplay: null,
-      conditionalAvailabilityExpression: null,
-      gridPosition: { column: 0, columnSpan: 12, row: index + 1, rowSpan: 1 },
-      position: {
-        __type: 'PageLayoutWidgetVerticalListPosition',
-        layoutMode: 'VERTICAL_LIST',
-        index: index + 1,
-        heightBehavior: 'FIT_CONTENT',
-      },
+  // Every other to-many relation gets its own table on the record page, the way
+  // the standard layouts give a company its People and Opportunities. Without
+  // it a custom object's children are reachable only from their own menu entry.
+  const relationWidgets = object.fields
+    .filter(
+      (field) =>
+        field.isActive &&
+        (field.type === 'RELATION' || field.type === 'MORPH_RELATION') &&
+        field.settings?.relationType === 'ONE_TO_MANY' &&
+        !ACTIVITY_RELATION_FIELD_NAMES.has(field.name),
+    )
+    .map((field) => ({
+      id: deriveStableId(field.id, RELATION_FIELD_WIDGET_NAMESPACE),
+      title: field.label,
+      type: 'FIELD',
       configuration: {
-        __type: `${widget.configurationType.charAt(0)}${widget.configurationType.slice(1).toLowerCase()}Configuration`,
-        configurationType: widget.configurationType,
+        __type: 'FieldConfiguration',
+        configurationType: 'FIELD',
+        fieldMetadataId: field.id,
+        fieldDisplayMode: 'TABLE',
+        nestedRelationFieldMetadataId: null,
+        viewId: null,
+        isUIEditable: true,
       },
-      pageLayoutTabId: tabId,
-    };
-  });
+    }));
+
+  return [...relationWidgets, ...activityWidgets].map((widget, index) => ({
+    id: widget.id,
+    applicationId: null,
+    universalIdentifier: widget.id,
+    isSystemSideEffect: false,
+    title: widget.title,
+    type: widget.type,
+    objectMetadataId: object.id,
+    createdAt: null,
+    updatedAt: null,
+    isActive: true,
+    deletedAt: null,
+    conditionalDisplay: null,
+    conditionalAvailabilityExpression: null,
+    ...buildWidgetPosition(index + 1),
+    configuration: widget.configuration,
+    pageLayoutTabId: tabId,
+  }));
+};
 
 // The four actions we actually write, kept in step with TIMELINE_TYPE_BY_ACTION
 // in src/services/timeline.ts. Listing an action we never emit would put a
@@ -2762,11 +2806,21 @@ export const METADATA_RESOLVERS = {
       context: MetadataContext,
     ) => {
       const workspaceId = await requireWorkspaceId(context);
+      const metadata = await loadMetadataForSession(context);
 
       const object = await createObjectMetadata({
         client: context.client,
         workspaceId,
         input: args.input,
+      });
+
+      // Without this the object has no Notes, Tasks, Files or Timeline tab —
+      // the morph fields those tabs read are fixed at seed time.
+      await attachActivityRelations({
+        client: context.client,
+        workspaceId,
+        object,
+        objects: metadata.objects,
       });
 
       // A new object with no view never appears in the sidebar.

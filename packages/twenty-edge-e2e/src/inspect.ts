@@ -12,6 +12,7 @@ export type InspectResult = {
   screenshotKey: string;
   uploadOutcome?: string;
   uploadRequests?: string[];
+  tracedRequests?: string[];
 };
 
 // A page in the real browser, with its own account, reporting what the API
@@ -24,6 +25,7 @@ export const inspectPage = async ({
   path,
   click,
   upload,
+  trace,
 }: {
   bindings: Bindings;
   email: string;
@@ -31,6 +33,7 @@ export const inspectPage = async ({
   path: string;
   click?: string;
   upload?: string;
+  trace?: string;
 }): Promise<InspectResult> => {
   const browser = await puppeteer.launch(bindings.BROWSER);
 
@@ -40,6 +43,7 @@ export const inspectPage = async ({
     const rejectedRequests: string[] = [];
     const failedRequests: string[] = [];
     const uploadRequests: string[] = [];
+    const tracedRequests: string[] = [];
     let uploadOutcome: string | undefined;
 
     page.on('console', (message) => {
@@ -83,6 +87,20 @@ export const inspectPage = async ({
       void response
         .text()
         .then((body) => {
+          const request = response.request().postData() ?? '';
+
+          // A query can come back 200 with the wrong answer rather than an
+          // error; tracing one by name is how that gets looked at at all.
+          if (
+            trace !== undefined &&
+            trace.length > 0 &&
+            request.includes(trace)
+          ) {
+            tracedRequests.push(
+              `request=${request.slice(0, 900)} :: response=${body.slice(0, 900)}`,
+            );
+          }
+
           const failed =
             response.status() >= 400 || /"errors"\s*:/.test(body);
 
@@ -255,6 +273,7 @@ export const inspectPage = async ({
       screenshotKey,
       uploadOutcome,
       uploadRequests,
+      tracedRequests,
     };
   } finally {
     await browser.close().catch(() => undefined);

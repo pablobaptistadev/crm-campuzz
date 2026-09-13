@@ -28,7 +28,7 @@ workspace onde todo mundo é administrador.
 
 ---
 
-## 0. Sincronizar metadata padrão em workspace existente — pré-requisito
+## 0. Sincronizar metadata padrão em workspace existente — FEITO
 
 Hoje o seed só roda na criação do workspace. Quando eu acrescento um objeto ou
 campo padrão (item 2 precisa disso), o workspace que já existe fica para trás —
@@ -39,7 +39,7 @@ falta e roda o DDL correspondente. Idempotente, os ids já são determinísticos
 
 **Tamanho:** pequeno. **Destrava:** 2, 3, 6.
 
-## 1. Upload de arquivo
+## 1. Upload de arquivo — FEITO
 
 O front já tem o fluxo pronto (`useDirectFileUpload.ts`): `createFileUpload`
 devolve `{ fileId, uploadUrl, contentType, expiresAt }`, o browser dá PUT
@@ -92,7 +92,7 @@ uma coluna gerada depender dela. Acento é dobrado dos dois lados por
 `public.unaccent_immutable()`: "joao" acha "João" e vice-versa. O texto digitado
 vira prefixo (`termo:*`) em vez de ir cru para o `to_tsquery`.
 
-## 4. Filtros, ordenações e colunas salvos na view
+## 4. Filtros, ordenações e colunas salvos na view — FEITO
 
 Hoje `getViews` sintetiza os `viewFields` a partir dos campos do objeto e
 devolve `viewFilters`/`viewSorts`/`viewGroups` vazios — o filtro que o usuário

@@ -5,11 +5,12 @@ import { renderReportHtml } from 'src/report';
 import { summarize, type RunReport, type StepResult } from 'src/runner';
 import { runApiSuite } from 'src/suites/api';
 import { runBrowserSuite } from 'src/suites/browser';
+import { runMobileSuite } from 'src/suites/mobile';
 import { runRedisSuite } from 'src/suites/redis';
 
-type SuiteName = 'api' | 'redis' | 'browser';
+type SuiteName = 'api' | 'redis' | 'browser' | 'mobile';
 
-const ALL_SUITES: SuiteName[] = ['api', 'redis', 'browser'];
+const ALL_SUITES: SuiteName[] = ['api', 'redis', 'browser', 'mobile'];
 
 const parseSuites = (value: string | undefined): SuiteName[] => {
   if (value === undefined || value === 'all') {
@@ -46,6 +47,13 @@ const run = async (
 
   if (suites.includes('api')) {
     steps.push(...(await runApiSuite(bindings)).steps);
+  }
+
+  if (suites.includes('mobile')) {
+    const mobileRun = await runMobileSuite(bindings, runId);
+
+    steps.push(...mobileRun.steps);
+    artifacts = [...artifacts, ...mobileRun.artifacts];
   }
 
   if (suites.includes('browser')) {

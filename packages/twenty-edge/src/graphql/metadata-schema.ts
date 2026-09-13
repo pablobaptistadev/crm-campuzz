@@ -1136,12 +1136,75 @@ export const METADATA_RESOLVERS = {
       );
     },
 
+    // The sidebar is built entirely from these. With none, the app signs in to
+    // an empty shell — which is exactly what a phone shows, since it has no
+    // record URL to fall back on the way a desktop tab does.
+    navigationMenuItems: async (
+      _parent: unknown,
+      _args: unknown,
+      context: MetadataContext,
+    ) => {
+      const membership = context.sessionContext?.membership ?? null;
+
+      if (membership === null) {
+        return [];
+      }
+
+      const metadata = await loadWorkspaceMetadata({
+        client: context.client,
+        workspaceId: membership.workspace.id,
+        metadataVersion: membership.workspace.metadataVersion,
+      });
+
+      const { rows } = await context.client.query<ViewRow>(
+        `SELECT "id","name","type","key","icon","position","objectMetadataId","isCompact"
+         FROM core."view"
+         WHERE "workspaceId" = $1 AND "deletedAt" IS NULL AND "type" = 'TABLE'
+         ORDER BY "position" ASC`,
+        [membership.workspace.id],
+      );
+
+      const objectById = new Map(
+        metadata.objects.map((object) => [object.id, object]),
+      );
+
+      return rows
+        .map((view) => ({ view, object: objectById.get(view.objectMetadataId) }))
+        .filter(
+          (entry): entry is { view: ViewRow; object: FlatObjectMetadata } =>
+            entry.object !== undefined &&
+            entry.object.isActive &&
+            !entry.object.isSystem,
+        )
+        .sort((left, right) =>
+          left.object.labelPlural.localeCompare(right.object.labelPlural),
+        )
+        .map(({ view, object }, index) => ({
+          id: deriveStableId(view.id, membership.workspace.id),
+          type: 'VIEW',
+          userWorkspaceId: membership.userWorkspaceId,
+          targetRecordId: null,
+          targetObjectMetadataId: object.id,
+          viewId: view.id,
+          folderId: null,
+          name: object.labelPlural,
+          link: null,
+          icon: object.icon,
+          color: null,
+          pageLayoutId: null,
+          position: index,
+          applicationId: null,
+          createdAt: null,
+          updatedAt: null,
+          targetRecordIdentifier: null,
+        }));
+    },
+
     // Collections the front loads at boot but we do not serve yet. They answer
     // empty rather than erroring: an unresolved field would fail the whole
     // document and leave the app on its loading skeleton.
     getPageLayouts: () => [],
     commandMenuItems: () => [],
-    navigationMenuItems: () => [],
     frontComponents: () => [],
     findManyLogicFunctions: () => [],
 

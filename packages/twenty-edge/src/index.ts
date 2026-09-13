@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { type Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
 
 import { isApiPath } from 'src/api-paths';
@@ -22,12 +22,29 @@ app.use('*', async (context, next) => {
   await next();
 });
 
-// Same-origin is the default: the SPA and the API share a host, so the __Host-
-// session cookie works without a Domain attribute. CORS only matters for a
-// split-origin deployment, and then it must be credentialed.
+// Whitelabel means there is no single allowed origin: every workspace gets its
+// own hostname. The invariant that still holds is same-origin — the Origin must
+// match the host this very request arrived on.
+const isSameOriginRequest = (context: Context<AppEnv>): boolean => {
+  const origin = context.req.header('Origin');
+
+  if (origin === undefined) {
+    return false;
+  }
+
+  const host =
+    context.req.header('X-Forwarded-Host') ?? context.req.header('Host');
+
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+};
+
 app.use('*', (context, next) =>
   cors({
-    origin: (origin) => (origin === context.env.SERVER_URL ? origin : context.env.SERVER_URL),
+    origin: (origin) => (isSameOriginRequest(context) ? origin : ''),
     credentials: true,
   })(context, next),
 );
@@ -45,9 +62,7 @@ app.use('*', async (context, next) => {
     return next();
   }
 
-  const origin = context.req.header('Origin');
-
-  if (origin !== context.env.SERVER_URL) {
+  if (!isSameOriginRequest(context)) {
     return context.json({ error: 'CSRF_ORIGIN_MISMATCH' }, 403);
   }
 

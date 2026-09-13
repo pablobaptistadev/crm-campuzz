@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 
 import { findActiveSession, findWorkspaceById } from 'src/db/core/auth-repository';
+import { resolveWorkspaceFromHost } from 'src/db/core/workspace-resolver';
 import { loadWorkspaceMetadata } from 'src/db/core/metadata-repository';
 import { withDatabaseClient } from 'src/db/client';
 import { hashSessionToken, readSessionToken } from 'src/auth/session';
@@ -66,10 +67,15 @@ export const restRoute = new Hono<AppEnv>().all('/*', async (context) =>
       return context.json({ error: 'UNAUTHENTICATED' }, 401);
     }
 
-    const workspace = await findWorkspaceById({
+    const workspaceFromHost = await resolveWorkspaceFromHost({
       client,
-      workspaceId: session.workspaceId,
+      host: context.req.header('X-Forwarded-Host') ?? context.req.header('Host'),
+      appDomain: context.env.APP_DOMAIN,
     });
+
+    const workspace =
+      workspaceFromHost ??
+      (await findWorkspaceById({ client, workspaceId: session.workspaceId }));
 
     if (workspace === null) {
       return context.json({ error: 'WORKSPACE_NOT_READY' }, 409);

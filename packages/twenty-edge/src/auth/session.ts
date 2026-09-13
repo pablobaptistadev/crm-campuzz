@@ -42,7 +42,7 @@ export const issueSessionToken = async (): Promise<IssuedSessionToken> => {
 };
 
 const isSecureDeployment = (context: Context<AppEnv>): boolean =>
-  new URL(context.env.SERVER_URL).protocol === 'https:';
+  new URL(context.req.url).protocol === 'https:';
 
 export const resolveSessionCookieName = (context: Context<AppEnv>): string =>
   isSecureDeployment(context) ? SECURE_SESSION_COOKIE_NAME : SESSION_COOKIE_NAME;

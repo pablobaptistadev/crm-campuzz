@@ -342,6 +342,7 @@ input ViewUpdateInput {
 }
 
 type Mutation {
+  setWorkspaceCustomDomain(customDomain: String): Workspace!
   createOneObject(input: ObjectCreateInput!): Object!
   createOneField(input: FieldCreateInput!): Field!
   createView(data: ViewCreateInput!): View!
@@ -891,6 +892,39 @@ export const METADATA_RESOLVERS = {
         },
         tokens: toAuthTokenPair(loginToken),
       };
+    },
+
+    // Whitelabel: point a workspace at its own hostname. The DNS record and the
+    // Worker route are provisioned outside this call; this only records which
+    // workspace the Host header should resolve to.
+    setWorkspaceCustomDomain: async (
+      _parent: unknown,
+      args: { customDomain: string | null },
+      context: MetadataContext,
+    ) => {
+      const workspaceId = await requireWorkspaceId(context);
+      const customDomain =
+        args.customDomain === null || args.customDomain.trim().length === 0
+          ? null
+          : args.customDomain.trim().toLowerCase();
+
+      if (
+        customDomain !== null &&
+        !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(
+          customDomain,
+        )
+      ) {
+        throw new Error('INVALID_CUSTOM_DOMAIN');
+      }
+
+      const { rows } = await context.client.query(
+        `UPDATE core."workspace" SET "customDomain" = $2, "updatedAt" = now()
+         WHERE "id" = $1
+         RETURNING "id","displayName","subdomain","customDomain","activationStatus","metadataVersion"`,
+        [workspaceId, customDomain],
+      );
+
+      return rows[0];
     },
 
     createOneObject: async (

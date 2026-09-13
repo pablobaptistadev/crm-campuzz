@@ -4,6 +4,7 @@ import { createYoga } from 'graphql-yoga';
 import { type GraphQLSchema } from 'graphql';
 
 import { findActiveSession, findWorkspaceById } from 'src/db/core/auth-repository';
+import { resolveWorkspaceFromHost } from 'src/db/core/workspace-resolver';
 import { loadWorkspaceMetadata } from 'src/db/core/metadata-repository';
 import { withDatabaseClient } from 'src/db/client';
 import { buildWorkspaceSchemaSdl } from 'src/graphql/build-sdl';
@@ -60,10 +61,17 @@ export const graphqlRoute = new Hono<AppEnv>().all('/', async (context) =>
       return context.json({ errors: [{ message: 'UNAUTHENTICATED' }] }, 401);
     }
 
-    const workspace = await findWorkspaceById({
+    // The Host decides the tenant when it maps to one; the session's workspace
+    // is only the fallback for the bare workers.dev URL.
+    const workspaceFromHost = await resolveWorkspaceFromHost({
       client,
-      workspaceId: session.workspaceId,
+      host: context.req.header('X-Forwarded-Host') ?? context.req.header('Host'),
+      appDomain: context.env.APP_DOMAIN,
     });
+
+    const workspace =
+      workspaceFromHost ??
+      (await findWorkspaceById({ client, workspaceId: session.workspaceId }));
 
     if (workspace === null || workspace.databaseSchema === null) {
       return context.json({ errors: [{ message: 'WORKSPACE_NOT_READY' }] }, 409);

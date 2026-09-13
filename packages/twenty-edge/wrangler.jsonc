@@ -7,6 +7,15 @@
   "compatibility_date": "2026-09-12",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
+  // Declaring routes turns workers.dev off by default; keep it as a fallback URL.
+  "workers_dev": true,
+
+  // crm.campuzz.com.br is the app; *.crm.campuzz.com.br gives every workspace
+  // its own hostname, which is what the Host-based tenant resolution reads.
+  "routes": [
+    { "pattern": "crm.campuzz.com.br", "custom_domain": true },
+    { "pattern": "*.crm.campuzz.com.br/*", "zone_name": "campuzz.com.br" }
+  ],
 
   // The SPA build of twenty-front. Every ApiPath prefix is routed to Hono first.
   "assets": {
@@ -35,6 +44,7 @@
     "SERVER_URL": "https://campuzz-edge-prod.andre-51e.workers.dev",
     "FRONT_DOMAIN": "campuzz-edge-prod.andre-51e.workers.dev",
     "DEFAULT_SUBDOMAIN": "app",
+    "APP_DOMAIN": "crm.campuzz.com.br",
     "IS_MULTIWORKSPACE_ENABLED": "false",
     "IS_EMAIL_VERIFICATION_REQUIRED": "false",
     "SIGN_IN_PREFILLED": "false",

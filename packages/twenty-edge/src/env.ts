@@ -7,6 +7,8 @@ export type Bindings = {
   SERVER_URL: string;
   FRONT_DOMAIN: string;
   DEFAULT_SUBDOMAIN: string;
+  // Apex under which each workspace gets <subdomain>.<APP_DOMAIN>.
+  APP_DOMAIN?: string;
   IS_MULTIWORKSPACE_ENABLED: string;
   IS_EMAIL_VERIFICATION_REQUIRED: string;
   SIGN_IN_PREFILLED: string;

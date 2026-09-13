@@ -43,6 +43,10 @@ import {
   type GroupByInput,
 } from 'src/services/group-by';
 import {
+  resolveRecordPosition,
+  resolveRecordPositions,
+} from 'src/services/record-position';
+import {
   encodeSearchCursor,
   searchRecords,
   type SearchArguments,
@@ -701,11 +705,20 @@ export const buildRecordResolvers = (
     ) => {
       assertAllowed(context, 'update');
 
+      // An upsert may land on an existing row, so an absent position is left
+      // absent rather than backfilled over whatever that row already holds.
+      const input = await resolveRecordPosition({
+        client: context.client,
+        shape,
+        input: data,
+        backfillUndefined: !upsert,
+      });
+
       const result = await runMutation(
         context,
         upsert
-          ? buildUpsertQuery({ shape, input: data })
-          : buildInsertQuery({ shape, input: data }),
+          ? buildUpsertQuery({ shape, input })
+          : buildInsertQuery({ shape, input }),
       );
 
       if (result === null) {
@@ -734,9 +747,18 @@ export const buildRecordResolvers = (
       args: { data: Record<string, unknown>[]; upsert?: boolean },
       context: RecordResolverContext,
     ) => {
+      // Resolved as one batch so a bulk create keeps the order it was sent
+      // in: row by row, every 'last' would read the same boundary back.
+      const inputs = await resolveRecordPositions({
+        client: context.client,
+        shape,
+        inputs: args.data,
+        backfillUndefined: args.upsert !== true,
+      });
+
       const created = [];
 
-      for (const data of args.data) {
+      for (const data of inputs) {
         created.push(await createRecord(context, data, args.upsert === true));
       }
 
@@ -750,9 +772,19 @@ export const buildRecordResolvers = (
     ) => {
       assertAllowed(context, 'update');
 
+      // Dragging a card to the top or bottom of a kanban column sends the same
+      // 'first'/'last' strings an insert does; an untouched position stays
+      // untouched, so nothing is backfilled here.
+      const input = await resolveRecordPosition({
+        client: context.client,
+        shape,
+        input: args.data,
+        backfillUndefined: false,
+      });
+
       const result = await runMutation(
         context,
-        buildUpdateQuery({ shape, id: args.id, input: args.data }),
+        buildUpdateQuery({ shape, id: args.id, input }),
       );
 
       if (result === null) {

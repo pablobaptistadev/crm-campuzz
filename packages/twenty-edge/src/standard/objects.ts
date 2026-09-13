@@ -348,8 +348,12 @@ export const STANDARD_OBJECT_INPUTS: StandardObjectInput[] = [
     icon: 'IconFileImport',
     fields: [
       { name: 'name', label: 'Name', type: 'TEXT' },
+      // fullPath and type are the deprecated pair the front still reads; the
+      // upload path writes `file` instead, and refuses to start at all when the
+      // attachment object has no FILES field to name in createFileUpload.
       { name: 'fullPath', label: 'Full path', type: 'TEXT' },
       { name: 'type', label: 'Type', type: 'TEXT' },
+      { name: 'file', label: 'File', type: 'FILES' },
       {
         name: 'author',
         label: 'Author',

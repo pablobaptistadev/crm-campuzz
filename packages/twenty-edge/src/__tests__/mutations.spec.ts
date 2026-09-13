@@ -163,3 +163,56 @@ describe('delete semantics', () => {
     );
   });
 });
+
+describe('jsonb columns', () => {
+  const withFiles = buildWorkspaceTableShape({
+    object: {
+      ...object,
+      fields: [
+        ...object.fields,
+        {
+          id: 'field-file',
+          objectMetadataId: 'object-person',
+          workspaceId: WORKSPACE_ID,
+          name: 'file',
+          label: 'File',
+          type: 'FILES',
+          description: null,
+          icon: null,
+          isActive: true,
+          isSystem: false,
+          isNullable: true,
+          isUnique: false,
+          defaultValue: null,
+          options: null,
+          settings: null,
+          relationTargetFieldMetadataId: null,
+          relationTargetObjectMetadataId: null,
+        },
+      ],
+    },
+    workspaceId: WORKSPACE_ID,
+  });
+
+  // pg turns a JS array into a Postgres array literal, which jsonb refuses.
+  it('sends a FILES array as JSON text', () => {
+    expect(
+      flattenRecordInput({
+        shape: withFiles,
+        input: { file: [{ fileId: 'abc', label: 'proposta.txt' }] },
+      }),
+    ).toEqual({ file: '[{"fileId":"abc","label":"proposta.txt"}]' });
+  });
+
+  it('leaves a null alone so the column can be cleared', () => {
+    expect(
+      flattenRecordInput({ shape: withFiles, input: { file: null } }),
+    ).toEqual({ file: null });
+  });
+
+  it('does not touch a plain text column', () => {
+    expect(
+      flattenRecordInput({ shape: withFiles, input: { jobTitle: 'CEO' } }),
+    ).toEqual({ jobTitle: 'CEO' });
+  });
+});

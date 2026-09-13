@@ -6,6 +6,21 @@ import {
 } from 'src/orm/table-shape';
 import { type SelectQuery } from 'src/orm/select';
 
+// node-postgres serializes a JS array as a Postgres array literal, which a
+// jsonb column rejects. A FILES value is always an array, so it has to reach
+// the driver as JSON text instead.
+const JSONB_FIELD_TYPES = new Set(['FILES', 'RAW_JSON']);
+
+const toColumnValue = (
+  column: { fieldType: string } | undefined,
+  value: unknown,
+): unknown =>
+  column !== undefined &&
+  JSONB_FIELD_TYPES.has(column.fieldType) &&
+  Array.isArray(value)
+    ? JSON.stringify(value)
+    : value;
+
 // GraphQL input arrives nested for composites ({ name: { firstName } }); the
 // table stores one column per property, so flatten before writing.
 export const flattenRecordInput = ({
@@ -25,7 +40,7 @@ export const flattenRecordInput = ({
     const directColumn = shape.columnShapeByColumnName.get(key);
 
     if (directColumn !== undefined && directColumn.compositeParentFieldName === null) {
-      columns[key] = value;
+      columns[key] = toColumnValue(directColumn, value);
       continue;
     }
 
@@ -40,7 +55,7 @@ export const flattenRecordInput = ({
         ];
 
         if (propertyValue !== undefined) {
-          columns[column.columnName] = propertyValue;
+          columns[column.columnName] = toColumnValue(column, propertyValue);
         }
       }
     }

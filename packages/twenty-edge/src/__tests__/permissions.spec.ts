@@ -7,6 +7,7 @@ import {
   PermissionDeniedError,
   assertCanPerform,
 } from 'src/services/permissions';
+import { STANDARD_ROLES } from 'src/services/sync-roles';
 
 const COMPANY = 'object-company';
 const PERSON = 'object-person';
@@ -196,5 +197,45 @@ describe('assertCanPerform', () => {
         action: 'read',
       }),
     ).not.toThrow();
+  });
+});
+
+describe('STANDARD_ROLES permission flags', () => {
+  const flagsByStandardId = Object.fromEntries(
+    STANDARD_ROLES.map((role) => [role.standardId, role.permissionFlags]),
+  );
+
+  // The front gates the "Add file" button on this flag; a role without it
+  // leaves the user with no way to attach anything at all.
+  it('lets every role upload and download files', () => {
+    for (const flags of Object.values(flagsByStandardId)) {
+      expect(flags).toContain('UPLOAD_FILE');
+      expect(flags).toContain('DOWNLOAD_FILE');
+    }
+  });
+
+  it('gives the member every flag admin has for records', () => {
+    expect(flagsByStandardId.admin).toEqual(
+      expect.arrayContaining(flagsByStandardId.member ?? []),
+    );
+  });
+
+  it('grants only flags this API actually serves', () => {
+    const unserved = [
+      'AI',
+      'AI_SETTINGS',
+      'BILLING',
+      'MARKETPLACE_APPS',
+      'APPLICATIONS',
+      'WORKFLOWS',
+      'CONNECTED_ACCOUNTS',
+      'API_KEYS_AND_WEBHOOKS',
+      'IMPERSONATE',
+      'SSO_BYPASS',
+    ];
+
+    for (const flags of Object.values(flagsByStandardId)) {
+      expect(flags.filter((flag) => unserved.includes(flag))).toEqual([]);
+    }
   });
 });

@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 
 import { type AppEnv, type Bindings } from 'src/env';
+import { inspectPage } from 'src/inspect';
 import { renderReportHtml } from 'src/report';
 import { summarize, type RunReport, type StepResult } from 'src/runner';
 import { runApiSuite } from 'src/suites/api';
@@ -113,6 +114,28 @@ app.get('/', (context) =>
   </ul>
 </body>`),
 );
+
+// Reproduce a defect on a page, with whatever account reported it.
+app.get('/inspect', async (context) => {
+  const email = context.req.query('email');
+  const password = context.req.query('password');
+  const path = context.req.query('path') ?? '/';
+
+  if (email === undefined || password === undefined) {
+    return context.json({ error: 'email and password are required' }, 400);
+  }
+
+  return context.json(
+    await inspectPage({
+      bindings: context.env,
+      email,
+      password,
+      path,
+      click: context.req.query('click'),
+      upload: context.req.query('upload'),
+    }),
+  );
+});
 
 app.get('/run', async (context) => {
   const suites = parseSuites(context.req.query('suites'));

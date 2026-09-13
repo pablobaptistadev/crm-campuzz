@@ -8,9 +8,15 @@
 
 CREATE SCHEMA IF NOT EXISTS core;
 
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "citext";
-CREATE EXTENSION IF NOT EXISTS "unaccent";
+-- Supabase installs extensions into the `extensions` schema by default, and it
+-- already ships uuid-ossp there. We pin citext and unaccent to `public` instead,
+-- because the code below and Twenty's search filters call them unqualified:
+-- public.unaccent_immutable() wraps public.unaccent(), and core."user"."email"
+-- is declared as a bare `citext`. Leaving them in `extensions` makes both fail
+-- unless every caller is schema-qualified.
+-- gen_random_uuid() needs no extension: it is core Postgres since 13.
+CREATE EXTENSION IF NOT EXISTS "citext" WITH SCHEMA public;
+CREATE EXTENSION IF NOT EXISTS "unaccent" WITH SCHEMA public;
 
 -- Search indexes need an IMMUTABLE wrapper; unaccent() itself is only STABLE.
 CREATE OR REPLACE FUNCTION public.unaccent_immutable(text)

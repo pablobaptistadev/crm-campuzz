@@ -1,7 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "twenty-edge",
+  "name": "campuzz-edge-stg",
   "main": "src/index.ts",
+  "account_id": "51eb880ef71493c1e995c9fb5906e367",
   // nodejs_compat gives us node:crypto and the pg driver; Hyperdrive requires it.
   "compatibility_date": "2026-09-12",
   "compatibility_flags": ["nodejs_compat"],
@@ -18,15 +19,17 @@
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
-      "id": "<hyperdrive-id>",
+      "id": "<campuzz-pg-stg-id>",
       "localConnectionString": "postgres://postgres:postgres@localhost:5432/default"
     }
   ],
 
-  "r2_buckets": [{ "binding": "FILES", "bucket_name": "twenty-files" }],
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "campuzz-files-stg" }],
 
   // Metadata cache, versioned by workspace.metadataVersion.
-  "kv_namespaces": [{ "binding": "METADATA_CACHE", "id": "<kv-id>" }],
+  "kv_namespaces": [
+    { "binding": "METADATA_CACHE", "id": "<campuzz-metadata-cache-stg-id>" }
+  ],
 
   "vars": {
     "SERVER_URL": "http://localhost:8787",
@@ -35,5 +38,28 @@
     "IS_MULTIWORKSPACE_ENABLED": "false",
     "IS_EMAIL_VERIFICATION_REQUIRED": "false",
     "SIGN_IN_PREFILLED": "true"
+  },
+
+  "env": {
+    "production": {
+      "name": "campuzz-edge-prod",
+      "hyperdrive": [
+        { "binding": "HYPERDRIVE", "id": "<campuzz-pg-prod-id>" }
+      ],
+      "r2_buckets": [
+        { "binding": "FILES", "bucket_name": "campuzz-files-prod" }
+      ],
+      "kv_namespaces": [
+        { "binding": "METADATA_CACHE", "id": "<campuzz-metadata-cache-prod-id>" }
+      ],
+      "vars": {
+        "SERVER_URL": "https://crm.example.com",
+        "FRONT_DOMAIN": "crm.example.com",
+        "DEFAULT_SUBDOMAIN": "app",
+        "IS_MULTIWORKSPACE_ENABLED": "false",
+        "IS_EMAIL_VERIFICATION_REQUIRED": "true",
+        "SIGN_IN_PREFILLED": "false"
+      }
+    }
   }
 }

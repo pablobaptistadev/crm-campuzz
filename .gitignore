@@ -71,3 +71,7 @@ screenshots/
 /.diag*.mjs
 /.compare*.mjs
 /.narrow*.mjs
+
+# Cloudflare Workers local secrets
+**/.dev.vars
+**/.dev.vars.*

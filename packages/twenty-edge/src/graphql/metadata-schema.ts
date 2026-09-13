@@ -13,6 +13,11 @@ import {
   bootstrapWorkspace,
   seedWorkspaceMember,
 } from 'src/services/bootstrap-workspace';
+import {
+  createFieldMetadata,
+  createObjectMetadata,
+} from 'src/services/metadata-mutations';
+import { type FieldMetadataType } from 'src/metadata/field-metadata-type';
 import { hashPassword, verifyPassword } from 'src/auth/password';
 import { issueLoginToken, verifyLoginToken } from 'src/auth/login-token';
 
@@ -164,6 +169,27 @@ type Query {
   minimalMetadata: MinimalMetadata!
 }
 
+input ObjectCreateInput {
+  nameSingular: String!
+  namePlural: String!
+  labelSingular: String!
+  labelPlural: String!
+  icon: String
+  description: String
+}
+
+input FieldOptionInput { value: String! label: String! color: String }
+
+input FieldCreateInput {
+  objectMetadataId: UUID!
+  name: String!
+  label: String!
+  type: String!
+  isNullable: Boolean
+  icon: String
+  options: [FieldOptionInput!]
+}
+
 input ViewCreateInput {
   objectMetadataId: UUID!
   name: String!
@@ -181,6 +207,8 @@ input ViewUpdateInput {
 }
 
 type Mutation {
+  createOneObject(input: ObjectCreateInput!): ObjectMetadata!
+  createOneField(input: FieldCreateInput!): FieldMetadata!
   createView(data: ViewCreateInput!): View!
   updateView(id: UUID!, data: ViewUpdateInput!): View
   deleteView(id: UUID!): View
@@ -569,6 +597,74 @@ export const METADATA_RESOLVERS = {
         workspace:
           membership === null ? null : toWorkspaceDto(membership.workspace),
       };
+    },
+
+    createOneObject: async (
+      _parent: unknown,
+      args: {
+        input: {
+          nameSingular: string;
+          namePlural: string;
+          labelSingular: string;
+          labelPlural: string;
+          icon?: string;
+          description?: string;
+        };
+      },
+      context: MetadataContext,
+    ) => {
+      const workspaceId = await requireWorkspaceId(context);
+
+      const object = await createObjectMetadata({
+        client: context.client,
+        workspaceId,
+        input: args.input,
+      });
+
+      // A new object with no view never appears in the sidebar.
+      await context.client.query(
+        `INSERT INTO core."view" ("workspaceId","objectMetadataId","name","type","key","icon","position")
+         VALUES ($1,$2,$3,'TABLE','INDEX',$4,0)`,
+        [workspaceId, object.id, `All ${object.labelPlural}`, object.icon],
+      );
+
+      return object;
+    },
+
+    createOneField: async (
+      _parent: unknown,
+      args: {
+        input: {
+          objectMetadataId: string;
+          name: string;
+          label: string;
+          type: string;
+          isNullable?: boolean;
+          icon?: string;
+          options?: { value: string; label: string; color?: string }[];
+        };
+      },
+      context: MetadataContext,
+    ) => {
+      const workspaceId = await requireWorkspaceId(context);
+      const metadata = await loadMetadataForSession(context);
+      const object = metadata.objects.find(
+        (entry) => entry.id === args.input.objectMetadataId,
+      );
+
+      if (object === undefined) {
+        throw new Error('OBJECT_NOT_FOUND');
+      }
+
+      return createFieldMetadata({
+        client: context.client,
+        workspaceId,
+        object,
+        input: {
+          ...args.input,
+          type: args.input.type as FieldMetadataType,
+        },
+      });
     },
 
     createView: async (

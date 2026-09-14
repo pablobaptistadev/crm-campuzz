@@ -38,10 +38,7 @@ import {
   findReferencingColumns,
   mergeRecordValues,
 } from 'src/services/duplicates';
-import {
-  runGroupBy,
-  type GroupByInput,
-} from 'src/services/group-by';
+import { runGroupBy, type GroupByInput } from 'src/services/group-by';
 import {
   resolveRecordPosition,
   resolveRecordPositions,
@@ -57,6 +54,32 @@ import {
   type TimelineAction,
 } from 'src/services/timeline';
 import { UserFacingError } from 'src/graphql/user-facing-error';
+
+// Several mutations are more than one statement — a bulk create is one INSERT
+// per row, a merge repoints relations before soft-deleting the losers. Without
+// a transaction a dropped connection leaves the half that already ran: a club
+// with some of its steps and no contract, or relations pointing at a record
+// that never went away.
+const emTransacao = async <TResultado>(
+  client: Client,
+  executar: () => Promise<TResultado>,
+): Promise<TResultado> => {
+  await client.query('BEGIN');
+
+  try {
+    const resultado = await executar();
+
+    await client.query('COMMIT');
+
+    return resultado;
+  } catch (causa) {
+    // The rollback can fail on its own (the socket is already gone); losing the
+    // original error to that would hide what actually broke.
+    await client.query('ROLLBACK').catch(() => undefined);
+
+    throw causa;
+  }
+};
 
 export type RecordResolverContext = {
   client: Client;
@@ -94,9 +117,14 @@ const normalizeOrderBy = (
       }
 
       if (value !== null && typeof value === 'object') {
-        for (const direction of Object.values(value as Record<string, unknown>)) {
+        for (const direction of Object.values(
+          value as Record<string, unknown>,
+        )) {
           if (typeof direction === 'string') {
-            clauses.push({ fieldName, direction: direction as OrderByDirection });
+            clauses.push({
+              fieldName,
+              direction: direction as OrderByDirection,
+            });
           }
         }
       }
@@ -163,7 +191,10 @@ const buildCursorPayload = (
   orderBy: OrderByClause[],
 ): Record<string, unknown> =>
   Object.fromEntries(
-    orderBy.map((clause) => [clause.fieldName, record[clause.fieldName] ?? null]),
+    orderBy.map((clause) => [
+      clause.fieldName,
+      record[clause.fieldName] ?? null,
+    ]),
   );
 
 const findMany = async ({
@@ -261,7 +292,10 @@ export const buildRecordResolvers = (
   const shapeByObjectId = new Map(
     metadata.objects.map((entry) => [
       entry.id,
-      buildWorkspaceTableShape({ object: entry, workspaceId: metadata.workspaceId }),
+      buildWorkspaceTableShape({
+        object: entry,
+        workspaceId: metadata.workspaceId,
+      }),
     ]),
   );
 
@@ -648,7 +682,9 @@ export const buildRecordResolvers = (
 
     connectionResolvers[`${singular}Connection`] = {
       totalCount: async (
-        parent: { __countQuery: { shape: WorkspaceTableShape; filter?: RecordFilter } },
+        parent: {
+          __countQuery: { shape: WorkspaceTableShape; filter?: RecordFilter };
+        },
         _args: unknown,
         context: RecordResolverContext,
       ) => {
@@ -767,11 +803,15 @@ export const buildRecordResolvers = (
         backfillUndefined: args.upsert !== true,
       });
 
-      const created = [];
+      const created = await emTransacao(context.client, async () => {
+        const linhas = [];
 
-      for (const data of inputs) {
-        created.push(await createRecord(context, data, args.upsert === true));
-      }
+        for (const data of inputs) {
+          linhas.push(await createRecord(context, data, args.upsert === true));
+        }
+
+        return linhas;
+      });
 
       return created.filter((record) => record !== null);
     };
@@ -930,10 +970,14 @@ export const buildRecordResolvers = (
       // that list, so reordering here would hand the wrong record priority.
       const ordered = args.ids
         .map((id) => byId.get(id))
-        .filter((entry): entry is NonNullable<typeof entry> => entry !== undefined);
+        .filter(
+          (entry): entry is NonNullable<typeof entry> => entry !== undefined,
+        );
 
       if (ordered.length < 2) {
-        throw new UserFacingError('Merging needs at least two records that still exist');
+        throw new UserFacingError(
+          'Merging needs at least two records that still exist',
+        );
       }
 
       const columnRecords = ordered.map((entry) =>
@@ -961,61 +1005,65 @@ export const buildRecordResolvers = (
           shape,
           alias: shape.nameSingular,
           row: Object.fromEntries(
-            Object.entries({ ...columnRecords[0], ...merged, id: survivorId }).map(
-              ([columnName, value]) => [
-                `${shape.nameSingular}_${columnName}`,
-                value,
-              ],
-            ),
+            Object.entries({
+              ...columnRecords[0],
+              ...merged,
+              id: survivorId,
+            }).map(([columnName, value]) => [
+              `${shape.nameSingular}_${columnName}`,
+              value,
+            ]),
           ),
         });
       }
 
       // Relations first: a losing record's rows have to find the survivor
       // before the record they point at goes away.
-      for (const reference of findReferencingColumns({
-        metadata: context.metadata,
-        objectMetadataId: object.id,
-        objectById,
-      })) {
-        const referenceShape = shapeByObjectId.get(
-          context.metadata.objects.find(
-            (entry) => entry.nameSingular === reference.tableName,
-          )?.id ?? '',
-        );
+      return emTransacao(context.client, async () => {
+        for (const reference of findReferencingColumns({
+          metadata: context.metadata,
+          objectMetadataId: object.id,
+          objectById,
+        })) {
+          const referenceShape = shapeByObjectId.get(
+            context.metadata.objects.find(
+              (entry) => entry.nameSingular === reference.tableName,
+            )?.id ?? '',
+          );
 
-        if (referenceShape === undefined) {
-          continue;
-        }
+          if (referenceShape === undefined) {
+            continue;
+          }
 
-        await context.client.query(
-          `UPDATE ${escapeIdentifier(referenceShape.schemaName)}.${escapeIdentifier(referenceShape.tableName)}
+          await context.client.query(
+            `UPDATE ${escapeIdentifier(referenceShape.schemaName)}.${escapeIdentifier(referenceShape.tableName)}
            SET ${escapeIdentifier(reference.columnName)} = $1
            WHERE ${escapeIdentifier(reference.columnName)} = ANY($2::uuid[])`,
-          [survivorId, losingIds],
+            [survivorId, losingIds],
+          );
+        }
+
+        const updateResult = await runMutation(
+          context,
+          buildUpdateQuery({ shape, id: survivorId, input: merged }),
         );
-      }
 
-      const updateResult = await runMutation(
-        context,
-        buildUpdateQuery({ shape, id: survivorId, input: merged }),
-      );
+        for (const id of losingIds) {
+          await context.client.query(
+            ...(() => {
+              const query = buildSoftDeleteQuery({ shape, id });
 
-      for (const id of losingIds) {
-        await context.client.query(
-          ...(() => {
-            const query = buildSoftDeleteQuery({ shape, id });
+              return [query.text, query.values] as const;
+            })(),
+          );
+        }
 
-            return [query.text, query.values] as const;
-          })(),
-        );
-      }
+        await writeTimelineActivity(context, 'updated', survivorId, {
+          mergedFrom: { before: null, after: losingIds },
+        });
 
-      await writeTimelineActivity(context, 'updated', survivorId, {
-        mergedFrom: { before: null, after: losingIds },
+        return updateResult?.record ?? null;
       });
-
-      return updateResult?.record ?? null;
     };
 
     // No timeline row for a destroy: the record is gone, so the event would

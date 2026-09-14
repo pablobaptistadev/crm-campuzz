@@ -181,6 +181,9 @@ export const Dashboard = () => {
           value={busca}
           onChange={(evento) => setBusca(evento.target.value)}
         />
+        <Link className="adm-btn adm-btn--primary" to="/clubes/novo">
+          + Novo clube
+        </Link>
       </div>
 
       <div className="adm-table-wrap">

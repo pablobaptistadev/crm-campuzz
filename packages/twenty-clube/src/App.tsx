@@ -6,6 +6,7 @@ import { CURRENT_USER_QUERY, OBJETOS_QUERY, SAIR_MUTATION } from 'src/api/querie
 import { ClubeDetalhe } from 'src/pages/ClubeDetalhe';
 import { Dashboard } from 'src/pages/Dashboard';
 import { Financeiro } from 'src/pages/Financeiro';
+import { NovoClube } from 'src/pages/NovoClube';
 import { Radar } from 'src/pages/Radar';
 import { Login } from 'src/pages/Login';
 import { MembroDetalhe } from 'src/pages/MembroDetalhe';
@@ -150,6 +151,7 @@ export const App = () => {
           <Route path="/" element={<Dashboard />} />
           <Route path="/financeiro" element={<Financeiro />} />
           <Route path="/radar" element={<Radar />} />
+          <Route path="/clubes/novo" element={<NovoClube />} />
           <Route path="/clubes/:id" element={<ClubeDetalhe />} />
           <Route path="/membros/:id" element={<MembroDetalhe />} />
           <Route path="*" element={<Navigate to="/" replace />} />

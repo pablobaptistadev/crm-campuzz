@@ -8,43 +8,17 @@ import {
   MEMBROS_SIMPLES_QUERY,
 } from 'src/api/queries';
 import { paginar } from './paginar';
+import {
+  PERIODOS,
+  dataLembrete,
+  micros,
+  montarParcelas,
+  numeroLimpo,
+} from './parcelas';
 import { dataCurta } from './format';
 
 type Clube = { id: string; name: string; situacao: string | null };
 type Membro = { id: string; name: string; clubeId: string | null };
-
-const PERIODOS = [
-  { value: 'MENSAL', label: 'Mensal', dias: 0, meses: 1 },
-  { value: 'QUINZENAL', label: 'Quinzenal', dias: 15, meses: 0 },
-  { value: 'SEMANAL', label: 'Semanal', dias: 7, meses: 0 },
-  { value: 'ANUAL', label: 'Anual', dias: 0, meses: 12 },
-];
-
-// Somar mês em JavaScript estoura o fim do mês: 31/01 + 1 mês vira 03/03. Fixar
-// no último dia do mês de destino é o que um boleto faz.
-const avancar = (base: string, periodo: string, vezes: number): string => {
-  const definicao = PERIODOS.find((item) => item.value === periodo) ?? PERIODOS[0];
-  const [ano, mes, dia] = base.split('-').map(Number);
-  const data = new Date(Date.UTC(ano, mes - 1, dia));
-
-  if (definicao.meses > 0) {
-    const totalMeses = mes - 1 + definicao.meses * vezes;
-    const anoAlvo = ano + Math.floor(totalMeses / 12);
-    const mesAlvo = totalMeses % 12;
-    const ultimoDia = new Date(Date.UTC(anoAlvo, mesAlvo + 1, 0)).getUTCDate();
-
-    data.setUTCFullYear(anoAlvo, mesAlvo, Math.min(dia, ultimoDia));
-  } else {
-    data.setUTCDate(data.getUTCDate() + definicao.dias * vezes);
-  }
-
-  return data.toISOString().slice(0, 10);
-};
-
-const micros = (valor: number) => ({
-  amountMicros: Math.round(valor * 1_000_000),
-  currencyCode: 'BRL',
-});
 
 export const NovaVenda = ({
   onFechar,
@@ -87,27 +61,17 @@ export const NovaVenda = ({
     [membros, clubeId],
   );
 
-  const numeroLimpo = (bruto: string) => Number(bruto.replace(/\./g, '').replace(',', '.')) || 0;
-
-  const previa = useMemo(() => {
-    const quantidade = Math.max(0, Math.min(120, Number(numeroParcelas) || 0));
-    const restante = numeroLimpo(valorTotal) - numeroLimpo(entrada);
-
-    if (quantidade === 0 || restante <= 0 || primeiroVencimento === '') {
-      return [];
-    }
-
-    // O arredondamento vai todo na primeira parcela; assim a soma fecha com o
-    // valor do contrato em vez de sobrar centavo.
-    const base = Math.floor((restante / quantidade) * 100) / 100;
-    const sobra = Math.round((restante - base * quantidade) * 100) / 100;
-
-    return Array.from({ length: quantidade }, (_, indice) => ({
-      numero: indice + 1,
-      valor: indice === 0 ? Math.round((base + sobra) * 100) / 100 : base,
-      vencimento: avancar(primeiroVencimento, periodicidade, indice),
-    }));
-  }, [valorTotal, entrada, numeroParcelas, primeiroVencimento, periodicidade]);
+  const previa = useMemo(
+    () =>
+      montarParcelas({
+        valorTotal,
+        entrada,
+        quantidade: numeroParcelas,
+        primeiroVencimento,
+        periodicidade,
+      }),
+    [valorTotal, entrada, numeroParcelas, primeiroVencimento, periodicidade],
+  );
 
   const salvar = async () => {
     if (previa.length === 0) {
@@ -147,14 +111,7 @@ export const NovaVenda = ({
           numero: parcela.numero,
           valor: micros(parcela.valor),
           vencimento: parcela.vencimento,
-          lembreteEm: avancar(parcela.vencimento, 'SEMANAL', 0) && antecedencia > 0
-            ? new Date(
-                new Date(`${parcela.vencimento}T00:00:00Z`).getTime() -
-                  antecedencia * 86_400_000,
-              )
-                .toISOString()
-                .slice(0, 10)
-            : parcela.vencimento,
+          lembreteEm: dataLembrete(parcela.vencimento, antecedencia),
           situacao: 'PENDENTE',
           formaPagamento: formaPagamento.trim() === '' ? null : formaPagamento.trim(),
           vendaId: venda.createVenda.id,

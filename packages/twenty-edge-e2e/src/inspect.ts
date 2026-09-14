@@ -309,7 +309,15 @@ export const inspectPage = async ({
               const rotulo = rotulos.find(
                 (el) => (el.textContent || '').trim().toLowerCase() === fill.toLowerCase(),
               );
-              const campo = rotulo?.parentElement?.querySelector('input, select, textarea');
+              // Nem todo campo tem rótulo irmão: o nome grande do onboarding só
+              // tem placeholder, e é justamente o que destrava o passo.
+              const campo =
+                rotulo?.parentElement?.querySelector('input, select, textarea')
+                ?? Array.from(document.querySelectorAll('input, textarea')).find(
+                  (el) => (el.getAttribute('placeholder') || '')
+                    .toLowerCase()
+                    .includes(fill.toLowerCase()),
+                );
 
               if (!campo) return 'campo não encontrou: ' + fill;
 
@@ -337,7 +345,9 @@ export const inspectPage = async ({
         await new Promise((resolve) => setTimeout(resolve, 2_500));
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 3_000));
+      // Uma criação encadeia várias escritas; fechar o navegador no meio
+      // aborta a requisição e deixa o registro pela metade.
+      await new Promise((resolve) => setTimeout(resolve, 15_000));
     }
 
     const documentTitle = String(

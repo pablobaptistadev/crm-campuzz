@@ -7,8 +7,8 @@ import { CLUBE_QUERY } from 'src/api/queries';
 import { type Etapa, type Socio } from 'src/api/types';
 import { Historico } from 'src/ui/Historico';
 import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
-import { Jornada } from 'src/ui/Jornada';
 import { CardEditavel } from 'src/ui/CardEditavel';
+import { NovoMembro } from 'src/ui/NovoMembro';
 import { Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe } from 'src/ui/primitives';
 import {
   TRACO,
@@ -50,11 +50,29 @@ export const ClubeDetalhe = () => {
   const [metaSocio, setMetaSocio] = useState<ObjetoMeta | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState<Aba>('crm');
+  const [adicionandoMembro, setAdicionandoMembro] = useState(false);
 
   // Uma alteração salva já vale na tela; recarregar o clube inteiro para
   // repintar um campo custaria uma volta ao banco por edição.
   const aplicar = (mudancas: Record<string, unknown>) =>
     setClube((atual) => (atual === null ? atual : { ...atual, ...mudancas }));
+
+  const aplicarEtapa = (proxima: EtapaCompleta) =>
+    setClube((atual) =>
+      atual === null
+        ? atual
+        : {
+            ...atual,
+            jornada: {
+              ...atual.jornada,
+              edges: atual.jornada.edges.map((aresta: { node: Etapa }) =>
+                aresta.node.id === proxima.id
+                  ? { ...aresta, node: { ...aresta.node, ...proxima } }
+                  : aresta,
+              ),
+            },
+          },
+    );
 
   const aplicarSocio = (socioId: string) => (mudancas: Record<string, unknown>) =>
     setClube((atual) =>
@@ -145,7 +163,7 @@ export const ClubeDetalhe = () => {
 
       {aba === 'crm' && (
         <Card titulo="Jornada do cliente" flush>
-          <Jornada etapas={etapas} />
+          <EtapasEmCards etapas={etapas as EtapaCompleta[]} onMudou={aplicarEtapa} />
         </Card>
       )}
 
@@ -267,26 +285,7 @@ export const ClubeDetalhe = () => {
           />
 
           <Card titulo="Pipeline de etapas" flush>
-            <EtapasEmCards
-              etapas={pipeline as EtapaCompleta[]}
-              onMudou={(proxima) =>
-                setClube((atual) =>
-                  atual === null
-                    ? atual
-                    : {
-                        ...atual,
-                        jornada: {
-                          ...atual.jornada,
-                          edges: atual.jornada.edges.map((aresta: { node: Etapa }) =>
-                            aresta.node.id === proxima.id
-                              ? { ...aresta, node: { ...aresta.node, ...proxima } }
-                              : aresta,
-                          ),
-                        },
-                      },
-                )
-              }
-            />
+            <EtapasEmCards etapas={pipeline as EtapaCompleta[]} onMudou={aplicarEtapa} />
           </Card>
 
           <CardEditavel
@@ -313,6 +312,31 @@ export const ClubeDetalhe = () => {
       )}
 
       {aba === 'mem' && (
+        <>
+        <div className="adm-toolbar">
+          <span className="adm-toolbar__title">{membros.length} membros</span>
+          <span className="adm-toolbar__spacer" />
+          <button
+            type="button"
+            className="adm-btn adm-btn--primary"
+            onClick={() => setAdicionandoMembro(true)}
+          >
+            + Adicionar membro
+          </button>
+        </div>
+
+        {adicionandoMembro && (
+          <NovoMembro
+            clubeId={clube.id}
+            posicao={membros.length + 1}
+            onFechar={() => setAdicionandoMembro(false)}
+            onCriado={() => {
+              setAdicionandoMembro(false);
+              window.location.reload();
+            }}
+          />
+        )}
+
         <div className="adm-table-wrap">
           <table className="adm-table">
             <thead>
@@ -351,6 +375,7 @@ export const ClubeDetalhe = () => {
           </table>
           {membros.length === 0 && <Vazio>Este clube ainda não tem membros.</Vazio>}
         </div>
+        </>
       )}
 
       {aba === 'cx' && (

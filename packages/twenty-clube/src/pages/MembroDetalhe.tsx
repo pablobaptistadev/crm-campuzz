@@ -6,7 +6,7 @@ import { carregarMetadata, type ObjetoMeta } from 'src/api/metadata';
 import { MEMBRO_QUERY } from 'src/api/queries';
 import { type Etapa } from 'src/api/types';
 import { Historico } from 'src/ui/Historico';
-import { Jornada } from 'src/ui/Jornada';
+import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
 import { CardEditavel } from 'src/ui/CardEditavel';
 import { Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe } from 'src/ui/primitives';
 import {
@@ -128,7 +128,26 @@ export const MembroDetalhe = () => {
 
       {aba === 'crm' && (
         <Card titulo="Jornada do membro" flush>
-          <Jornada etapas={etapas} />
+          <EtapasEmCards
+            etapas={etapas as EtapaCompleta[]}
+            onMudou={(proxima) =>
+              setMembro((atual) =>
+                atual === null
+                  ? atual
+                  : {
+                      ...atual,
+                      jornada: {
+                        ...atual.jornada,
+                        edges: atual.jornada.edges.map((aresta: { node: Etapa }) =>
+                          aresta.node.id === proxima.id
+                            ? { ...aresta, node: { ...aresta.node, ...proxima } }
+                            : aresta,
+                        ),
+                      },
+                    },
+              )
+            }
+          />
         </Card>
       )}
 

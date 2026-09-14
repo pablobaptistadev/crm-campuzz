@@ -11,6 +11,7 @@ import {
 } from 'src/api/queries';
 import { NovaVenda } from 'src/ui/NovaVenda';
 import { Chip, Vazio } from 'src/ui/primitives';
+import { MembroComFoto } from 'src/modules/perfil/ui/AvatarDoMembro';
 import { paginar } from 'src/ui/paginar';
 import { TRACO, dataCurta, dinheiroCurto } from 'src/ui/format';
 
@@ -32,6 +33,7 @@ type Referencia = {
   id: string;
   name: string;
   situacao?: string | null;
+  fotoUrl?: string | null;
   emails?: { primaryEmail: string | null } | null;
 };
 
@@ -303,7 +305,7 @@ export const Financeiro = () => {
                       <span className="adm-table__muted">{TRACO}</span>
                     ) : (
                       <Link className="adm-table__link" to={`/membros/${membro.id}`}>
-                        {membro.name}
+                        <MembroComFoto nome={membro.name} fotoUrl={membro.fotoUrl} />
                       </Link>
                     )}
                     {semDestinatario(parcela, membros) && (

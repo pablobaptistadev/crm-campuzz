@@ -14,6 +14,14 @@ import { varrerLembretes } from 'src/services/lembretes';
 
 const app = new Hono<AppEnv>();
 
+const CLUBE_HOSTNAME = 'clubes.campuzz.com.br';
+// The app answered on the singular first. Bookmarks, the login e-mail and the
+// photo URLs already stored point there, so it stays served and redirects
+// instead of breaking.
+const CLUBE_HOSTNAME_ANTIGO = 'clube.campuzz.com.br';
+const CLUBE_BASE = '/clube';
+
+
 app.use('*', async (context, next) => {
   context.set('requestContext', {
     userId: null,
@@ -71,6 +79,24 @@ app.use('*', async (context, next) => {
   return next();
 });
 
+// Quem chega pelo host antigo vai para o novo, com caminho e query. As rotas de
+// API ficam de fora de propósito: os anexos já gravados apontam para o host
+// antigo, e o cookie de sessão é __Host-, preso ao host exato — redirecionar um
+// /files levaria a requisição para um host onde ela chega sem sessão.
+app.use('*', async (context, next) => {
+  const url = new URL(context.req.url);
+
+  if (url.hostname !== CLUBE_HOSTNAME_ANTIGO || isApiPath(url.pathname)) {
+    await next();
+
+    return;
+  }
+
+  url.hostname = CLUBE_HOSTNAME;
+
+  return context.redirect(url.toString(), 301);
+});
+
 app.route('/client-config', clientConfigRoute);
 app.route('/healthz', healthRoute);
 app.route('/metadata', metadataRoute);
@@ -99,14 +125,13 @@ app.post('/internal/lembretes', async (context) => {
 // Internal endpoints are never reachable from the edge.
 app.all('/internal/*', (context) => context.notFound());
 
-const CLUBE_HOSTNAME = 'clube.campuzz.com.br';
-const CLUBE_BASE = '/clube';
 
-// clube.campuzz.com.br is the Education Society app, which lives under /clube in
-// the same bundle. Serving it by Host keeps it on one origin with the API, so
-// the session cookie works without any cross-site exception.
+// clubes.campuzz.com.br is the Education Society app, which lives under /clube
+// in the same bundle. Serving it by Host keeps it on one origin with the API,
+// so the session cookie works without any cross-site exception.
 const isClubeRequest = (url: URL): boolean =>
   url.hostname === CLUBE_HOSTNAME ||
+  url.hostname === CLUBE_HOSTNAME_ANTIGO ||
   url.pathname === CLUBE_BASE ||
   url.pathname.startsWith(`${CLUBE_BASE}/`);
 

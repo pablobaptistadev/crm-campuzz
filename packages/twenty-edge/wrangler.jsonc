@@ -19,6 +19,7 @@
     { "pattern": "crm.campuzz.com.br", "custom_domain": true },
     { "pattern": "*.crm.campuzz.com.br/*", "zone_name": "campuzz.com.br" },
     // O app de clubes: mesmo Worker, mesma origem que a API, servido de /clube.
+    { "pattern": "clubes.campuzz.com.br", "custom_domain": true },
     { "pattern": "clube.campuzz.com.br", "custom_domain": true }
   ],
 

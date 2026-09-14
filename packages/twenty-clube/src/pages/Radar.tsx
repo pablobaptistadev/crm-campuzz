@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 
 import { RADAR_CLUBES_QUERY, RADAR_QUERY } from 'src/api/queries';
 import { Vazio } from 'src/ui/primitives';
+import { MembroComFoto } from 'src/modules/perfil/ui/AvatarDoMembro';
 import { paginar } from 'src/ui/paginar';
 import { TRACO, dataCurta } from 'src/ui/format';
 
@@ -21,6 +22,7 @@ type MembroRadar = {
   frutaFavorita: string | null;
   placaEntregue: boolean | null;
   clubeId: string | null;
+  fotoUrl: string | null;
 };
 
 type ClubeRadar = {
@@ -41,6 +43,7 @@ type Evento = {
   dias: number;
   link: string;
   presente?: string;
+  fotoUrl?: string | null;
 };
 
 const hojeZerado = () => {
@@ -156,6 +159,7 @@ export const Radar = () => {
             quando: quando.toISOString().slice(0, 10),
             dias: emDias(quando),
             link: `/membros/${membro.id}`,
+            fotoUrl: membro.fotoUrl,
             presente: presente === '' ? undefined : presente,
           });
         }
@@ -173,6 +177,7 @@ export const Radar = () => {
             quando: quando.toISOString().slice(0, 10),
             dias: emDias(quando),
             link: `/membros/${membro.id}`,
+            fotoUrl: membro.fotoUrl,
           });
         }
       }
@@ -254,7 +259,11 @@ export const Radar = () => {
             <div className="adm-step" key={evento.chave}>
               <span className="adm-step__label">
                 <Link className="adm-table__link" to={evento.link}>
-                  {evento.titulo}
+                  {evento.fotoUrl === undefined ? (
+                    evento.titulo
+                  ) : (
+                    <MembroComFoto nome={evento.titulo} fotoUrl={evento.fotoUrl} />
+                  )}
                 </Link>
                 <span className="adm-chip adm-chip--gold" style={{ marginLeft: 8 }}>
                   {evento.tipo}

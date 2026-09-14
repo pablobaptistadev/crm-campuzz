@@ -9,6 +9,7 @@ import { Historico } from 'src/ui/Historico';
 import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
 import { CardEditavel } from 'src/ui/CardEditavel';
 import { CamposDoPerfil } from 'src/modules/perfil/ui/CamposDoPerfil';
+import { AvatarDoMembro } from 'src/modules/perfil/ui/AvatarDoMembro';
 import { FotoDePerfil } from 'src/modules/perfil/ui/FotoDePerfil';
 import { NovaVenda } from 'src/ui/NovaVenda';
 import { Arquivar } from 'src/ui/Arquivar';
@@ -121,7 +122,7 @@ export const MembroDetalhe = () => {
       )}
 
       <div className="adm-record">
-        <span className="adm-record__avatar">{iniciais(membro.name)}</span>
+        <AvatarDoMembro nome={membro.name} fotoUrl={membro.fotoUrl} tamanho="titulo" />
         <div>
           <div className="adm-record__name">{membro.name}</div>
           <div className="adm-record__sub">{clube?.name ?? TRACO}</div>

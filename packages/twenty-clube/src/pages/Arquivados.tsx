@@ -10,6 +10,7 @@ import {
   RESTAURAR_MEMBRO,
 } from 'src/api/queries';
 import { Chip, Tabs, Vazio, rotuloDe } from 'src/ui/primitives';
+import { MembroComFoto } from 'src/modules/perfil/ui/AvatarDoMembro';
 import { paginar } from 'src/ui/paginar';
 import { TRACO, dataHora } from 'src/ui/format';
 
@@ -27,6 +28,7 @@ type MembroArquivado = {
   papel: string | null;
   situacao: string | null;
   clubeId: string | null;
+  fotoUrl: string | null;
   deletedAt: string | null;
 };
 
@@ -188,7 +190,9 @@ export const Arquivados = () => {
               <tbody>
                 {membros.map((membro) => (
                   <tr key={membro.id}>
-                    <td>{membro.name}</td>
+                    <td>
+                      <MembroComFoto nome={membro.name} fotoUrl={membro.fotoUrl} />
+                    </td>
                     <td className="adm-table__muted">
                       {membro.clubeId === null
                         ? TRACO

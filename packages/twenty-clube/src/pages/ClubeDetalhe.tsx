@@ -8,6 +8,7 @@ import { type Etapa, type Socio } from 'src/api/types';
 import { Historico } from 'src/ui/Historico';
 import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
 import { CardEditavel } from 'src/ui/CardEditavel';
+import { AvatarDoMembro, MembroComFoto } from 'src/modules/perfil/ui/AvatarDoMembro';
 import { NovoMembro } from 'src/ui/NovoMembro';
 import { Arquivar } from 'src/ui/Arquivar';
 import { AlternarVisao, Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe, useModoVisao } from 'src/ui/primitives';
@@ -364,12 +365,14 @@ export const ClubeDetalhe = () => {
               {membros.map((membro: any) => (
                 <article className="adm-colecao__card" key={membro.id}>
                   <div className="adm-colecao__topo">
-                    <div>
-                      <Link className="adm-colecao__nome" to={`/membros/${membro.id}`}>
-                        {membro.name}
-                      </Link>
-                      <div className="adm-colecao__sub">{rotuloDe(membro.papel)}</div>
-                    </div>
+                    <Link to={`/membros/${membro.id}`} style={{ minWidth: 0 }}>
+                      <MembroComFoto
+                        nome={membro.name}
+                        fotoUrl={membro.fotoUrl}
+                        tamanho="card"
+                        abaixo={rotuloDe(membro.papel)}
+                      />
+                    </Link>
                     <Chip valor={membro.situacao} />
                   </div>
 
@@ -415,7 +418,7 @@ export const ClubeDetalhe = () => {
                 <tr key={membro.id}>
                   <td>
                     <Link className="adm-table__link" to={`/membros/${membro.id}`}>
-                      {membro.name}
+                      <MembroComFoto nome={membro.name} fotoUrl={membro.fotoUrl} />
                     </Link>
                   </td>
                   <td className="adm-table__muted">{rotuloDe(membro.papel)}</td>

@@ -71,7 +71,7 @@ export const CLUBE_QUERY = `
       membros {
         totalCount
         edges { node {
-          id name situacao papel contratoSituacao
+          id name situacao papel contratoSituacao fotoUrl
           emails ${EMAIL} telefones ${FONE} valorTotal ${MOEDA}
         } }
       }
@@ -215,7 +215,7 @@ export const MEMBROS_SIMPLES_QUERY = `
   query MembrosSimples($after: String) {
     membros(first: 200, after: $after) {
       pageInfo { hasNextPage endCursor }
-      edges { node { id name clubeId emails { primaryEmail } } }
+      edges { node { id name clubeId fotoUrl emails { primaryEmail } } }
     }
   }
 `;
@@ -226,7 +226,7 @@ export const RADAR_QUERY = `
       pageInfo { hasNextPage endCursor }
       edges {
         node {
-          id name nascimento entradaEm papel situacao
+          id name nascimento entradaEm papel situacao fotoUrl
           camiseta calca moletom calcado chocolateFavorito frutaFavorita
           placaEntregue clubeId
         }
@@ -281,7 +281,7 @@ export const MEMBROS_ARQUIVADOS_QUERY = `
       orderBy: [{ deletedAt: DescNullsLast }]
     ) {
       pageInfo { hasNextPage endCursor }
-      edges { node { id name papel situacao clubeId deletedAt } }
+      edges { node { id name papel situacao clubeId fotoUrl deletedAt } }
     }
   }
 `;

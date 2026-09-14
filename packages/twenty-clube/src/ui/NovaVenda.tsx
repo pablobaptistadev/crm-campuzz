@@ -21,16 +21,23 @@ type Clube = { id: string; name: string; situacao: string | null };
 type Membro = { id: string; name: string; clubeId: string | null };
 
 export const NovaVenda = ({
+  clubeFixo,
+  membroFixo,
   onFechar,
   onCriada,
 }: {
+  clubeFixo?: { id: string; name: string };
+  membroFixo?: { id: string; name: string };
   onFechar: () => void;
   onCriada: () => void;
 }) => {
   const [clubes, setClubes] = useState<Clube[]>([]);
   const [membros, setMembros] = useState<Membro[]>([]);
-  const [clubeId, setClubeId] = useState('');
-  const [membroId, setMembroId] = useState('');
+  const [clubeId, setClubeId] = useState(clubeFixo?.id ?? '');
+  const [membroId, setMembroId] = useState(membroFixo?.id ?? '');
+  // Aberto de dentro de um membro, a venda já sabe de quem é: oferecer a lista
+  // inteira só daria chance de escolher a pessoa errada.
+  const travado = membroFixo !== undefined || clubeFixo !== undefined;
   const [descricao, setDescricao] = useState('');
   const [valorTotal, setValorTotal] = useState('');
   const [entrada, setEntrada] = useState('');
@@ -45,6 +52,10 @@ export const NovaVenda = ({
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
+    if (travado) {
+      return;
+    }
+
     void (async () => {
       const [listaClubes, listaMembros] = await Promise.all([
         paginar<Clube>(CLUBES_SIMPLES_QUERY, 'clubes'),
@@ -54,7 +65,7 @@ export const NovaVenda = ({
       setClubes(listaClubes.sort((a, b) => a.name.localeCompare(b.name)));
       setMembros(listaMembros.sort((a, b) => a.name.localeCompare(b.name)));
     })();
-  }, []);
+  }, [travado]);
 
   const membrosDoClube = useMemo(
     () => (clubeId === '' ? membros : membros.filter((membro) => membro.clubeId === clubeId)),
@@ -144,6 +155,20 @@ export const NovaVenda = ({
         <div className="adm-card__body">
           {erro !== null && <div className="adm-error">{erro}</div>}
 
+          {travado ? (
+            <div className="adm-resumo" style={{ marginBottom: 14 }}>
+              <div className="adm-resumo__linha">
+                <span className="adm-resumo__rotulo">Clube</span>
+                <span className="adm-resumo__valor">{clubeFixo?.name ?? '—'}</span>
+              </div>
+              {membroFixo !== undefined && (
+                <div className="adm-resumo__linha">
+                  <span className="adm-resumo__rotulo">Membro</span>
+                  <span className="adm-resumo__valor">{membroFixo.name}</span>
+                </div>
+              )}
+            </div>
+          ) : (
           <div className="adm-grid adm-grid--2">
             <div>
               <div className="adm-fieldlabel">Clube</div>
@@ -181,6 +206,7 @@ export const NovaVenda = ({
               </select>
             </div>
           </div>
+          )}
 
           <div className="adm-grid adm-grid--2" style={{ marginTop: 14 }}>
             <div>

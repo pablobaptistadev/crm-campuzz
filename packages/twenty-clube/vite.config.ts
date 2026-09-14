@@ -22,4 +22,5 @@ export default defineConfig({
     alias: { src: fileURLToPath(new URL('./src', import.meta.url)) },
   },
   build: { outDir: '../twenty-front/build/clube', emptyOutDir: true },
+  publicDir: 'public',
 });

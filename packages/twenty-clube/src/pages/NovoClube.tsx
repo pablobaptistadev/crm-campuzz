@@ -6,6 +6,7 @@ import { CRIAR_PARCELAS, CRIAR_VENDA } from 'src/api/queries';
 import {
   CRIAR_CLUBE,
   CRIAR_ETAPAS,
+  CRIAR_SOCIO,
   JORNADA_CLUBE,
   PIPELINE_CLUBE,
 } from 'src/api/clube-novo';
@@ -62,6 +63,12 @@ export const NovoClube = () => {
   const [mentor, setMentor] = useState('');
   const [nicho, setNicho] = useState('');
   const [situacao, setSituacao] = useState('FAZER_MOU');
+
+  const [socioNome, setSocioNome] = useState('');
+  const [socioPapel, setSocioPapel] = useState('Sócio / Mentor');
+  const [socioCpf, setSocioCpf] = useState('');
+  const [socioEmail, setSocioEmail] = useState('');
+  const [socioTelefone, setSocioTelefone] = useState('');
 
   const [responsavel, setResponsavel] = useState('');
   const [inicio, setInicio] = useState('');
@@ -158,6 +165,33 @@ export const NovoClube = () => {
           })),
         ],
       });
+
+      // O mentor quase sempre é o sócio: preencher o nome no passo 1 e ter de
+      // cadastrar a mesma pessoa de novo depois é trabalho repetido.
+      const nomeSocio = socioNome.trim() === '' ? mentor.trim() : socioNome.trim();
+
+      if (nomeSocio !== '') {
+        const digitos = socioTelefone.replace(/\D/g, '');
+
+        await gql(CRIAR_SOCIO, {
+          data: {
+            name: nomeSocio,
+            papel: texto(socioPapel),
+            cpf: texto(socioCpf),
+            emails: texto(socioEmail) === null ? null : { primaryEmail: socioEmail.trim() },
+            telefones:
+              digitos.length < 8
+                ? null
+                : {
+                    primaryPhoneNumber: digitos.startsWith('55') ? digitos.slice(2) : digitos,
+                    primaryPhoneCallingCode: '+55',
+                    primaryPhoneCountryCode: 'BR',
+                  },
+            clubeId,
+            position: 1,
+          },
+        });
+      }
 
       if (previa.length > 0) {
         const venda = await gql<{ createVenda: { id: string } }>(CRIAR_VENDA, {
@@ -343,6 +377,58 @@ export const NovoClube = () => {
               />
             </Campo>
           </div>
+          <div className="adm-section">Sócio / mentor</div>
+          <div className="adm-grid adm-grid--3">
+            <Campo rotulo="Nome completo">
+              <input
+                className="adm-input"
+                style={entrada}
+                placeholder={mentor === '' ? 'Mayara Sousa Santos Marinov' : mentor}
+                value={socioNome}
+                onChange={(evento) => setSocioNome(evento.target.value)}
+              />
+            </Campo>
+            <Campo rotulo="Papel">
+              <input
+                className="adm-input"
+                style={entrada}
+                value={socioPapel}
+                onChange={(evento) => setSocioPapel(evento.target.value)}
+              />
+            </Campo>
+            <Campo rotulo="CPF">
+              <input
+                className="adm-input"
+                style={entrada}
+                value={socioCpf}
+                onChange={(evento) => setSocioCpf(evento.target.value)}
+              />
+            </Campo>
+          </div>
+          <div className="adm-grid adm-grid--2" style={{ marginTop: 16 }}>
+            <Campo rotulo="E-mail">
+              <input
+                className="adm-input"
+                style={entrada}
+                type="email"
+                value={socioEmail}
+                onChange={(evento) => setSocioEmail(evento.target.value)}
+              />
+            </Campo>
+            <Campo rotulo="Celular">
+              <input
+                className="adm-input"
+                style={entrada}
+                type="tel"
+                value={socioTelefone}
+                onChange={(evento) => setSocioTelefone(evento.target.value)}
+              />
+            </Campo>
+          </div>
+          <div className="adm-painel__ajuda" style={{ marginTop: 8, marginBottom: 0 }}>
+            Em branco, usamos o mentor do passo anterior.
+          </div>
+
           <div className="adm-section">MOU</div>
           <div className="adm-grid adm-grid--3">
             <Campo rotulo="Situação">
@@ -534,6 +620,12 @@ export const NovoClube = () => {
               <div className="adm-resumo__linha">
                 <span className="adm-resumo__rotulo">Início</span>
                 <span className="adm-resumo__valor">{dataCurta(inicio)}</span>
+              </div>
+              <div className="adm-resumo__linha">
+                <span className="adm-resumo__rotulo">Sócio</span>
+                <span className="adm-resumo__valor">
+                  {socioNome.trim() === '' ? mentor || '—' : socioNome}
+                </span>
               </div>
               <div className="adm-resumo__linha">
                 <span className="adm-resumo__rotulo">Jornada</span>

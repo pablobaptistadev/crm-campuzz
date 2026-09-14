@@ -62,3 +62,9 @@ export const CRIAR_MEMBRO = `
     createMembro(data: $data) { id name }
   }
 `;
+
+export const CRIAR_SOCIO = `
+  mutation CriarSocio($data: SocioCreateInput!) {
+    createSocio(data: $data) { id name }
+  }
+`;

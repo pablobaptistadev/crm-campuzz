@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { gql } from 'src/api/client';
 import { carregarMetadata, type ObjetoMeta } from 'src/api/metadata';
-import { MEMBRO_QUERY } from 'src/api/queries';
+import { ARQUIVAR_MEMBRO, MEMBRO_QUERY } from 'src/api/queries';
 import { type Etapa } from 'src/api/types';
 import { Historico } from 'src/ui/Historico';
 import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
 import { CardEditavel } from 'src/ui/CardEditavel';
+import { NovaVenda } from 'src/ui/NovaVenda';
+import { Arquivar } from 'src/ui/Arquivar';
 import { Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe } from 'src/ui/primitives';
 import {
   TRACO,
@@ -43,10 +45,12 @@ const SEXO: Record<string, string> = { F: 'Feminino', M: 'Masculino', OUTRO: 'Ou
 
 export const MembroDetalhe = () => {
   const { id } = useParams<{ id: string }>();
+  const navegar = useNavigate();
   const [membro, setMembro] = useState<Record<string, any> | null>(null);
   const [objeto, setObjeto] = useState<ObjetoMeta | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState<Aba>('crm');
+  const [abrindoVenda, setAbrindoVenda] = useState(false);
 
   // Uma alteração salva já vale na tela; recarregar o registro inteiro para
   // repintar um campo custaria uma volta ao banco por edição.
@@ -122,6 +126,13 @@ export const MembroDetalhe = () => {
         </div>
         <span className="adm-record__spacer" />
         <Chip valor={membro.situacao} />
+        <Arquivar
+          mutation={ARQUIVAR_MEMBRO}
+          registroId={membro.id}
+          nome={membro.name}
+          oQue="membro"
+          onArquivado={() => navegar(clube === null ? '/' : `/clubes/${clube.id}`)}
+        />
       </div>
 
       <Tabs itens={ABAS} valor={aba} onChange={setAba} />
@@ -201,6 +212,18 @@ export const MembroDetalhe = () => {
             ]}
           />
 
+          {abrindoVenda && (
+            <NovaVenda
+              clubeFixo={clube === null ? undefined : { id: clube.id, name: clube.name }}
+              membroFixo={{ id: membro.id, name: membro.name }}
+              onFechar={() => setAbrindoVenda(false)}
+              onCriada={() => {
+                setAbrindoVenda(false);
+                window.location.reload();
+              }}
+            />
+          )}
+
           <CardEditavel
             titulo="Financeiro"
             objeto={objeto}
@@ -213,7 +236,21 @@ export const MembroDetalhe = () => {
               { nome: 'linkFastpay', rotulo: 'Link pagamento (FastPay)' },
             ]}
             extra={
-              parcelas.length > 0 ? (
+              <>
+                <div className="adm-toolbar" style={{ marginTop: 16, marginBottom: 0 }}>
+                  <span className="adm-toolbar__title">
+                    {parcelas.length} parcelas
+                  </span>
+                  <span className="adm-toolbar__spacer" />
+                  <button
+                    type="button"
+                    className="adm-btn adm-btn--primary"
+                    onClick={() => setAbrindoVenda(true)}
+                  >
+                    + Nova venda
+                  </button>
+                </div>
+                {parcelas.length > 0 && (
                 <>
                   <Secao>Parcelas</Secao>
                   <table className="adm-table">
@@ -241,7 +278,8 @@ export const MembroDetalhe = () => {
                     </tbody>
                   </table>
                 </>
-              ) : undefined
+                )}
+              </>
             }
           />
 

@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { gql } from 'src/api/client';
 import { carregarMetadata, type ObjetoMeta } from 'src/api/metadata';
-import { CLUBE_QUERY } from 'src/api/queries';
+import { ARQUIVAR_CLUBE, CLUBE_QUERY } from 'src/api/queries';
 import { type Etapa, type Socio } from 'src/api/types';
 import { Historico } from 'src/ui/Historico';
 import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
 import { CardEditavel } from 'src/ui/CardEditavel';
 import { NovoMembro } from 'src/ui/NovoMembro';
+import { Arquivar } from 'src/ui/Arquivar';
 import { Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe } from 'src/ui/primitives';
 import {
   TRACO,
@@ -45,6 +46,7 @@ const linkTexto = (valor: { primaryLinkUrl: string | null; primaryLinkLabel: str
 
 export const ClubeDetalhe = () => {
   const { id } = useParams<{ id: string }>();
+  const navegar = useNavigate();
   const [clube, setClube] = useState<Record<string, any> | null>(null);
   const [metaClube, setMetaClube] = useState<ObjetoMeta | null>(null);
   const [metaSocio, setMetaSocio] = useState<ObjetoMeta | null>(null);
@@ -157,6 +159,13 @@ export const ClubeDetalhe = () => {
         </div>
         <span className="adm-record__spacer" />
         <Chip valor={clube.situacao} />
+        <Arquivar
+          mutation={ARQUIVAR_CLUBE}
+          registroId={clube.id}
+          nome={clube.name}
+          oQue="clube"
+          onArquivado={() => navegar('/')}
+        />
       </div>
 
       <Tabs itens={abas} valor={aba} onChange={setAba} />

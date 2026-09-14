@@ -504,3 +504,9 @@ button.adm-kpi { cursor: pointer; text-align: left; font: inherit; }
 @media (max-width: 720px) {
   .adm-etapas__progresso { margin-left: 0; width: 100%; }
 }
+
+.adm-btn--perigo {
+  color: var(--rose); border-color: rgba(217, 82, 87, 0.3);
+  background: var(--bg-elev-1); box-shadow: none;
+}
+.adm-btn--perigo:hover { background: rgba(217, 82, 87, 0.08); border-color: rgba(217, 82, 87, 0.5); }

@@ -243,3 +243,15 @@ export const RADAR_CLUBES_QUERY = `
     }
   }
 `;
+
+export const ARQUIVAR_CLUBE = `
+  mutation ArquivarClube($id: UUID!) {
+    deleteClube(id: $id) { id deletedAt }
+  }
+`;
+
+export const ARQUIVAR_MEMBRO = `
+  mutation ArquivarMembro($id: UUID!) {
+    deleteMembro(id: $id) { id deletedAt }
+  }
+`;

@@ -3,6 +3,7 @@ import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
 
 import { ApiError, meta } from 'src/api/client';
 import { CURRENT_USER_QUERY, OBJETOS_QUERY, SAIR_MUTATION } from 'src/api/queries';
+import { Arquivados } from 'src/pages/Arquivados';
 import { ClubeDetalhe } from 'src/pages/ClubeDetalhe';
 import { Dashboard } from 'src/pages/Dashboard';
 import { Financeiro } from 'src/pages/Financeiro';
@@ -103,6 +104,12 @@ export const App = () => {
         >
           Radar de Datas
         </NavLink>
+        <NavLink
+          to="/arquivados"
+          className={({ isActive }) => (isActive ? 'adm-banner__link adm-banner__link--on' : 'adm-banner__link')}
+        >
+          Arquivados
+        </NavLink>
       </nav>
 
       <div className="adm-banner__right">
@@ -151,6 +158,7 @@ export const App = () => {
           <Route path="/" element={<Dashboard />} />
           <Route path="/financeiro" element={<Financeiro />} />
           <Route path="/radar" element={<Radar />} />
+          <Route path="/arquivados" element={<Arquivados />} />
           <Route path="/clubes/novo" element={<NovoClube />} />
           <Route path="/clubes/:id" element={<ClubeDetalhe />} />
           <Route path="/membros/:id" element={<MembroDetalhe />} />

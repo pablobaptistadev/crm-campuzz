@@ -54,8 +54,12 @@ export const Arquivar = ({
           <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600 }}>{nome}</p>
           <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, margin: '0 0 18px' }}>
             {oQue === 'clube'
-              ? 'O clube sai do painel junto com o que depende dele. Nada é apagado do banco e dá para restaurar.'
-              : 'O membro sai da lista do clube. Nada é apagado do banco e dá para restaurar.'}
+              ? 'O clube sai do painel. Os membros seguem cadastrados e continuam aparecendo no financeiro e no radar — arquive um a um se quiser tirá-los também.'
+              : 'O membro sai da lista do clube, do financeiro e do radar.'}
+          </p>
+          <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, margin: '0 0 18px' }}>
+            Nada é apagado do banco: dá para trazer de volta em{' '}
+            <strong>Arquivados</strong>.
           </p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button

@@ -255,3 +255,45 @@ export const ARQUIVAR_MEMBRO = `
     deleteMembro(id: $id) { id deletedAt }
   }
 `;
+
+// O filtro citando deletedAt é o que desliga o corte de soft delete na API —
+// não existe um argumento withDeleted no contrato.
+export const CLUBES_ARQUIVADOS_QUERY = `
+  query ClubesArquivados($after: String) {
+    clubes(
+      first: 200
+      after: $after
+      filter: { deletedAt: { is: NOT_NULL } }
+      orderBy: [{ deletedAt: DescNullsLast }]
+    ) {
+      pageInfo { hasNextPage endCursor }
+      edges { node { id name mentor situacao deletedAt } }
+    }
+  }
+`;
+
+export const MEMBROS_ARQUIVADOS_QUERY = `
+  query MembrosArquivados($after: String) {
+    membros(
+      first: 200
+      after: $after
+      filter: { deletedAt: { is: NOT_NULL } }
+      orderBy: [{ deletedAt: DescNullsLast }]
+    ) {
+      pageInfo { hasNextPage endCursor }
+      edges { node { id name papel situacao clubeId deletedAt } }
+    }
+  }
+`;
+
+export const RESTAURAR_CLUBE = `
+  mutation RestaurarClube($id: UUID!) {
+    restoreClube(id: $id) { id deletedAt }
+  }
+`;
+
+export const RESTAURAR_MEMBRO = `
+  mutation RestaurarMembro($id: UUID!) {
+    restoreMembro(id: $id) { id deletedAt }
+  }
+`;

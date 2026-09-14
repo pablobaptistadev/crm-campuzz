@@ -113,6 +113,22 @@ export const MEMBRO_QUERY = `
   }
 `;
 
+// O app só existe onde o workspace tem os objetos de clube. Sem essa checagem
+// a primeira consulta estoura com o erro cru do GraphQL numa tela vazia.
+export const OBJETOS_QUERY = `
+  query Objetos {
+    objects(paging: { first: 200 }) {
+      edges { node { id nameSingular } }
+    }
+  }
+`;
+
+export const SAIR_MUTATION = `
+  mutation Sair {
+    signOut
+  }
+`;
+
 export const CURRENT_USER_QUERY = `
   query CurrentUser {
     currentUser {

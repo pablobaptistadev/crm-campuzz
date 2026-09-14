@@ -288,3 +288,11 @@ button { font: inherit; }
   color: rgb(3, 8, 9); font-weight: 600;
 }
 .adm-btn--primary:hover { filter: brightness(0.96); background: var(--gradient-gold); }
+
+.adm-banner__sair {
+  background: transparent; cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.8);
+  border-radius: 8px; padding: 6px 12px; font-size: 12.5px;
+}
+.adm-banner__sair:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }

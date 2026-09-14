@@ -14,7 +14,9 @@
   // its own hostname, which is what the Host-based tenant resolution reads.
   "routes": [
     { "pattern": "crm.campuzz.com.br", "custom_domain": true },
-    { "pattern": "*.crm.campuzz.com.br/*", "zone_name": "campuzz.com.br" }
+    { "pattern": "*.crm.campuzz.com.br/*", "zone_name": "campuzz.com.br" },
+    // O app de clubes: mesmo Worker, mesma origem que a API, servido de /clube.
+    { "pattern": "clube.campuzz.com.br", "custom_domain": true }
   ],
 
   // The SPA build of twenty-front. Every ApiPath prefix is routed to Hono first.

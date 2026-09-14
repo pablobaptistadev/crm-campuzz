@@ -9,6 +9,7 @@ export type InspectResult = {
   rejectedRequests: string[];
   failedRequests: string[];
   bodyText: string;
+  documentTitle: string;
   screenshotKey: string;
   uploadOutcome?: string;
   uploadRequests?: string[];
@@ -26,6 +27,7 @@ export const inspectPage = async ({
   click,
   upload,
   trace,
+  targetOverride,
 }: {
   bindings: Bindings;
   email: string;
@@ -34,6 +36,7 @@ export const inspectPage = async ({
   click?: string;
   upload?: string;
   trace?: string;
+  targetOverride?: string;
 }): Promise<InspectResult> => {
   const browser = await puppeteer.launch(bindings.BROWSER);
 
@@ -131,17 +134,21 @@ export const inspectPage = async ({
 
     await page.setViewport({ width: 1440, height: 900 });
 
-    const target = `${bindings.TARGET_URL}${path}`;
+    const base = targetOverride ?? bindings.TARGET_URL;
+    const target = `${base}${path}`;
 
-    await page.goto(bindings.TARGET_URL, {
+    await page.goto(base, {
       waitUntil: 'domcontentloaded',
       timeout: 45_000,
     });
 
     // The login screen is reached through "Continue with Email" before the
     // fields exist at all.
-    await page
-      .waitForSelector('input[autocomplete="email"]', { timeout: 20_000 })
+    const campoEmail = 'input[autocomplete="email"], input[type="email"]';
+
+    const achouEmail = await page
+      .waitForSelector(campoEmail, { timeout: 20_000 })
+      .then(() => true)
       .catch(async () => {
         await page.evaluate(`(() => {
           const button = Array.from(document.querySelectorAll('button, [role="button"]'))
@@ -150,16 +157,34 @@ export const inspectPage = async ({
           button?.click();
         })()`);
 
-        await page.waitForSelector('input[autocomplete="email"]', {
-          timeout: 20_000,
-        });
+        return page
+          .waitForSelector(campoEmail, { timeout: 20_000 })
+          .then(() => true)
+          .catch(() => false);
       });
 
-    await page.type('input[autocomplete="email"]', email, { delay: 10 });
-    await page.keyboard.press('Enter');
-    await page.waitForSelector('input[type="password"]', { timeout: 25_000 });
-    await page.type('input[type="password"]', password, { delay: 10 });
-    await page.keyboard.press('Enter');
+    // A login screen that never appears is itself the finding: reporting the
+    // page beats throwing, which leaves no screenshot and no console to read.
+    if (achouEmail) {
+      await page.type(campoEmail, email, { delay: 10 });
+      await page.keyboard.press('Enter');
+
+      const temSenhaJunto = await page
+        .$('input[type="password"]')
+        .then((elemento) => elemento !== null)
+        .catch(() => false);
+
+      if (!temSenhaJunto) {
+        await page
+          .waitForSelector('input[type="password"]', { timeout: 25_000 })
+          .catch(() => undefined);
+      }
+
+      await page.type('input[type="password"]', password, { delay: 10 }).catch(() => undefined);
+      await page.keyboard.press('Enter');
+    } else {
+      consoleErrors.push('inspect: nenhum campo de e-mail apareceu na tela inicial');
+    }
 
     const deadline = Date.now() + 60_000;
 
@@ -252,6 +277,10 @@ export const inspectPage = async ({
       await new Promise((resolve) => setTimeout(resolve, 12_000));
     }
 
+    const documentTitle = String(
+      await page.evaluate(`document.title || ''`).catch(() => ''),
+    );
+
     const bodyText = String(
       await page.evaluate(`document.body.innerText || ''`).catch(() => ''),
     );
@@ -270,6 +299,7 @@ export const inspectPage = async ({
       rejectedRequests: [...new Set(rejectedRequests)],
       failedRequests: [...new Set(failedRequests)],
       bodyText: bodyText.slice(0, 3000),
+      documentTitle,
       screenshotKey,
       uploadOutcome,
       uploadRequests,

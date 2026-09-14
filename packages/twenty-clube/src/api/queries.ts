@@ -1,0 +1,145 @@
+const ETAPA = `id name ordem escopo situacao concluidaEm`;
+const MOEDA = `{ amountMicros currencyCode }`;
+const LINK = `{ primaryLinkUrl primaryLinkLabel }`;
+const EMAIL = `{ primaryEmail }`;
+const FONE = `{ primaryPhoneNumber primaryPhoneCallingCode }`;
+const ENDERECO = `{ addressStreet1 addressStreet2 addressCity addressState addressPostcode addressCountry }`;
+
+// O painel usa três consultas achatadas em vez de uma aninhada: uma relação
+// to-many dentro de 38 clubes vira 76 idas ao banco e a tela fica em branco.
+export const CLUBES_QUERY = `
+  query Clubes($after: String) {
+    clubes(first: 60, after: $after) {
+      totalCount
+      pageInfo { hasNextPage endCursor }
+      edges {
+        node {
+          id name mentor situacao inicio responsavel modeloFinanceiro
+          capitalNegociado ${MOEDA}
+          mouSituacao mouValidade
+        }
+      }
+    }
+  }
+`;
+
+export const MEMBROS_RESUMO_QUERY = `
+  query MembrosResumo($after: String) {
+    membros(first: 200, after: $after) {
+      pageInfo { hasNextPage endCursor }
+      edges { node { id situacao clubeId } }
+    }
+  }
+`;
+
+export const PIPELINE_QUERY = `
+  query Pipeline($after: String) {
+    etapasJornada(first: 200, after: $after, filter: { escopo: { eq: "CLUBE" } }) {
+      pageInfo { hasNextPage endCursor }
+      edges { node { id clubeId ordem situacao } }
+    }
+  }
+`;
+
+export const CLUBE_QUERY = `
+  query Clube($id: UUID!) {
+    clube(filter: { id: { eq: $id } }) {
+      id name mentor situacao nicho responsavel inicio modeloFinanceiro
+      capitalNegociado ${MOEDA}
+      mouSituacao mouAssinadoEm mouValidade mouLink ${LINK}
+      origemContrato mlsId
+      contratoMlsAssinado contratoMlsEm contratoScpAssinado contratoScpEm
+      kickoffFeito kickoffEm
+      lms bu mlsHouse fastval scpCriada scpCriadaEm
+      grupoWhatsapp ${LINK} linkCheckout ${LINK} linkFastpay ${LINK}
+      miniBio nomeCracha camiseta calca moletom calcado
+      chocolateFavorito frutaFavorita
+      contatoEmergenciaNome contatoEmergenciaTelefone ${FONE}
+      maiorObjetivo observacoes placaEntregue placaEntregueEm
+      jornada { edges { node { ${ETAPA} } } }
+      socios {
+        edges { node {
+          id name papel cpf cnpj rg nascimento profissao estadoCivil conjuge
+          emails ${EMAIL} telefones ${FONE} telefoneFixo ${FONE}
+          sexo nacionalidade naturalidade endereco ${ENDERECO}
+          instagram ${LINK} linkedin ${LINK} site ${LINK}
+        } }
+      }
+      membros {
+        totalCount
+        edges { node {
+          id name situacao papel contratoSituacao
+          emails ${EMAIL} telefones ${FONE} valorTotal ${MOEDA}
+        } }
+      }
+      parcelas {
+        edges { node { id name valor ${MOEDA} vencimento situacao pagaEm } }
+      }
+      timelineActivities {
+        edges { node { id name happensAt createdAt properties } }
+      }
+    }
+  }
+`;
+
+export const MEMBRO_QUERY = `
+  query Membro($id: UUID!) {
+    membro(filter: { id: { eq: $id } }) {
+      id name nomeCracha papel situacao entradaEm
+      emails ${EMAIL} telefones ${FONE} telefoneFixo ${FONE}
+      cpf rg cnpj nascimento sexo estadoCivil nacionalidade naturalidade
+      profissao conjuge endereco ${ENDERECO}
+      instagram ${LINK} linkedin ${LINK} site ${LINK}
+      miniBio camiseta calca moletom calcado chocolateFavorito frutaFavorita
+      contatoEmergenciaNome contatoEmergenciaTelefone ${FONE}
+      maiorObjetivo observacoes placaEntregue placaEntregueEm
+      contratoNumero contratoSituacao contratoAssinadoEm contratoLink ${LINK}
+      valorTotal ${MOEDA} modeloPagamento linkFastpay ${LINK}
+      clube { id name }
+      jornada { edges { node { ${ETAPA} } } }
+      parcelas {
+        edges { node { id name valor ${MOEDA} vencimento situacao pagaEm formaPagamento } }
+      }
+      dependentes {
+        edges { node { id name nascimento sexo parentesco } }
+      }
+      pendencias {
+        edges { node { id name descricao situacao prazo resolvidaEm } }
+      }
+      timelineActivities {
+        edges { node { id name happensAt createdAt properties } }
+      }
+    }
+  }
+`;
+
+export const CURRENT_USER_QUERY = `
+  query CurrentUser {
+    currentUser {
+      id email firstName lastName
+      currentWorkspace { id displayName }
+    }
+  }
+`;
+
+export const LOGIN_MUTATION = `
+  mutation Entrar($email: String!, $password: String!) {
+    getLoginTokenFromCredentials(email: $email, password: $password) {
+      loginToken { token }
+    }
+  }
+`;
+
+export const EXCHANGE_MUTATION = `
+  mutation Trocar($loginToken: String!) {
+    getAuthTokensFromLoginToken(loginToken: $loginToken) {
+      tokens { accessOrWorkspaceAgnosticToken { token } }
+    }
+  }
+`;
+
+export const ATUALIZAR_ETAPA = `
+  mutation AtualizarEtapa($id: UUID!, $data: EtapaJornadaUpdateInput!) {
+    updateEtapaJornada(id: $id, data: $data) { ${ETAPA} }
+  }
+`;

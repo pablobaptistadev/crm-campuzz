@@ -1,0 +1,11 @@
+{
+  "name": "twenty-clube",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "npx vite build",
+    "dev": "npx vite",
+    "typecheck": "npx tsc --noEmit -p tsconfig.json"
+  }
+}

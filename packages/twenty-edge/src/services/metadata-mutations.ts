@@ -503,11 +503,22 @@ export const applyFieldColumns = async ({
       continue;
     }
 
+    const enumType = `${escapeIdentifier(schemaName)}.${escapeIdentifier(enumDefinition.enumName)}`;
+
     await client.query(
       `DO $$ BEGIN
-  CREATE TYPE ${escapeIdentifier(schemaName)}.${escapeIdentifier(enumDefinition.enumName)} AS ENUM (${enumDefinition.values.map(escapeLiteral).join(', ')});
+  CREATE TYPE ${enumType} AS ENUM (${enumDefinition.values.map(escapeLiteral).join(', ')});
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;`,
     );
+
+    // The type name is derived from the column, so editing a SELECT's options
+    // finds the old type and keeps its old values — the new option would pass
+    // GraphQL validation and then be rejected by Postgres on every write.
+    for (const value of enumDefinition.values) {
+      await client.query(
+        `ALTER TYPE ${enumType} ADD VALUE IF NOT EXISTS ${escapeLiteral(value)}`,
+      );
+    }
   }
 
   for (const definition of generateColumnDefinitions({
@@ -605,6 +616,14 @@ export const deleteFieldMetadata = async ({
     await client.query(
       `ALTER TABLE ${escapeIdentifier(schemaName)}.${escapeIdentifier(tableName)}
        DROP COLUMN IF EXISTS ${escapeIdentifier(definition.columnName)}`,
+    );
+  }
+
+  // Dropped after the column: the type belongs to this field alone, and leaving
+  // it behind means recreating the field inherits the options it used to have.
+  for (const enumDefinition of collectEnumDefinitions({ fields: [field], tableName })) {
+    await client.query(
+      `DROP TYPE IF EXISTS ${escapeIdentifier(schemaName)}.${escapeIdentifier(enumDefinition.enumName)}`,
     );
   }
 

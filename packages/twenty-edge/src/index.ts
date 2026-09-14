@@ -2,7 +2,7 @@ import { type Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
 
 import { isApiPath } from 'src/api-paths';
-import { type AppEnv } from 'src/env';
+import { type AppEnv, type Bindings } from 'src/env';
 import { clientConfigRoute } from 'src/routes/client-config';
 import { filesRoute } from 'src/routes/files';
 import { graphqlRoute } from 'src/routes/graphql';
@@ -80,13 +80,46 @@ app.route('/file', filesRoute);
 // Internal endpoints are never reachable from the edge.
 app.all('/internal/*', (context) => context.notFound());
 
+const CLUBE_HOSTNAME = 'clube.campuzz.com.br';
+const CLUBE_BASE = '/clube';
+
+// clube.campuzz.com.br is the Education Society app, which lives under /clube in
+// the same bundle. Serving it by Host keeps it on one origin with the API, so
+// the session cookie works without any cross-site exception.
+const isClubeRequest = (url: URL): boolean =>
+  url.hostname === CLUBE_HOSTNAME ||
+  url.pathname === CLUBE_BASE ||
+  url.pathname.startsWith(`${CLUBE_BASE}/`);
+
+// The shell is /clube/app, not /clube/ or /clube/app.html: Cloudflare's asset
+// handler redirects a directory to its trailing slash and strips .html, and
+// either one bounces back through the rewrite below as an endless loop. This is
+// the path it already considers canonical, so it answers it directly.
+const CLUBE_SHELL = `${CLUBE_BASE}/app`;
+
+const fetchClubeAsset = (context: { req: { raw: Request } }, env: Bindings, url: URL) => {
+  const isFile = /\.[a-z0-9]+$/i.test(url.pathname);
+  const caminho = url.pathname.startsWith(`${CLUBE_BASE}/`)
+    ? url.pathname
+    : `${CLUBE_BASE}${url.pathname}`;
+
+  // Deep links have no file of their own; the SPA shell answers for them.
+  const alvo = new URL(isFile ? caminho : CLUBE_SHELL, url.origin);
+
+  return env.ASSETS.fetch(new Request(alvo, context.req.raw));
+};
+
 // Anything that is not an ApiPath prefix is the SPA. Matching on the exact first
 // segment is what keeps /static/* on the assets while /s/* reaches the API.
 app.all('*', (context) => {
-  const { pathname } = new URL(context.req.url);
+  const url = new URL(context.req.url);
 
-  if (isApiPath(pathname)) {
-    return context.json({ error: 'Not implemented yet', path: pathname }, 501);
+  if (isApiPath(url.pathname)) {
+    return context.json({ error: 'Not implemented yet', path: url.pathname }, 501);
+  }
+
+  if (isClubeRequest(url)) {
+    return fetchClubeAsset(context, context.env, url);
   }
 
   return context.env.ASSETS.fetch(context.req.raw);

@@ -9,6 +9,7 @@ export type InspectResult = {
   rejectedRequests: string[];
   failedRequests: string[];
   bodyText: string;
+  stepLog?: string[];
   documentTitle: string;
   screenshotKey: string;
   uploadOutcome?: string;
@@ -28,6 +29,7 @@ export const inspectPage = async ({
   upload,
   trace,
   targetOverride,
+  steps,
 }: {
   bindings: Bindings;
   email: string;
@@ -37,6 +39,7 @@ export const inspectPage = async ({
   upload?: string;
   trace?: string;
   targetOverride?: string;
+  steps?: string;
 }): Promise<InspectResult> => {
   const browser = await puppeteer.launch(bindings.BROWSER);
 
@@ -47,6 +50,7 @@ export const inspectPage = async ({
     const failedRequests: string[] = [];
     const uploadRequests: string[] = [];
     const tracedRequests: string[] = [];
+    const stepLog: string[] = [];
     let uploadOutcome: string | undefined;
 
     page.on('console', (message) => {
@@ -277,6 +281,65 @@ export const inspectPage = async ({
       await new Promise((resolve) => setTimeout(resolve, 12_000));
     }
 
+    // Clicar num botão e ler a tela não cobre uma edição: ela é clicar, digitar
+    // e salvar, e é no salvar que a escrita falha.
+    if (steps !== undefined && steps.length > 0) {
+      const acoes = JSON.parse(steps) as { click?: string; fill?: string; value?: string }[];
+
+      for (const acao of acoes) {
+        const resultado = await page
+          .evaluate(`(() => {
+            const acao = ${JSON.stringify(JSON.stringify(acao))};
+            const { click, fill, value } = JSON.parse(acao);
+
+            if (click) {
+              const alvo = Array.from(
+                document.querySelectorAll('button, [role="button"], a'),
+              ).find((el) => (el.textContent || '').trim().toLowerCase() === click.toLowerCase())
+                ?? Array.from(document.querySelectorAll('button, [role="button"], a'))
+                  .find((el) => (el.textContent || '').toLowerCase().includes(click.toLowerCase()));
+
+              if (!alvo) return 'clique não encontrou: ' + click;
+              alvo.click();
+              return 'clicou: ' + click;
+            }
+
+            if (fill) {
+              const rotulos = Array.from(document.querySelectorAll('.adm-fieldlabel'));
+              const rotulo = rotulos.find(
+                (el) => (el.textContent || '').trim().toLowerCase() === fill.toLowerCase(),
+              );
+              const campo = rotulo?.parentElement?.querySelector('input, select, textarea');
+
+              if (!campo) return 'campo não encontrou: ' + fill;
+
+              // React não vê uma escrita direta em .value; o setter nativo é o
+              // que dispara o onChange dele.
+              const proto = campo instanceof HTMLSelectElement
+                ? HTMLSelectElement.prototype
+                : campo instanceof HTMLTextAreaElement
+                  ? HTMLTextAreaElement.prototype
+                  : HTMLInputElement.prototype;
+
+              Object.getOwnPropertyDescriptor(proto, 'value').set.call(campo, value);
+              campo.dispatchEvent(new Event('input', { bubbles: true }));
+              campo.dispatchEvent(new Event('change', { bubbles: true }));
+
+              return 'preencheu ' + fill + ' = ' + value;
+            }
+
+            return 'ação vazia';
+          })()`)
+          .catch((erro: unknown) => `falhou: ${String(erro)}`);
+
+        stepLog.push(String(resultado));
+
+        await new Promise((resolve) => setTimeout(resolve, 2_500));
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 3_000));
+    }
+
     const documentTitle = String(
       await page.evaluate(`document.title || ''`).catch(() => ''),
     );
@@ -298,7 +361,8 @@ export const inspectPage = async ({
       consoleErrors: [...new Set(consoleErrors)],
       rejectedRequests: [...new Set(rejectedRequests)],
       failedRequests: [...new Set(failedRequests)],
-      bodyText: bodyText.slice(0, 3000),
+      bodyText: bodyText.slice(0, 6000),
+      stepLog,
       documentTitle,
       screenshotKey,
       uploadOutcome,

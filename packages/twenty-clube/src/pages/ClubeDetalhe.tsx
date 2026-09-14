@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { gql } from 'src/api/client';
+import { carregarMetadata, type ObjetoMeta } from 'src/api/metadata';
 import { CLUBE_QUERY } from 'src/api/queries';
 import { type Etapa, type Socio } from 'src/api/types';
 import { Historico } from 'src/ui/Historico';
+import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
 import { Jornada } from 'src/ui/Jornada';
+import { CardEditavel } from 'src/ui/CardEditavel';
 import { Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe } from 'src/ui/primitives';
 import {
   TRACO,
@@ -43,18 +46,47 @@ const linkTexto = (valor: { primaryLinkUrl: string | null; primaryLinkLabel: str
 export const ClubeDetalhe = () => {
   const { id } = useParams<{ id: string }>();
   const [clube, setClube] = useState<Record<string, any> | null>(null);
+  const [metaClube, setMetaClube] = useState<ObjetoMeta | null>(null);
+  const [metaSocio, setMetaSocio] = useState<ObjetoMeta | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState<Aba>('crm');
+
+  // Uma alteração salva já vale na tela; recarregar o clube inteiro para
+  // repintar um campo custaria uma volta ao banco por edição.
+  const aplicar = (mudancas: Record<string, unknown>) =>
+    setClube((atual) => (atual === null ? atual : { ...atual, ...mudancas }));
+
+  const aplicarSocio = (socioId: string) => (mudancas: Record<string, unknown>) =>
+    setClube((atual) =>
+      atual === null
+        ? atual
+        : {
+            ...atual,
+            socios: {
+              ...atual.socios,
+              edges: atual.socios.edges.map((aresta: { node: Socio }) =>
+                aresta.node.id === socioId
+                  ? { ...aresta, node: { ...aresta.node, ...mudancas } }
+                  : aresta,
+              ),
+            },
+          },
+    );
 
   useEffect(() => {
     let cancelado = false;
 
     void (async () => {
       try {
-        const dados = await gql<{ clube: Record<string, any> }>(CLUBE_QUERY, { id });
+        const [dados, metadata] = await Promise.all([
+          gql<{ clube: Record<string, any> }>(CLUBE_QUERY, { id }),
+          carregarMetadata(),
+        ]);
 
         if (!cancelado) {
           setClube(dados.clube);
+          setMetaClube(metadata.get('clube') ?? null);
+          setMetaSocio(metadata.get('socio') ?? null);
         }
       } catch (causa) {
         if (!cancelado) {
@@ -72,7 +104,7 @@ export const ClubeDetalhe = () => {
     return <div className="adm-error">{erro}</div>;
   }
 
-  if (clube === null) {
+  if (clube === null || metaClube === null || metaSocio === null) {
     return <div className="adm-loading">Carregando…</div>;
   }
 
@@ -124,119 +156,159 @@ export const ClubeDetalhe = () => {
           </Card>
         ) : (
           socios.map((socio) => (
-            <Card key={socio.id} titulo={socio.papel ?? 'Sócio'}>
-              <Grid colunas={3}>
-                <Campo rotulo="Nome completo" valor={texto(socio.name)} />
-                <Campo rotulo="CPF" valor={texto(socio.cpf)} />
-                <Campo rotulo="RG" valor={texto(socio.rg)} />
-                <Campo rotulo="Data de nascimento" valor={dataCurta(socio.nascimento)} />
-                <Campo rotulo="Profissão" valor={texto(socio.profissao)} />
-                <Campo rotulo="Estado civil" valor={texto(socio.estadoCivil)} />
-              </Grid>
-              <Grid colunas={2}>
-                <Campo rotulo="E-mail" valor={texto(socio.emails?.primaryEmail)} />
-                <Campo rotulo="Celular" valor={telefone(socio.telefones)} />
-              </Grid>
-              <Grid colunas={3}>
-                <Campo rotulo="Sexo" valor={rotuloDe(socio.sexo === 'F' ? 'Feminino' : socio.sexo === 'M' ? 'Masculino' : socio.sexo)} />
-                <Campo rotulo="Nacionalidade" valor={texto(socio.nacionalidade)} />
-                <Campo rotulo="Naturalidade" valor={texto(socio.naturalidade)} />
-              </Grid>
-              <Secao>Endereço</Secao>
-              <Grid colunas={2}>
-                <Campo rotulo="Endereço" valor={enderecoLinha(socio.endereco)} />
-                <Campo rotulo="CEP" valor={texto(socio.endereco?.addressPostcode)} />
-              </Grid>
-              <Secao>Redes</Secao>
-              <Grid colunas={3}>
-                <Campo rotulo="Instagram" valor={linkTexto(socio.instagram)} />
-                <Campo rotulo="LinkedIn" valor={linkTexto(socio.linkedin)} />
-                <Campo rotulo="Site" valor={linkTexto(socio.site)} />
-              </Grid>
-            </Card>
+            <CardEditavel
+              key={socio.id}
+              titulo={socio.papel ?? 'Sócio'}
+              objeto={metaSocio}
+              registroId={socio.id}
+              registro={socio as unknown as Record<string, unknown>}
+              onSalvo={aplicarSocio(socio.id)}
+              campos={[
+                { nome: 'name', rotulo: 'Nome completo' },
+                { nome: 'papel' },
+                { nome: 'cpf' },
+                { nome: 'rg' },
+                { nome: 'cnpj' },
+                { nome: 'nascimento', rotulo: 'Data de nascimento' },
+                { nome: 'profissao', rotulo: 'Profissão' },
+                { nome: 'estadoCivil', rotulo: 'Estado civil' },
+                { nome: 'emails', rotulo: 'E-mail' },
+                { nome: 'telefones', rotulo: 'Celular' },
+                { nome: 'telefoneFixo', rotulo: 'Telefone fixo' },
+                { nome: 'sexo' },
+                { nome: 'nacionalidade' },
+                { nome: 'naturalidade' },
+                { nome: 'conjuge', rotulo: 'Cônjuge' },
+                { nome: 'endereco', rotulo: 'Endereço' },
+                { nome: 'instagram' },
+                { nome: 'linkedin', rotulo: 'LinkedIn' },
+                { nome: 'site' },
+              ]}
+            />
           ))
         ))}
 
       {aba === 'acc' && (
         <>
-          <Card titulo="Contrato / MOU">
-            <Grid colunas={3}>
-              <Campo rotulo="Status" valor={<Chip valor={clube.mouSituacao} />} />
-              <Campo rotulo="Data de assinatura" valor={dataCurta(clube.mouAssinadoEm)} />
-              <Campo rotulo="Válido até" valor={dataCurta(clube.mouValidade)} />
-            </Grid>
-            <Grid colunas={2}>
-              <Campo rotulo="Link do documento" valor={linkTexto(clube.mouLink)} />
-              <Campo rotulo="Origem" valor={texto(clube.origemContrato)} />
-            </Grid>
-          </Card>
+          <CardEditavel
+            titulo="Contrato / MOU"
+            objeto={metaClube}
+            registroId={clube.id}
+            registro={clube}
+            onSalvo={aplicar}
+            campos={[
+              { nome: 'mouSituacao', rotulo: 'Status' },
+              { nome: 'mouAssinadoEm', rotulo: 'Data de assinatura' },
+              { nome: 'mouValidade', rotulo: 'Válido até' },
+              { nome: 'mouLink', rotulo: 'Link do documento' },
+              { nome: 'origemContrato', rotulo: 'Origem' },
+            ]}
+          />
 
-          <Card titulo="Financeiro">
-            <Grid colunas={3}>
-              <Campo rotulo="Valor total (R$)" valor={dinheiro(clube.capitalNegociado)} />
-              <Campo rotulo="Modelo de pagamento" valor={texto(clube.modeloFinanceiro)} />
-              <Campo rotulo="Data de início" valor={dataCurta(clube.inicio)} />
-            </Grid>
-            <Grid colunas={2}>
-              <Campo rotulo="Link FastPay" valor={linkTexto(clube.linkFastpay)} />
-              <Campo rotulo="Link de checkout" valor={linkTexto(clube.linkCheckout)} />
-            </Grid>
-            {parcelas.length > 0 && (
-              <>
-                <Secao>Parcelas</Secao>
-                <table className="adm-table">
-                  <thead>
-                    <tr>
-                      <th>Parcela</th>
-                      <th>Valor</th>
-                      <th>Vencimento</th>
-                      <th>Situação</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {parcelas.map((parcela: any) => (
-                      <tr key={parcela.id}>
-                        <td>{parcela.name}</td>
-                        <td className="adm-table__num">{dinheiroCurto(parcela.valor)}</td>
-                        <td className="adm-table__muted">{dataCurta(parcela.vencimento)}</td>
-                        <td>
-                          <Chip valor={parcela.situacao} />
-                        </td>
+          <CardEditavel
+            titulo="Financeiro"
+            objeto={metaClube}
+            registroId={clube.id}
+            registro={clube}
+            onSalvo={aplicar}
+            campos={[
+              { nome: 'capitalNegociado', rotulo: 'Valor total (R$)' },
+              { nome: 'modeloFinanceiro', rotulo: 'Modelo de pagamento' },
+              { nome: 'inicio', rotulo: 'Data de início' },
+              { nome: 'linkFastpay', rotulo: 'Link FastPay' },
+              { nome: 'linkCheckout', rotulo: 'Link de checkout' },
+            ]}
+            extra={
+              parcelas.length > 0 ? (
+                <>
+                  <Secao>Parcelas</Secao>
+                  <table className="adm-table">
+                    <thead>
+                      <tr>
+                        <th>Parcela</th>
+                        <th>Valor</th>
+                        <th>Vencimento</th>
+                        <th>Situação</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </>
-            )}
-          </Card>
+                    </thead>
+                    <tbody>
+                      {parcelas.map((parcela: any) => (
+                        <tr key={parcela.id}>
+                          <td>{parcela.name}</td>
+                          <td className="adm-table__num">{dinheiroCurto(parcela.valor)}</td>
+                          <td className="adm-table__muted">{dataCurta(parcela.vencimento)}</td>
+                          <td>
+                            <Chip valor={parcela.situacao} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              ) : undefined
+            }
+          />
 
-          <Card titulo="Contratos">
-            <Grid colunas={3}>
-              <Campo rotulo="Contrato MLS" valor={sim(clube.contratoMlsAssinado)} />
-              <Campo rotulo="Assinado em" valor={dataCurta(clube.contratoMlsEm)} />
-              <Campo rotulo="ID MLS (Sankhya)" valor={texto(clube.mlsId)} />
-              <Campo rotulo="Contrato SCP" valor={sim(clube.contratoScpAssinado)} />
-              <Campo rotulo="Assinado em" valor={dataCurta(clube.contratoScpEm)} />
-              <Campo rotulo="Kickoff" valor={sim(clube.kickoffFeito)} />
-            </Grid>
-          </Card>
+          <CardEditavel
+            titulo="Contratos"
+            objeto={metaClube}
+            registroId={clube.id}
+            registro={clube}
+            onSalvo={aplicar}
+            campos={[
+              { nome: 'contratoMlsAssinado', rotulo: 'Contrato MLS' },
+              { nome: 'contratoMlsEm', rotulo: 'Assinado em' },
+              { nome: 'mlsId', rotulo: 'ID MLS (Sankhya)' },
+              { nome: 'contratoScpAssinado', rotulo: 'Contrato SCP' },
+              { nome: 'contratoScpEm', rotulo: 'Assinado em' },
+              { nome: 'kickoffFeito', rotulo: 'Kickoff' },
+              { nome: 'kickoffEm', rotulo: 'Kickoff em' },
+            ]}
+          />
 
           <Card titulo="Pipeline de etapas" flush>
-            <Jornada etapas={pipeline} />
+            <EtapasEmCards
+              etapas={pipeline as EtapaCompleta[]}
+              onMudou={(proxima) =>
+                setClube((atual) =>
+                  atual === null
+                    ? atual
+                    : {
+                        ...atual,
+                        jornada: {
+                          ...atual.jornada,
+                          edges: atual.jornada.edges.map((aresta: { node: Etapa }) =>
+                            aresta.node.id === proxima.id
+                              ? { ...aresta, node: { ...aresta.node, ...proxima } }
+                              : aresta,
+                          ),
+                        },
+                      },
+                )
+              }
+            />
           </Card>
 
-          <Card titulo="Operacional">
-            <Grid colunas={3}>
-              <Campo rotulo="LMS" valor={texto(clube.lms)} />
-              <Campo rotulo="BU / Comunidade" valor={texto(clube.bu)} />
-              <Campo rotulo="Responsável" valor={texto(clube.responsavel)} />
-              <Campo rotulo="WhatsApp do clube" valor={linkTexto(clube.grupoWhatsapp)} />
-              <Campo rotulo="MLS House" valor={sim(clube.mlsHouse)} />
-              <Campo rotulo="Fastval" valor={sim(clube.fastval)} />
-              <Campo rotulo="SCP criada" valor={sim(clube.scpCriada)} />
-              <Campo rotulo="SCP criada em" valor={dataCurta(clube.scpCriadaEm)} />
-            </Grid>
-          </Card>
+          <CardEditavel
+            titulo="Operacional"
+            objeto={metaClube}
+            registroId={clube.id}
+            registro={clube}
+            onSalvo={aplicar}
+            campos={[
+              { nome: 'lms', rotulo: 'LMS' },
+              { nome: 'bu', rotulo: 'BU / Comunidade' },
+              { nome: 'responsavel', rotulo: 'Responsável' },
+              { nome: 'nicho' },
+              { nome: 'mentor' },
+              { nome: 'situacao', rotulo: 'Status' },
+              { nome: 'grupoWhatsapp', rotulo: 'WhatsApp do clube' },
+              { nome: 'mlsHouse', rotulo: 'MLS House' },
+              { nome: 'fastval' },
+              { nome: 'scpCriada', rotulo: 'SCP criada' },
+              { nome: 'scpCriadaEm', rotulo: 'SCP criada em' },
+            ]}
+          />
         </>
       )}
 
@@ -282,36 +354,29 @@ export const ClubeDetalhe = () => {
       )}
 
       {aba === 'cx' && (
-        <Card titulo="Relacionamento">
-          <Grid colunas={3}>
-            <Campo rotulo="Nome no crachá" valor={texto(clube.nomeCracha)} />
-            <Campo rotulo="Camiseta" valor={texto(clube.camiseta)} />
-            <Campo rotulo="Calça (nº)" valor={texto(clube.calca)} />
-            <Campo rotulo="Moletom" valor={texto(clube.moletom)} />
-            <Campo rotulo="Calçado (nº)" valor={texto(clube.calcado)} />
-            <Campo rotulo="Chocolate favorito" valor={texto(clube.chocolateFavorito)} />
-            <Campo rotulo="Fruta favorita" valor={texto(clube.frutaFavorita)} />
-            <Campo rotulo="Contato emergência — Nome" valor={texto(clube.contatoEmergenciaNome)} />
-            <Campo
-              rotulo="Contato emergência — Telefone"
-              valor={telefone(clube.contatoEmergenciaTelefone)}
-            />
-          </Grid>
-          <Secao>Sobre</Secao>
-          <Grid colunas={2}>
-            <Campo rotulo="Mini bio" valor={texto(clube.miniBio)} />
-            <Campo rotulo="Maior objetivo no projeto" valor={texto(clube.maiorObjetivo)} />
-            <Campo rotulo="Observações" valor={texto(clube.observacoes)} />
-            <Campo
-              rotulo="Placa / Reconhecimento"
-              valor={
-                clube.placaEntregue === true
-                  ? `Entregue ${clube.placaEntregueEm !== null ? `em ${dataCurta(clube.placaEntregueEm)}` : ''}`
-                  : 'Não entregue'
-              }
-            />
-          </Grid>
-        </Card>
+        <CardEditavel
+          titulo="Relacionamento"
+          objeto={metaClube}
+          registroId={clube.id}
+          registro={clube}
+          onSalvo={aplicar}
+          campos={[
+            { nome: 'nomeCracha', rotulo: 'Nome no crachá' },
+            { nome: 'camiseta' },
+            { nome: 'calca', rotulo: 'Calça (nº)' },
+            { nome: 'moletom' },
+            { nome: 'calcado', rotulo: 'Calçado (nº)' },
+            { nome: 'chocolateFavorito', rotulo: 'Chocolate favorito' },
+            { nome: 'frutaFavorita', rotulo: 'Fruta favorita' },
+            { nome: 'contatoEmergenciaNome', rotulo: 'Contato emergência — Nome' },
+            { nome: 'contatoEmergenciaTelefone', rotulo: 'Contato emergência — Telefone' },
+            { nome: 'miniBio', rotulo: 'Mini bio' },
+            { nome: 'maiorObjetivo', rotulo: 'Maior objetivo no projeto' },
+            { nome: 'observacoes', rotulo: 'Observações' },
+            { nome: 'placaEntregue', rotulo: 'Placa / reconhecimento' },
+            { nome: 'placaEntregueEm', rotulo: 'Placa entregue em' },
+          ]}
+        />
       )}
 
       {aba === 'his' && (

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
 
 import { ApiError, meta } from 'src/api/client';
 import { CURRENT_USER_QUERY, OBJETOS_QUERY, SAIR_MUTATION } from 'src/api/queries';
 import { ClubeDetalhe } from 'src/pages/ClubeDetalhe';
 import { Dashboard } from 'src/pages/Dashboard';
+import { Financeiro } from 'src/pages/Financeiro';
+import { Radar } from 'src/pages/Radar';
 import { Login } from 'src/pages/Login';
 import { MembroDetalhe } from 'src/pages/MembroDetalhe';
 import { iniciais } from 'src/ui/format';
@@ -80,6 +82,28 @@ export const App = () => {
           <div className="adm-banner__sub">Sistema de Parceiros</div>
         </div>
       </div>
+      <nav className="adm-banner__nav">
+        <NavLink
+          to="/"
+          end
+          className={({ isActive }) => (isActive ? 'adm-banner__link adm-banner__link--on' : 'adm-banner__link')}
+        >
+          Dashboard
+        </NavLink>
+        <NavLink
+          to="/financeiro"
+          className={({ isActive }) => (isActive ? 'adm-banner__link adm-banner__link--on' : 'adm-banner__link')}
+        >
+          Financeiro
+        </NavLink>
+        <NavLink
+          to="/radar"
+          className={({ isActive }) => (isActive ? 'adm-banner__link adm-banner__link--on' : 'adm-banner__link')}
+        >
+          Radar de Datas
+        </NavLink>
+      </nav>
+
       <div className="adm-banner__right">
         {temClubes === true && <span className="adm-banner__ok">✓ sincronizado</span>}
         <span className="adm-banner__avatar" title={nome}>
@@ -124,6 +148,8 @@ export const App = () => {
       <main className="adm-shell">
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/financeiro" element={<Financeiro />} />
+          <Route path="/radar" element={<Radar />} />
           <Route path="/clubes/:id" element={<ClubeDetalhe />} />
           <Route path="/membros/:id" element={<MembroDetalhe />} />
           <Route path="*" element={<Navigate to="/" replace />} />

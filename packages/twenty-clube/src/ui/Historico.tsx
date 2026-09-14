@@ -78,9 +78,15 @@ export const Historico = ({ linhas }: { linhas: Linha[] }) => {
     return <Vazio>Ainda não há atividade neste registro.</Vazio>;
   }
 
+  // A relação não aceita orderBy, então a ordem vem da posição da linha, não do
+  // relógio — e um histórico fora de ordem cronológica não é um histórico.
+  const quando = (linha: Linha) =>
+    new Date(linha.happensAt ?? linha.createdAt ?? 0).getTime();
+  const ordenadas = [...linhas].sort((a, b) => quando(b) - quando(a));
+
   return (
     <div>
-      {linhas.map((linha) => {
+      {ordenadas.map((linha) => {
         const diff = Object.entries(linha.properties?.diff ?? {});
 
         return (

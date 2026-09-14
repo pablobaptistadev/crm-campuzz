@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { gql } from 'src/api/client';
+import { carregarMetadata, type ObjetoMeta } from 'src/api/metadata';
 import { MEMBRO_QUERY } from 'src/api/queries';
 import { type Etapa } from 'src/api/types';
 import { Historico } from 'src/ui/Historico';
 import { Jornada } from 'src/ui/Jornada';
+import { CardEditavel } from 'src/ui/CardEditavel';
 import { Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe } from 'src/ui/primitives';
 import {
   TRACO,
@@ -42,18 +44,28 @@ const SEXO: Record<string, string> = { F: 'Feminino', M: 'Masculino', OUTRO: 'Ou
 export const MembroDetalhe = () => {
   const { id } = useParams<{ id: string }>();
   const [membro, setMembro] = useState<Record<string, any> | null>(null);
+  const [objeto, setObjeto] = useState<ObjetoMeta | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState<Aba>('crm');
+
+  // Uma alteração salva já vale na tela; recarregar o registro inteiro para
+  // repintar um campo custaria uma volta ao banco por edição.
+  const aplicar = (mudancas: Record<string, unknown>) =>
+    setMembro((atual) => (atual === null ? atual : { ...atual, ...mudancas }));
 
   useEffect(() => {
     let cancelado = false;
 
     void (async () => {
       try {
-        const dados = await gql<{ membro: Record<string, any> }>(MEMBRO_QUERY, { id });
+        const [dados, metadata] = await Promise.all([
+          gql<{ membro: Record<string, any> }>(MEMBRO_QUERY, { id }),
+          carregarMetadata(),
+        ]);
 
         if (!cancelado) {
           setMembro(dados.membro);
+          setObjeto(metadata.get('membro') ?? null);
         }
       } catch (causa) {
         if (!cancelado) {
@@ -71,7 +83,7 @@ export const MembroDetalhe = () => {
     return <div className="adm-error">{erro}</div>;
   }
 
-  if (membro === null) {
+  if (membro === null || objeto === null) {
     return <div className="adm-loading">Carregando…</div>;
   }
 
@@ -121,91 +133,98 @@ export const MembroDetalhe = () => {
       )}
 
       {aba === 'cad' && (
-        <Card titulo={rotuloDe(membro.papel)}>
-          <Grid colunas={3}>
-            <Campo rotulo="Nome completo" valor={texto(membro.name)} />
-            <Campo rotulo="CPF" valor={texto(membro.cpf)} />
-            <Campo rotulo="RG" valor={texto(membro.rg)} />
-            <Campo rotulo="Data de nascimento" valor={dataCurta(membro.nascimento)} />
-            <Campo rotulo="Profissão" valor={texto(membro.profissao)} />
-            <Campo rotulo="Estado civil" valor={texto(membro.estadoCivil)} />
-          </Grid>
-          <Grid colunas={2}>
-            <Campo rotulo="E-mail" valor={texto(membro.emails?.primaryEmail)} />
-            <Campo rotulo="Celular" valor={telefone(membro.telefones)} />
-          </Grid>
-          <Grid colunas={3}>
-            <Campo rotulo="Sexo" valor={membro.sexo !== null ? (SEXO[membro.sexo] ?? membro.sexo) : TRACO} />
-            <Campo rotulo="Nacionalidade" valor={texto(membro.nacionalidade)} />
-            <Campo rotulo="Naturalidade" valor={texto(membro.naturalidade)} />
-            <Campo rotulo="CNPJ" valor={texto(membro.cnpj)} />
-            <Campo rotulo="Telefone fixo" valor={telefone(membro.telefoneFixo)} />
-            <Campo rotulo="Cônjuge" valor={texto(membro.conjuge)} />
-          </Grid>
-          <Secao>Endereço</Secao>
-          <Grid colunas={2}>
-            <Campo rotulo="Endereço" valor={enderecoLinha(membro.endereco)} />
-            <Campo rotulo="CEP" valor={texto(membro.endereco?.addressPostcode)} />
-          </Grid>
-          <Secao>Redes</Secao>
-          <Grid colunas={3}>
-            <Campo rotulo="Instagram" valor={linkTexto(membro.instagram)} />
-            <Campo rotulo="LinkedIn" valor={linkTexto(membro.linkedin)} />
-            <Campo rotulo="Site" valor={linkTexto(membro.site)} />
-          </Grid>
-        </Card>
+        <CardEditavel
+          titulo={rotuloDe(membro.papel)}
+          objeto={objeto}
+          registroId={membro.id}
+          registro={membro}
+          onSalvo={aplicar}
+          campos={[
+            { nome: 'name', rotulo: 'Nome completo' },
+            { nome: 'cpf' },
+            { nome: 'rg' },
+            { nome: 'nascimento', rotulo: 'Data de nascimento' },
+            { nome: 'profissao', rotulo: 'Profissão' },
+            { nome: 'estadoCivil', rotulo: 'Estado civil' },
+            { nome: 'emails', rotulo: 'E-mail' },
+            { nome: 'telefones', rotulo: 'Celular' },
+            { nome: 'telefoneFixo', rotulo: 'Telefone fixo' },
+            { nome: 'sexo' },
+            { nome: 'nacionalidade' },
+            { nome: 'naturalidade' },
+            { nome: 'cnpj' },
+            { nome: 'conjuge', rotulo: 'Cônjuge' },
+            { nome: 'papel' },
+            { nome: 'situacao', rotulo: 'Status' },
+            { nome: 'entradaEm', rotulo: 'Entrou em' },
+            { nome: 'endereco', rotulo: 'Endereço' },
+            { nome: 'instagram' },
+            { nome: 'linkedin', rotulo: 'LinkedIn' },
+            { nome: 'site' },
+          ]}
+        />
       )}
 
       {aba === 'acc' && (
         <>
-          <Card titulo="Contrato">
-            <Grid colunas={3}>
-              <Campo rotulo="Número do contrato" valor={texto(membro.contratoNumero)} />
-              <Campo rotulo="Status" valor={<Chip valor={membro.contratoSituacao} />} />
-              <Campo rotulo="Data assinatura" valor={dataCurta(membro.contratoAssinadoEm)} />
-            </Grid>
-            <Grid colunas={2}>
-              <Campo rotulo="Link do contrato" valor={linkTexto(membro.contratoLink)} />
-              <Campo rotulo="Entrou em" valor={dataCurta(membro.entradaEm)} />
-            </Grid>
-          </Card>
+          <CardEditavel
+            titulo="Contrato"
+            objeto={objeto}
+            registroId={membro.id}
+            registro={membro}
+            onSalvo={aplicar}
+            campos={[
+              { nome: 'contratoNumero', rotulo: 'Número do contrato' },
+              { nome: 'contratoSituacao', rotulo: 'Status' },
+              { nome: 'contratoAssinadoEm', rotulo: 'Data assinatura' },
+              { nome: 'contratoLink', rotulo: 'Link do contrato' },
+              { nome: 'entradaEm', rotulo: 'Entrou em' },
+            ]}
+          />
 
-          <Card titulo="Financeiro">
-            <Grid colunas={3}>
-              <Campo rotulo="Valor total (R$)" valor={dinheiro(membro.valorTotal)} />
-              <Campo rotulo="Modelo de pagamento" valor={texto(membro.modeloPagamento)} />
-              <Campo rotulo="Link pagamento (FastPay)" valor={linkTexto(membro.linkFastpay)} />
-            </Grid>
-            {parcelas.length > 0 && (
-              <>
-                <Secao>Parcelas</Secao>
-                <table className="adm-table">
-                  <thead>
-                    <tr>
-                      <th>Parcela</th>
-                      <th>Valor</th>
-                      <th>Vencimento</th>
-                      <th>Situação</th>
-                      <th>Paga em</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {parcelas.map((parcela: any) => (
-                      <tr key={parcela.id}>
-                        <td>{parcela.name}</td>
-                        <td className="adm-table__num">{dinheiroCurto(parcela.valor)}</td>
-                        <td className="adm-table__muted">{dataCurta(parcela.vencimento)}</td>
-                        <td>
-                          <Chip valor={parcela.situacao} />
-                        </td>
-                        <td className="adm-table__muted">{dataCurta(parcela.pagaEm)}</td>
+          <CardEditavel
+            titulo="Financeiro"
+            objeto={objeto}
+            registroId={membro.id}
+            registro={membro}
+            onSalvo={aplicar}
+            campos={[
+              { nome: 'valorTotal', rotulo: 'Valor total (R$)' },
+              { nome: 'modeloPagamento', rotulo: 'Modelo de pagamento' },
+              { nome: 'linkFastpay', rotulo: 'Link pagamento (FastPay)' },
+            ]}
+            extra={
+              parcelas.length > 0 ? (
+                <>
+                  <Secao>Parcelas</Secao>
+                  <table className="adm-table">
+                    <thead>
+                      <tr>
+                        <th>Parcela</th>
+                        <th>Valor</th>
+                        <th>Vencimento</th>
+                        <th>Situação</th>
+                        <th>Paga em</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </>
-            )}
-          </Card>
+                    </thead>
+                    <tbody>
+                      {parcelas.map((parcela: any) => (
+                        <tr key={parcela.id}>
+                          <td>{parcela.name}</td>
+                          <td className="adm-table__num">{dinheiroCurto(parcela.valor)}</td>
+                          <td className="adm-table__muted">{dataCurta(parcela.vencimento)}</td>
+                          <td>
+                            <Chip valor={parcela.situacao} />
+                          </td>
+                          <td className="adm-table__muted">{dataCurta(parcela.pagaEm)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              ) : undefined
+            }
+          />
 
           <Card titulo="Pendências" flush>
             {pendencias.length === 0 ? (
@@ -230,50 +249,47 @@ export const MembroDetalhe = () => {
       )}
 
       {aba === 'cx' && (
-        <Card titulo="Relacionamento">
-          <Grid colunas={3}>
-            <Campo rotulo="Nome no crachá" valor={texto(membro.nomeCracha)} />
-            <Campo rotulo="Camiseta" valor={texto(membro.camiseta)} />
-            <Campo rotulo="Calça (nº)" valor={texto(membro.calca)} />
-            <Campo rotulo="Moletom" valor={texto(membro.moletom)} />
-            <Campo rotulo="Calçado (nº)" valor={texto(membro.calcado)} />
-            <Campo rotulo="Chocolate favorito" valor={texto(membro.chocolateFavorito)} />
-            <Campo rotulo="Fruta favorita" valor={texto(membro.frutaFavorita)} />
-            <Campo rotulo="Contato emergência — Nome" valor={texto(membro.contatoEmergenciaNome)} />
-            <Campo
-              rotulo="Contato emergência — Telefone"
-              valor={telefone(membro.contatoEmergenciaTelefone)}
-            />
-          </Grid>
-          <Secao>Sobre</Secao>
-          <Grid colunas={2}>
-            <Campo rotulo="Mini bio" valor={texto(membro.miniBio)} />
-            <Campo rotulo="Maior objetivo no projeto" valor={texto(membro.maiorObjetivo)} />
-            <Campo rotulo="Observações" valor={texto(membro.observacoes)} />
-            <Campo
-              rotulo="Placa / Reconhecimento"
-              valor={
-                membro.placaEntregue === true
-                  ? `Entregue ${membro.placaEntregueEm !== null ? `em ${dataCurta(membro.placaEntregueEm)}` : ''}`
-                  : 'Não entregue'
-              }
-            />
-          </Grid>
-          <Secao>Filhos</Secao>
-          {dependentes.length === 0 ? (
-            <div className="adm-fieldvalue adm-fieldvalue--empty">{TRACO}</div>
-          ) : (
-            <Grid colunas={3}>
-              {dependentes.map((dependente: any) => (
-                <Campo
-                  key={dependente.id}
-                  rotulo={dependente.parentesco ?? 'Filho(a)'}
-                  valor={`${dependente.name}${dependente.nascimento !== null ? ` · ${dataCurta(dependente.nascimento)}` : ''}`}
-                />
-              ))}
-            </Grid>
-          )}
-        </Card>
+        <CardEditavel
+          titulo="Relacionamento"
+          objeto={objeto}
+          registroId={membro.id}
+          registro={membro}
+          onSalvo={aplicar}
+          campos={[
+            { nome: 'nomeCracha', rotulo: 'Nome no crachá' },
+            { nome: 'camiseta' },
+            { nome: 'calca', rotulo: 'Calça (nº)' },
+            { nome: 'moletom' },
+            { nome: 'calcado', rotulo: 'Calçado (nº)' },
+            { nome: 'chocolateFavorito', rotulo: 'Chocolate favorito' },
+            { nome: 'frutaFavorita', rotulo: 'Fruta favorita' },
+            { nome: 'contatoEmergenciaNome', rotulo: 'Contato emergência — Nome' },
+            { nome: 'contatoEmergenciaTelefone', rotulo: 'Contato emergência — Telefone' },
+            { nome: 'miniBio', rotulo: 'Mini bio' },
+            { nome: 'maiorObjetivo', rotulo: 'Maior objetivo no projeto' },
+            { nome: 'observacoes', rotulo: 'Observações' },
+            { nome: 'placaEntregue', rotulo: 'Placa / reconhecimento' },
+            { nome: 'placaEntregueEm', rotulo: 'Placa entregue em' },
+          ]}
+          extra={
+            <>
+              <Secao>Filhos</Secao>
+              {dependentes.length === 0 ? (
+                <div className="adm-fieldvalue adm-fieldvalue--empty">{TRACO}</div>
+              ) : (
+                <Grid colunas={3}>
+                  {dependentes.map((dependente: any) => (
+                    <Campo
+                      key={dependente.id}
+                      rotulo={dependente.parentesco ?? 'Filho(a)'}
+                      valor={`${dependente.name}${dependente.nascimento !== null ? ` · ${dataCurta(dependente.nascimento)}` : ''}`}
+                    />
+                  ))}
+                </Grid>
+              )}
+            </>
+          }
+        />
       )}
 
       {aba === 'his' && (

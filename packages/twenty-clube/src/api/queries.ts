@@ -1,4 +1,7 @@
-const ETAPA = `id name ordem escopo situacao concluidaEm`;
+const ETAPA = `
+  id name ordem escopo situacao concluidaEm observacoes responsavel prazo
+  attachments { edges { node { id name fullPath type } } }
+`;
 const MOEDA = `{ amountMicros currencyCode }`;
 const LINK = `{ primaryLinkUrl primaryLinkLabel }`;
 const EMAIL = `{ primaryEmail }`;
@@ -157,5 +160,86 @@ export const EXCHANGE_MUTATION = `
 export const ATUALIZAR_ETAPA = `
   mutation AtualizarEtapa($id: UUID!, $data: EtapaJornadaUpdateInput!) {
     updateEtapaJornada(id: $id, data: $data) { ${ETAPA} }
+  }
+`;
+
+export const FINANCEIRO_QUERY = `
+  query Financeiro($after: String) {
+    parcelas(first: 200, after: $after) {
+      pageInfo { hasNextPage endCursor }
+      edges {
+        node {
+          id name numero situacao vencimento pagaEm lembreteEm
+          valor ${MOEDA}
+          formaPagamento membroId clubeId
+        }
+      }
+    }
+  }
+`;
+
+export const CRIAR_VENDA = `
+  mutation CriarVenda($data: VendaCreateInput!) {
+    createVenda(data: $data) { id name }
+  }
+`;
+
+export const CRIAR_PARCELAS = `
+  mutation CriarParcelas($data: [ParcelaCreateInput!]!) {
+    createParcelas(data: $data) { id }
+  }
+`;
+
+export const ATUALIZAR_PARCELA = `
+  mutation AtualizarParcela($id: UUID!, $data: ParcelaUpdateInput!) {
+    updateParcela(id: $id, data: $data) { id situacao pagaEm }
+  }
+`;
+
+export const ATUALIZAR_CLUBE_STATUS = `
+  mutation AtualizarClubeStatus($id: UUID!, $situacao: ClubeSituacaoEnum) {
+    updateClube(id: $id, data: { situacao: $situacao }) { id situacao }
+  }
+`;
+
+export const CLUBES_SIMPLES_QUERY = `
+  query ClubesSimples($after: String) {
+    clubes(first: 60, after: $after) {
+      pageInfo { hasNextPage endCursor }
+      edges { node { id name situacao } }
+    }
+  }
+`;
+
+export const MEMBROS_SIMPLES_QUERY = `
+  query MembrosSimples($after: String) {
+    membros(first: 200, after: $after) {
+      pageInfo { hasNextPage endCursor }
+      edges { node { id name clubeId } }
+    }
+  }
+`;
+
+export const RADAR_QUERY = `
+  query Radar($after: String) {
+    membros(first: 200, after: $after) {
+      pageInfo { hasNextPage endCursor }
+      edges {
+        node {
+          id name nascimento entradaEm papel situacao
+          camiseta calca moletom calcado chocolateFavorito frutaFavorita
+          placaEntregue clubeId
+        }
+      }
+    }
+  }
+`;
+
+export const RADAR_CLUBES_QUERY = `
+  query RadarClubes($after: String) {
+    clubes(first: 60, after: $after) {
+      pageInfo { hasNextPage endCursor }
+      edges { node { id name inicio mouValidade situacao mentor } }
+    }
   }
 `;

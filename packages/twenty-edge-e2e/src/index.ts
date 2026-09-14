@@ -135,6 +135,7 @@ app.get('/inspect', async (context) => {
       upload: context.req.query('upload'),
       trace: context.req.query('trace'),
       targetOverride: context.req.query('target'),
+      steps: context.req.query('steps'),
     }),
   );
 });

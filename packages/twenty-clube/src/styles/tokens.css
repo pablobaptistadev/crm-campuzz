@@ -516,3 +516,62 @@ button.adm-kpi { cursor: pointer; text-align: left; font: inherit; }
   background: var(--bg-elev-1); box-shadow: none;
 }
 .adm-btn--perigo:hover { background: rgba(217, 82, 87, 0.08); border-color: rgba(217, 82, 87, 0.5); }
+
+/* ── Alternar lista / cards ───────────────────────────────── */
+.adm-visao {
+  display: inline-flex; gap: 2px; padding: 2px;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: var(--bg-elev-2);
+}
+.adm-visao__btn {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  border: 0; background: transparent; border-radius: 999px;
+  padding: 5px 12px; font-size: 12.5px; color: var(--text-muted);
+}
+.adm-visao__btn:hover { color: var(--text); }
+.adm-visao__btn--on {
+  background: var(--bg-elev-1); color: var(--text-strong); font-weight: 600;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+/* ── Jornada em lista ─────────────────────────────────────── */
+.adm-etapalista__num {
+  width: 34px; color: var(--text-muted); font-variant-numeric: tabular-nums;
+}
+.adm-etapalista__nome { font-weight: 600; color: var(--text-strong); }
+.adm-etapalista__meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.adm-etapalista__check {
+  width: 18px; height: 18px; border-radius: 50%; cursor: pointer;
+  border: 1.5px solid var(--border); background: var(--bg-elev-1);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; color: transparent; padding: 0;
+}
+.adm-etapalista__check--on {
+  background: rgba(31, 138, 91, 0.14); border-color: var(--emerald); color: var(--emerald);
+}
+
+/* ── Coleção em cards ─────────────────────────────────────── */
+.adm-colecao {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+.adm-colecao__card {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-elev-1); padding: 16px 18px;
+}
+.adm-colecao__card:hover { border-color: rgba(197, 165, 102, 0.5); }
+.adm-colecao__nome {
+  font-size: 15px; font-weight: 700; color: var(--text-strong);
+  letter-spacing: -0.2px; display: block; margin-bottom: 2px;
+}
+.adm-colecao__sub { font-size: 12.5px; color: var(--text-muted); margin-bottom: 12px; }
+.adm-colecao__linhas { display: grid; gap: 7px; }
+.adm-colecao__linha {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; font-size: 13px;
+}
+.adm-colecao__rotulo { color: var(--text-muted); }
+.adm-colecao__topo {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 10px; margin-bottom: 10px;
+}

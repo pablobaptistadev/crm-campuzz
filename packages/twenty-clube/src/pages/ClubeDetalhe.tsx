@@ -10,7 +10,7 @@ import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
 import { CardEditavel } from 'src/ui/CardEditavel';
 import { NovoMembro } from 'src/ui/NovoMembro';
 import { Arquivar } from 'src/ui/Arquivar';
-import { Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe } from 'src/ui/primitives';
+import { AlternarVisao, Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe, useModoVisao } from 'src/ui/primitives';
 import {
   TRACO,
   dataCurta,
@@ -53,6 +53,7 @@ export const ClubeDetalhe = () => {
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState<Aba>('crm');
   const [adicionandoMembro, setAdicionandoMembro] = useState(false);
+  const [modoMembros, setModoMembros] = useModoVisao('membros', 'lista');
 
   // Uma alteração salva já vale na tela; recarregar o clube inteiro para
   // repintar um campo custaria uma volta ao banco por edição.
@@ -172,7 +173,11 @@ export const ClubeDetalhe = () => {
 
       {aba === 'crm' && (
         <Card titulo="Jornada do cliente" flush>
-          <EtapasEmCards etapas={etapas as EtapaCompleta[]} onMudou={aplicarEtapa} />
+          <EtapasEmCards
+            etapas={etapas as EtapaCompleta[]}
+            onMudou={aplicarEtapa}
+            superficie="jornada-clube"
+          />
         </Card>
       )}
 
@@ -294,7 +299,11 @@ export const ClubeDetalhe = () => {
           />
 
           <Card titulo="Pipeline de etapas" flush>
-            <EtapasEmCards etapas={pipeline as EtapaCompleta[]} onMudou={aplicarEtapa} />
+            <EtapasEmCards
+              etapas={pipeline as EtapaCompleta[]}
+              onMudou={aplicarEtapa}
+              superficie="pipeline-clube"
+            />
           </Card>
 
           <CardEditavel
@@ -325,6 +334,7 @@ export const ClubeDetalhe = () => {
         <div className="adm-toolbar">
           <span className="adm-toolbar__title">{membros.length} membros</span>
           <span className="adm-toolbar__spacer" />
+          <AlternarVisao modo={modoMembros} onChange={setModoMembros} />
           <button
             type="button"
             className="adm-btn adm-btn--primary"
@@ -346,6 +356,48 @@ export const ClubeDetalhe = () => {
           />
         )}
 
+        {modoMembros === 'cards' ? (
+          membros.length === 0 ? (
+            <Vazio>Este clube ainda não tem membros.</Vazio>
+          ) : (
+            <div className="adm-colecao">
+              {membros.map((membro: any) => (
+                <article className="adm-colecao__card" key={membro.id}>
+                  <div className="adm-colecao__topo">
+                    <div>
+                      <Link className="adm-colecao__nome" to={`/membros/${membro.id}`}>
+                        {membro.name}
+                      </Link>
+                      <div className="adm-colecao__sub">{rotuloDe(membro.papel)}</div>
+                    </div>
+                    <Chip valor={membro.situacao} />
+                  </div>
+
+                  <div className="adm-colecao__linhas">
+                    <div className="adm-colecao__linha">
+                      <span className="adm-colecao__rotulo">Contrato</span>
+                      <Chip valor={membro.contratoSituacao} />
+                    </div>
+                    <div className="adm-colecao__linha">
+                      <span className="adm-colecao__rotulo">Valor</span>
+                      <span className="adm-table__num">{dinheiroCurto(membro.valorTotal)}</span>
+                    </div>
+                    <div className="adm-colecao__linha">
+                      <span className="adm-colecao__rotulo">E-mail</span>
+                      <span className="adm-table__muted">
+                        {texto(membro.emails?.primaryEmail)}
+                      </span>
+                    </div>
+                    <div className="adm-colecao__linha">
+                      <span className="adm-colecao__rotulo">Telefone</span>
+                      <span className="adm-table__muted">{telefone(membro.telefones)}</span>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )
+        ) : (
         <div className="adm-table-wrap">
           <table className="adm-table">
             <thead>
@@ -384,6 +436,7 @@ export const ClubeDetalhe = () => {
           </table>
           {membros.length === 0 && <Vazio>Este clube ainda não tem membros.</Vazio>}
         </div>
+        )}
         </>
       )}
 

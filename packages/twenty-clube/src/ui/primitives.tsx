@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 
 import { TRACO } from './format';
 
@@ -138,4 +138,66 @@ export const Tabs = <T extends string>({
 
 export const Vazio = ({ children }: { children: ReactNode }) => (
   <div className="adm-empty">{children}</div>
+);
+
+export type ModoVisao = 'cards' | 'lista';
+
+// A escolha é de quem olha, não do registro: fica no navegador e vale para a
+// mesma superfície em qualquer clube, senão volta para cards a cada clique.
+const chaveModo = (superficie: string) => `campuzz.modo.${superficie}`;
+
+export const lerModo = (superficie: string, padrao: ModoVisao): ModoVisao => {
+  try {
+    const salvo = window.localStorage.getItem(chaveModo(superficie));
+
+    return salvo === 'cards' || salvo === 'lista' ? salvo : padrao;
+  } catch {
+    // Navegador anônimo ou storage bloqueado: o padrão da tela resolve.
+    return padrao;
+  }
+};
+
+export const useModoVisao = (superficie: string, padrao: ModoVisao = 'cards') => {
+  const [modo, setModo] = useState<ModoVisao>(() => lerModo(superficie, padrao));
+
+  const trocar = (proximo: ModoVisao) => {
+    setModo(proximo);
+
+    try {
+      window.localStorage.setItem(chaveModo(superficie), proximo);
+    } catch {
+      // Não poder lembrar a escolha não pode impedir de trocar de modo.
+    }
+  };
+
+  return [modo, trocar] as const;
+};
+
+export const AlternarVisao = ({
+  modo,
+  onChange,
+}: {
+  modo: ModoVisao;
+  onChange: (proximo: ModoVisao) => void;
+}) => (
+  <div className="adm-visao" role="group" aria-label="Modo de exibição">
+    <button
+      type="button"
+      className={modo === 'lista' ? 'adm-visao__btn adm-visao__btn--on' : 'adm-visao__btn'}
+      aria-pressed={modo === 'lista'}
+      title="Ver em lista"
+      onClick={() => onChange('lista')}
+    >
+      <span aria-hidden="true">☰</span> Lista
+    </button>
+    <button
+      type="button"
+      className={modo === 'cards' ? 'adm-visao__btn adm-visao__btn--on' : 'adm-visao__btn'}
+      aria-pressed={modo === 'cards'}
+      title="Ver em cards"
+      onClick={() => onChange('cards')}
+    >
+      <span aria-hidden="true">▦</span> Cards
+    </button>
+  </div>
 );

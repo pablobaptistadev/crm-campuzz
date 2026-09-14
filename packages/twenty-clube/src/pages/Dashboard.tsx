@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { gql } from 'src/api/client';
 import { CLUBES_QUERY, MEMBROS_RESUMO_QUERY, PIPELINE_QUERY } from 'src/api/queries';
 import { type ClubeResumo } from 'src/api/types';
-import { Chip, Pipeline, Vazio } from 'src/ui/primitives';
+import { AlternarVisao, Chip, Pipeline, Vazio, useModoVisao } from 'src/ui/primitives';
 import { TRACO, dataCurta, dinheiroCurto } from 'src/ui/format';
 
 type Pagina<TNo> = {
@@ -68,6 +68,7 @@ export const Dashboard = () => {
   const [pipeline, setPipeline] = useState<EtapaResumo[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [busca, setBusca] = useState('');
+  const [modo, setModo] = useModoVisao('clubes', 'lista');
 
   useEffect(() => {
     let cancelado = false;
@@ -181,11 +182,71 @@ export const Dashboard = () => {
           value={busca}
           onChange={(evento) => setBusca(evento.target.value)}
         />
+        <AlternarVisao modo={modo} onChange={setModo} />
         <Link className="adm-btn adm-btn--primary" to="/clubes/novo">
           + Novo clube
         </Link>
       </div>
 
+      {modo === 'cards' ? (
+        filtrados.length === 0 ? (
+          <Vazio>Nenhum clube encontrado.</Vazio>
+        ) : (
+          <div className="adm-colecao">
+            {filtrados.map((clube) => {
+              const doClube = membros.filter((membro) => membro.clubeId === clube.id);
+              const concluidas = pipeline.filter(
+                (etapa) =>
+                  etapa.clubeId === clube.id &&
+                  (etapa.ordem ?? 0) > 100 &&
+                  etapa.situacao === 'CONCLUIDA',
+              ).length;
+              const ativos = doClube.filter((membro) => membro.situacao === 'ATIVO').length;
+
+              return (
+                <article className="adm-colecao__card" key={clube.id}>
+                  <div className="adm-colecao__topo">
+                    <div>
+                      <Link className="adm-colecao__nome" to={`/clubes/${clube.id}`}>
+                        {clube.name}
+                      </Link>
+                      <div className="adm-colecao__sub">{clube.mentor ?? TRACO}</div>
+                    </div>
+                    <Chip valor={clube.situacao} />
+                  </div>
+
+                  <div className="adm-colecao__linhas">
+                    <div className="adm-colecao__linha">
+                      <span className="adm-colecao__rotulo">Membros</span>
+                      <span>
+                        {doClube.length} · {ativos} ativos
+                      </span>
+                    </div>
+                    <div className="adm-colecao__linha">
+                      <span className="adm-colecao__rotulo">Capital</span>
+                      <span className="adm-table__num">
+                        {dinheiroCurto(clube.capitalNegociado)}
+                      </span>
+                    </div>
+                    <div className="adm-colecao__linha">
+                      <span className="adm-colecao__rotulo">Início</span>
+                      <span className="adm-table__muted">{dataCurta(clube.inicio)}</span>
+                    </div>
+                    <div className="adm-colecao__linha">
+                      <span className="adm-colecao__rotulo">Responsável</span>
+                      <span className="adm-table__muted">{clube.responsavel ?? TRACO}</span>
+                    </div>
+                    <div className="adm-colecao__linha">
+                      <span className="adm-colecao__rotulo">Pipeline</span>
+                      <Pipeline concluidas={concluidas} />
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )
+      ) : (
       <div className="adm-table-wrap">
         <table className="adm-table">
           <thead>
@@ -251,6 +312,7 @@ export const Dashboard = () => {
         </table>
         {filtrados.length === 0 && <Vazio>Nenhum clube encontrado.</Vazio>}
       </div>
+      )}
     </>
   );
 };

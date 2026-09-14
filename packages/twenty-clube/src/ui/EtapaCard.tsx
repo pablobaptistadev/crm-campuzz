@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 
 import { gql } from 'src/api/client';
 import { type Etapa } from 'src/api/types';
+import { AlternarVisao, useModoVisao } from './primitives';
 import { subirAnexo, type Anexo } from './anexos';
 import { dataCurta } from './format';
 
@@ -223,6 +224,79 @@ export const EtapaCard = ({
   );
 };
 
+// A mesma etapa em uma linha: concluir, prazo e observação continuam
+// editáveis aqui, senão trocar para lista viraria um modo só de leitura.
+const EtapaLinha = ({
+  etapa,
+  numero,
+  onMudou,
+}: {
+  etapa: EtapaCompleta;
+  numero: number;
+  onMudou: (proxima: EtapaCompleta) => void;
+}) => {
+  const [ocupado, setOcupado] = useState(false);
+  const concluida = etapa.situacao === 'CONCLUIDA';
+  const anexos = etapa.attachments?.edges.length ?? 0;
+
+  const salvar = async (mudancas: Record<string, unknown>) => {
+    setOcupado(true);
+
+    try {
+      const resposta = await gql<{ updateEtapaJornada: EtapaCompleta }>(ATUALIZAR, {
+        id: etapa.id,
+        data: mudancas,
+      });
+
+      onMudou({ ...etapa, ...resposta.updateEtapaJornada });
+    } finally {
+      setOcupado(false);
+    }
+  };
+
+  return (
+    <tr>
+      <td className="adm-etapalista__num">{numero}</td>
+      <td>
+        <button
+          type="button"
+          disabled={ocupado}
+          aria-label={concluida ? 'Marcar como pendente' : 'Marcar como concluída'}
+          className={
+            concluida
+              ? 'adm-etapalista__check adm-etapalista__check--on'
+              : 'adm-etapalista__check'
+          }
+          onClick={() =>
+            void salvar({
+              situacao: concluida ? 'PENDENTE' : 'CONCLUIDA',
+              concluidaEm: concluida ? null : hoje(),
+            })
+          }
+        >
+          ✓
+        </button>
+      </td>
+      <td>
+        <span className="adm-etapalista__nome">{etapa.name}</span>
+        {(etapa.observacoes ?? '') !== '' && (
+          <div className="adm-etapalista__meta">{etapa.observacoes}</div>
+        )}
+      </td>
+      <td className="adm-table__muted">{dataCurta(etapa.concluidaEm)}</td>
+      <td className="adm-table__muted">{dataCurta(etapa.prazo)}</td>
+      <td className="adm-table__muted">{anexos === 0 ? '—' : `${anexos} anexo(s)`}</td>
+      <td>
+        {concluida ? (
+          <span className="adm-chip adm-chip--green">Concluída</span>
+        ) : (
+          <span className="adm-chip adm-chip--slate">Pendente</span>
+        )}
+      </td>
+    </tr>
+  );
+};
+
 type Filtro = 'todas' | 'pendentes' | 'andamento' | 'concluidas';
 
 const FILTROS: { id: Filtro; rotulo: string; icone: string }[] = [
@@ -248,11 +322,14 @@ const casa = (etapa: EtapaCompleta, filtro: Filtro): boolean => {
 export const EtapasEmCards = ({
   etapas,
   onMudou,
+  superficie = 'jornada',
 }: {
   etapas: EtapaCompleta[];
   onMudou: (proxima: EtapaCompleta) => void;
+  superficie?: string;
 }) => {
   const [filtro, setFiltro] = useState<Filtro>('todas');
+  const [modo, setModo] = useModoVisao(superficie, 'cards');
 
   const concluidas = etapas.filter((etapa) => etapa.situacao === 'CONCLUIDA').length;
   // A numeração é a posição na jornada inteira, não na lista filtrada: a etapa
@@ -284,6 +361,8 @@ export const EtapasEmCards = ({
           })}
         </div>
 
+        <AlternarVisao modo={modo} onChange={setModo} />
+
         <div className="adm-etapas__progresso">
           <span className="adm-etapas__barra-trilho">
             <span
@@ -299,6 +378,32 @@ export const EtapasEmCards = ({
 
       {visiveis.length === 0 ? (
         <div className="adm-empty">Nenhuma etapa nesse filtro.</div>
+      ) : modo === 'lista' ? (
+        <div className="adm-table-wrap">
+          <table className="adm-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th />
+                <th>Etapa</th>
+                <th>Concluída em</th>
+                <th>Prazo</th>
+                <th>Anexos</th>
+                <th>Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visiveis.map((item) => (
+                <EtapaLinha
+                  key={item.etapa.id}
+                  etapa={item.etapa}
+                  numero={item.numero}
+                  onMudou={onMudou}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <div className="adm-etapas">
           {visiveis.map((item) => (

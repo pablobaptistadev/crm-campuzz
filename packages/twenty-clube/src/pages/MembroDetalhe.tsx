@@ -158,6 +158,7 @@ export const MembroDetalhe = () => {
                     },
               )
             }
+            superficie="jornada-membro"
           />
         </Card>
       )}

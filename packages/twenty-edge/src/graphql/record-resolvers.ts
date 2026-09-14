@@ -1,6 +1,6 @@
 import { type Client } from 'pg';
 
-import { escapeIdentifier } from 'src/ddl/escape';
+import { escapeIdentifier, qualifiedTableName } from 'src/ddl/escape';
 import { buildMorphFieldNames } from 'src/graphql/build-sdl';
 import { pascalCase } from 'src/metadata/naming';
 import { type WorkspaceMetadata } from 'src/metadata/types';
@@ -38,6 +38,12 @@ import {
   findReferencingColumns,
   mergeRecordValues,
 } from 'src/services/duplicates';
+import {
+  arquivarEmCascata,
+  montarGrafoDePosse,
+  restaurarEmCascata,
+  type GrafoDePosse,
+} from 'src/services/cascata';
 import { runGroupBy, type GroupByInput } from 'src/services/group-by';
 import {
   resolveRecordPosition,
@@ -273,6 +279,63 @@ const invertDirection = (direction: OrderByDirection): OrderByDirection => {
   }
 };
 
+
+// Arquivar um clube tira os membros junto, então quem não pode arquivar membro
+// não pode arquivar o clube por tabela — senão a cascata vira um contorno da
+// permissão em vez de uma conveniência.
+const assertPodeArquivarOsFilhos = ({
+  context,
+  grafo,
+  objetoId,
+  objectById,
+}: {
+  context: RecordResolverContext;
+  grafo: GrafoDePosse;
+  objetoId: string;
+  objectById: Map<string, { nameSingular: string }>;
+}): void => {
+  const vistos = new Set<string>([objetoId]);
+  const fila = [objetoId];
+
+  while (fila.length > 0) {
+    for (const aresta of grafo.get(fila.shift() as string) ?? []) {
+      if (vistos.has(aresta.objetoFilhoId)) {
+        continue;
+      }
+
+      vistos.add(aresta.objetoFilhoId);
+      fila.push(aresta.objetoFilhoId);
+
+      assertCanPerform({
+        permissions: context.permissions,
+        objectMetadataId: aresta.objetoFilhoId,
+        objectNameSingular:
+          objectById.get(aresta.objetoFilhoId)?.nameSingular ?? aresta.nomeDoFilho,
+        action: 'softDelete',
+      });
+    }
+  }
+};
+
+
+// O driver devolve timestamptz como Date, não como texto, e a cascata precisa
+// do instante exato para carimbar os filhos. Pular calado quando o tipo
+// surpreende foi o que deixou a cascata não acontecer em produção enquanto o
+// teste passava, então aqui é erro, não omissão.
+const instanteDeArquivamento = (valor: unknown): string => {
+  if (valor instanceof Date) {
+    return valor.toISOString();
+  }
+
+  if (typeof valor === 'string' && valor !== '') {
+    return valor;
+  }
+
+  throw new Error(
+    `deletedAt voltou como ${valor === null ? 'null' : typeof valor}, e a cascata de arquivamento depende dele`,
+  );
+};
+
 export const buildRecordResolvers = (
   metadata: WorkspaceMetadata,
 ): Record<string, Record<string, unknown>> => {
@@ -298,6 +361,8 @@ export const buildRecordResolvers = (
       }),
     ]),
   );
+
+  const grafoDePosse = montarGrafoDePosse({ metadata, shapeByObjectId });
 
   for (const object of metadata.objects.filter((entry) => entry.isActive)) {
     const shape = shapeByObjectId.get(object.id) as WorkspaceTableShape;
@@ -882,18 +947,37 @@ export const buildRecordResolvers = (
     ) => {
       assertAllowed(context, 'softDelete');
 
-      const result = await runMutation(
-        context,
-        buildSoftDeleteQuery({ shape, id: args.id }),
-      );
+      // Arquivar o pai e o que é dele é um ato só: pela metade, o painel fica
+      // com membro de clube que não existe mais.
+      return emTransacao(context.client, async () => {
+        const result = await runMutation(
+          context,
+          buildSoftDeleteQuery({ shape, id: args.id }),
+        );
 
-      if (result === null) {
-        return null;
-      }
+        if (result === null) {
+          return null;
+        }
 
-      await writeTimelineActivity(context, 'deleted', args.id);
+        assertPodeArquivarOsFilhos({
+          context,
+          grafo: grafoDePosse,
+          objetoId: object.id,
+          objectById,
+        });
 
-      return result.record;
+        await arquivarEmCascata({
+          client: context.client,
+          grafo: grafoDePosse,
+          objetoId: object.id,
+          ids: [args.id],
+          arquivadoEm: instanteDeArquivamento(result.record['deletedAt']),
+        });
+
+        await writeTimelineActivity(context, 'deleted', args.id);
+
+        return result.record;
+      });
     };
 
     mutation[`restore${singular}`] = async (
@@ -905,18 +989,47 @@ export const buildRecordResolvers = (
       // delete permission that gates it, not the update one.
       assertAllowed(context, 'softDelete');
 
-      const result = await runMutation(
-        context,
-        buildRestoreQuery({ shape, id: args.id }),
-      );
+      return emTransacao(context.client, async () => {
+        // O horário de arquivamento some no próprio restore, e é ele que diz
+        // quem saiu junto — por isso é lido antes.
+        const { rows } = await context.client.query<{ deletedAt: string | null }>(
+          `SELECT ${escapeIdentifier('deletedAt')} FROM ${qualifiedTableName(shape)} WHERE ${escapeIdentifier('id')} = $1`,
+          [args.id],
+        );
+        const arquivadoEm = rows[0]?.deletedAt ?? null;
+        const carimbo =
+          arquivadoEm === null ? null : instanteDeArquivamento(arquivadoEm);
 
-      if (result === null) {
-        return null;
-      }
+        const result = await runMutation(
+          context,
+          buildRestoreQuery({ shape, id: args.id }),
+        );
 
-      await writeTimelineActivity(context, 'restored', args.id);
+        if (result === null) {
+          return null;
+        }
 
-      return result.record;
+        if (carimbo !== null) {
+          assertPodeArquivarOsFilhos({
+            context,
+            grafo: grafoDePosse,
+            objetoId: object.id,
+            objectById,
+          });
+
+          await restaurarEmCascata({
+            client: context.client,
+            grafo: grafoDePosse,
+            objetoId: object.id,
+            ids: [args.id],
+            arquivadoEm: carimbo,
+          });
+        }
+
+        await writeTimelineActivity(context, 'restored', args.id);
+
+        return result.record;
+      });
     };
 
     // Merge keeps the first id as the survivor and soft-deletes the rest, after

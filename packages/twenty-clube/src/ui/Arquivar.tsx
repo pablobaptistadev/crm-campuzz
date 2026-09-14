@@ -54,12 +54,13 @@ export const Arquivar = ({
           <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600 }}>{nome}</p>
           <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, margin: '0 0 18px' }}>
             {oQue === 'clube'
-              ? 'O clube sai do painel. Os membros seguem cadastrados e continuam aparecendo no financeiro e no radar — arquive um a um se quiser tirá-los também.'
-              : 'O membro sai da lista do clube, do financeiro e do radar.'}
+              ? 'O clube sai do painel levando junto o que é dele: membros, sócios, jornada, vendas e parcelas.'
+              : 'O membro sai da lista do clube levando junto o que é dele: dependentes, jornada, vendas e parcelas.'}
           </p>
           <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, margin: '0 0 18px' }}>
-            Nada é apagado do banco: dá para trazer de volta em{' '}
-            <strong>Arquivados</strong>.
+            Nada é apagado do banco. Restaurar em <strong>Arquivados</strong> traz
+            tudo de volta — menos quem já estava arquivado antes, que continua
+            arquivado.
           </p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button

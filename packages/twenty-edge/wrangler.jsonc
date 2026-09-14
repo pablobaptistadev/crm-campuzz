@@ -1,0 +1,65 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "campuzz-edge-prod",
+  "main": "src/index.ts",
+  "account_id": "51eb880ef71493c1e995c9fb5906e367",
+  // nodejs_compat gives us node:crypto and the pg driver; Hyperdrive requires it.
+  "compatibility_date": "2026-09-12",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  // 09:00 em Brasília (UTC-3): o lembrete chega no começo do expediente.
+  "triggers": { "crons": ["0 12 * * *"] },
+  // Declaring routes turns workers.dev off by default; keep it as a fallback URL.
+  "workers_dev": true,
+
+  // crm.campuzz.com.br is the app; *.crm.campuzz.com.br gives every workspace
+  // its own hostname, which is what the Host-based tenant resolution reads.
+  "routes": [
+    { "pattern": "crm.campuzz.com.br", "custom_domain": true },
+    { "pattern": "*.crm.campuzz.com.br/*", "zone_name": "campuzz.com.br" },
+    // O app de clubes: mesmo Worker, mesma origem que a API, servido de /clube.
+    { "pattern": "clubes.campuzz.com.br", "custom_domain": true },
+    { "pattern": "clube.campuzz.com.br", "custom_domain": true }
+  ],
+
+  // The SPA build of twenty-front. Every ApiPath prefix is routed to Hono first.
+  "assets": {
+    "directory": "../twenty-front/build",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
+  },
+
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "77c37e8831d54d0bbe9a3f7df4239204",
+      "localConnectionString": "postgres://postgres:postgres@localhost:5432/default"
+    }
+  ],
+
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "campuzz-files-prod" }],
+
+  // Metadata cache, versioned by workspace.metadataVersion.
+  "kv_namespaces": [
+    { "binding": "METADATA_CACHE", "id": "15eadf8700d649ce82ed0992471d5502" }
+  ],
+
+  "vars": {
+    "SERVER_URL": "https://campuzz-edge-prod.andre-51e.workers.dev",
+    "FRONT_DOMAIN": "campuzz-edge-prod.andre-51e.workers.dev",
+    "DEFAULT_SUBDOMAIN": "app",
+    "APP_DOMAIN": "crm.campuzz.com.br",
+    "IS_MULTIWORKSPACE_ENABLED": "false",
+    "IS_EMAIL_VERIFICATION_REQUIRED": "false",
+    "SIGN_IN_PREFILLED": "false",
+    // Off: with it on, a Postgres error reaches the browser verbatim.
+    // Deliberate errors are marked and pass through either way, so turning it
+    // on only adds the internal ones — for a local reproduction, not for here.
+    "DEBUG_ERRORS": "false",
+    // Upstash currently answers in ~300ms from this Worker while Hyperdrive
+    // answers in ~5ms. Enable once the Redis is in the users' region.
+    "METADATA_CACHE_ENABLED": "false"
+  }
+}

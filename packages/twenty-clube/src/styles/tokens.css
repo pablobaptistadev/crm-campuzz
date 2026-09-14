@@ -271,6 +271,12 @@ button { font: inherit; }
   text-transform: uppercase; color: var(--text-muted);
 }
 .adm-toolbar__spacer { flex: 1; }
+.adm-toolbar__alerta {
+  font-size: 12.5px; font-weight: 600; color: var(--gold-deep);
+  background: rgba(197, 165, 102, 0.16);
+  border: 1px solid rgba(197, 165, 102, 0.34);
+  border-radius: 999px; padding: 4px 12px;
+}
 .adm-input {
   border: 1px solid var(--border); border-radius: 9px;
   background: var(--bg-elev-1); color: var(--text);

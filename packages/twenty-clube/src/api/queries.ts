@@ -215,7 +215,7 @@ export const MEMBROS_SIMPLES_QUERY = `
   query MembrosSimples($after: String) {
     membros(first: 200, after: $after) {
       pageInfo { hasNextPage endCursor }
-      edges { node { id name clubeId } }
+      edges { node { id name clubeId emails { primaryEmail } } }
     }
   }
 `;

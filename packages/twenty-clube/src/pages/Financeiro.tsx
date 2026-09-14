@@ -21,13 +21,19 @@ type Parcela = {
   situacao: string | null;
   vencimento: string | null;
   pagaEm: string | null;
+  lembreteEm: string | null;
   valor: { amountMicros: number | null; currencyCode: string | null } | null;
   formaPagamento: string | null;
   membroId: string | null;
   clubeId: string | null;
 };
 
-type Referencia = { id: string; name: string; situacao?: string | null };
+type Referencia = {
+  id: string;
+  name: string;
+  situacao?: string | null;
+  emails?: { primaryEmail: string | null } | null;
+};
 
 type Faixa = 'atrasados' | 'hoje' | 'sete' | 'trinta' | 'todos';
 
@@ -61,6 +67,20 @@ const diasAte = (vencimento: string | null): number | null => {
 
 const emAberto = (parcela: Parcela) =>
   parcela.situacao !== 'PAGA' && parcela.situacao !== 'CANCELADA';
+
+// A varredura de lembrete só tem o e-mail do membro para usar: o clube não tem
+// campo de e-mail nenhum. Sem membro, ou com membro sem e-mail, ela marca a
+// parcela como avisada e não envia nada — então o aviso tem de aparecer aqui,
+// antes da data, enquanto ainda dá para cadastrar o endereço.
+const semDestinatario = (parcela: Parcela, membros: Map<string, Referencia>): boolean => {
+  if (!emAberto(parcela) || parcela.lembreteEm === null) {
+    return false;
+  }
+
+  const membro = parcela.membroId === null ? undefined : membros.get(parcela.membroId);
+
+  return (membro?.emails?.primaryEmail ?? '') === '';
+};
 
 const naFaixa = (parcela: Parcela, faixa: Faixa): boolean => {
   if (faixa === 'todos') {
@@ -146,6 +166,8 @@ export const Financeiro = () => {
     (soma, parcela) => soma + Number(parcela.valor?.amountMicros ?? 0) / 1_000_000,
     0,
   );
+
+  const mudas = visiveis.filter((parcela) => semDestinatario(parcela, membros)).length;
 
   const marcarPaga = async (parcela: Parcela) => {
     const paga = parcela.situacao === 'PAGA';
@@ -244,6 +266,12 @@ export const Financeiro = () => {
           {visiveis.length} itens · Total: R${' '}
           {total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
         </span>
+        {mudas > 0 && (
+          <span className="adm-toolbar__alerta">
+            ⚠ {mudas} {mudas === 1 ? 'parcela não vai' : 'parcelas não vão'} gerar lembrete — sem
+            e-mail de membro
+          </span>
+        )}
       </div>
 
       <div className="adm-table-wrap">
@@ -277,6 +305,15 @@ export const Financeiro = () => {
                       <Link className="adm-table__link" to={`/membros/${membro.id}`}>
                         {membro.name}
                       </Link>
+                    )}
+                    {semDestinatario(parcela, membros) && (
+                      <div
+                        className="adm-table__sub"
+                        title="A varredura diária só consegue enviar para o e-mail do membro."
+                        style={{ color: 'var(--gold-deep)' }}
+                      >
+                        ⚠ sem e-mail — não avisamos
+                      </div>
                     )}
                   </td>
                   <td>

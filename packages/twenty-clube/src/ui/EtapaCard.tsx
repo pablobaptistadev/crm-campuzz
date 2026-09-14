@@ -223,16 +223,94 @@ export const EtapaCard = ({
   );
 };
 
+type Filtro = 'todas' | 'pendentes' | 'andamento' | 'concluidas';
+
+const FILTROS: { id: Filtro; rotulo: string; icone: string }[] = [
+  { id: 'todas', rotulo: 'Todas', icone: '▦' },
+  { id: 'pendentes', rotulo: 'Pendentes', icone: '○' },
+  { id: 'andamento', rotulo: 'Em andamento', icone: '◐' },
+  { id: 'concluidas', rotulo: 'Concluídas', icone: '✓' },
+];
+
+const casa = (etapa: EtapaCompleta, filtro: Filtro): boolean => {
+  switch (filtro) {
+    case 'todas':
+      return true;
+    case 'concluidas':
+      return etapa.situacao === 'CONCLUIDA';
+    case 'andamento':
+      return etapa.situacao === 'EM_ANDAMENTO';
+    case 'pendentes':
+      return etapa.situacao !== 'CONCLUIDA' && etapa.situacao !== 'EM_ANDAMENTO';
+  }
+};
+
 export const EtapasEmCards = ({
   etapas,
   onMudou,
 }: {
   etapas: EtapaCompleta[];
   onMudou: (proxima: EtapaCompleta) => void;
-}) => (
-  <div className="adm-etapas">
-    {etapas.map((etapa, indice) => (
-      <EtapaCard key={etapa.id} etapa={etapa} numero={indice + 1} onMudou={onMudou} />
-    ))}
-  </div>
-);
+}) => {
+  const [filtro, setFiltro] = useState<Filtro>('todas');
+
+  const concluidas = etapas.filter((etapa) => etapa.situacao === 'CONCLUIDA').length;
+  // A numeração é a posição na jornada inteira, não na lista filtrada: a etapa
+  // 7 continua sendo a 7 mesmo quando só as pendentes estão na tela.
+  const numeradas = etapas.map((etapa, indice) => ({ etapa, numero: indice + 1 }));
+  const visiveis = numeradas.filter((item) => casa(item.etapa, filtro));
+
+  return (
+    <>
+      <div className="adm-etapas__barra">
+        <div className="adm-filtros">
+          {FILTROS.map((item) => {
+            const quantas = etapas.filter((etapa) => casa(etapa, item.id)).length;
+
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={item.id === filtro ? 'adm-filtro adm-filtro--on' : 'adm-filtro'}
+                onClick={() => setFiltro(item.id)}
+              >
+                <span className="adm-filtro__icone" aria-hidden="true">
+                  {item.icone}
+                </span>
+                {item.rotulo}
+                <span className="adm-filtro__contador">{quantas}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="adm-etapas__progresso">
+          <span className="adm-etapas__barra-trilho">
+            <span
+              className="adm-etapas__barra-preenchida"
+              style={{ width: `${etapas.length === 0 ? 0 : (concluidas / etapas.length) * 100}%` }}
+            />
+          </span>
+          <span className="adm-etapas__numero">
+            {concluidas} de {etapas.length}
+          </span>
+        </div>
+      </div>
+
+      {visiveis.length === 0 ? (
+        <div className="adm-empty">Nenhuma etapa nesse filtro.</div>
+      ) : (
+        <div className="adm-etapas">
+          {visiveis.map((item) => (
+            <EtapaCard
+              key={item.etapa.id}
+              etapa={item.etapa}
+              numero={item.numero}
+              onMudou={onMudou}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  );
+};

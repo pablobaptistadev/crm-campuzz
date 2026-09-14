@@ -7,6 +7,9 @@
   "compatibility_date": "2026-09-12",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
+
+  // 09:00 em Brasília (UTC-3): o lembrete chega no começo do expediente.
+  "triggers": { "crons": ["0 12 * * *"] },
   // Declaring routes turns workers.dev off by default; keep it as a fallback URL.
   "workers_dev": true,
 

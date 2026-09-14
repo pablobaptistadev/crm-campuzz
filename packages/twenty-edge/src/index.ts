@@ -9,6 +9,8 @@ import { graphqlRoute } from 'src/routes/graphql';
 import { healthRoute } from 'src/routes/health';
 import { metadataRoute } from 'src/routes/metadata';
 import { restRoute } from 'src/routes/rest';
+import { withDatabaseClient } from 'src/db/client';
+import { varrerLembretes } from 'src/services/lembretes';
 
 const app = new Hono<AppEnv>();
 
@@ -77,6 +79,23 @@ app.route('/rest', restRoute);
 app.route('/files', filesRoute);
 app.route('/file', filesRoute);
 
+// Dispara a varredura sem esperar o cron. Atrás do APP_SECRET porque manda
+// e-mail de verdade para pessoas de verdade.
+app.post('/internal/lembretes', async (context) => {
+  const segredo = context.env.APP_SECRET ?? '';
+  const enviado = context.req.header('X-Admin-Secret') ?? '';
+
+  if (segredo.length === 0 || enviado !== segredo) {
+    return context.json({ error: 'FORBIDDEN' }, 403);
+  }
+
+  return context.json(
+    await withDatabaseClient(context.env, context.executionCtx, (client) =>
+      varrerLembretes({ client, bindings: context.env }),
+    ),
+  );
+});
+
 // Internal endpoints are never reachable from the edge.
 app.all('/internal/*', (context) => context.notFound());
 
@@ -125,4 +144,24 @@ app.all('*', (context) => {
   return context.env.ASSETS.fetch(context.req.raw);
 });
 
-export default app;
+// O cron roda fora de um request, então não há Hono nem contexto: o handler
+// scheduled recebe o env direto e precisa do próprio ciclo de conexão.
+const executarLembretes = (env: Bindings, ctx: ExecutionContext) =>
+  withDatabaseClient(env, ctx, (client) =>
+    varrerLembretes({ client, bindings: env }),
+  );
+
+export default {
+  fetch: app.fetch,
+  scheduled: async (
+    _controller: ScheduledController,
+    env: Bindings,
+    ctx: ExecutionContext,
+  ) => {
+    const resultado = await executarLembretes(env, ctx);
+
+    console.log('lembretes', JSON.stringify(resultado));
+  },
+};
+
+export { executarLembretes };

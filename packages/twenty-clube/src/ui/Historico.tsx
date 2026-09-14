@@ -1,5 +1,5 @@
-import { dataHora } from './format';
-import { Vazio } from './primitives';
+import { dataHora, dinheiroCurto, enderecoLinha, telefone } from './format';
+import { Vazio, rotuloDe } from './primitives';
 
 type Linha = {
   id: string;
@@ -16,12 +16,61 @@ const ACAO: Record<string, string> = {
   restored: 'Restaurado',
 };
 
+// Um composto sai do banco como objeto; imprimir o JSON cru transforma a linha
+// do histórico em ruído, então cada forma conhecida vira o texto que a ficha
+// mostraria.
 const valor = (bruto: unknown): string => {
   if (bruto === null || bruto === undefined || bruto === '') {
     return '—';
   }
 
-  return typeof bruto === 'object' ? JSON.stringify(bruto) : String(bruto);
+  if (typeof bruto !== 'object') {
+    return rotuloDe(String(bruto));
+  }
+
+  const campos = bruto as Record<string, unknown>;
+
+  if ('primaryPhoneNumber' in campos) {
+    return telefone(campos as never);
+  }
+
+  if ('primaryEmail' in campos) {
+    return String(campos.primaryEmail ?? '—');
+  }
+
+  if ('primaryLinkUrl' in campos) {
+    return String(campos.primaryLinkLabel ?? campos.primaryLinkUrl ?? '—');
+  }
+
+  if ('amountMicros' in campos) {
+    return dinheiroCurto(campos as never);
+  }
+
+  if ('addressStreet1' in campos) {
+    return enderecoLinha(campos as never);
+  }
+
+  return Object.values(campos)
+    .filter((parte) => parte !== null && parte !== undefined && parte !== '')
+    .map(String)
+    .join(' · ');
+};
+
+const ROTULO_CAMPO: Record<string, string> = {
+  situacao: 'Status',
+  telefones: 'Telefone',
+  telefoneFixo: 'Telefone fixo',
+  emails: 'E-mail',
+  endereco: 'Endereço',
+  valorTotal: 'Valor total',
+  capitalNegociado: 'Capital negociado',
+  contratoSituacao: 'Contrato',
+  mouSituacao: 'MOU',
+  concluidaEm: 'Concluída em',
+  nascimento: 'Nascimento',
+  camiseta: 'Camiseta',
+  papel: 'Papel',
+  nomeCracha: 'Nome no crachá',
 };
 
 export const Historico = ({ linhas }: { linhas: Linha[] }) => {
@@ -39,9 +88,12 @@ export const Historico = ({ linhas }: { linhas: Linha[] }) => {
             <span className="adm-step__label">
               <strong>{ACAO[linha.name] ?? linha.name}</strong>
               {diff.length > 0 && (
-                <span className="adm-table__sub">
+                <span className="adm-table__sub" style={{ display: 'block' }}>
                   {diff
-                    .map(([campo, mudanca]) => `${campo}: ${valor(mudanca.before)} → ${valor(mudanca.after)}`)
+                    .map(
+                      ([campo, mudanca]) =>
+                        `${ROTULO_CAMPO[campo] ?? campo}: ${valor(mudanca.before)} → ${valor(mudanca.after)}`,
+                    )
                     .join(' · ')}
                 </span>
               )}

@@ -3,6 +3,7 @@ import { type Context, Hono } from 'hono';
 import { findSessionContext } from 'src/db/core/auth-repository';
 import { findFileById, markFileUploaded } from 'src/db/core/file-repository';
 import { withDatabaseClient } from 'src/db/client';
+import { tipoDoArquivo } from 'src/services/tipo-de-arquivo';
 import { hashSessionToken, readSessionToken } from 'src/auth/session';
 import { verifyUploadToken } from 'src/auth/upload-token';
 import { type AppEnv } from 'src/env';
@@ -102,8 +103,9 @@ export const filesRoute = new Hono<AppEnv>()
         body,
         {
           httpMetadata: {
-            contentType:
-              context.req.header('Content-Type') ?? 'application/octet-stream',
+            // O nome do arquivo decide, não o cabeçalho: quem faz o PUT pode
+            // mandar qualquer coisa, e é este tipo que volta na leitura.
+            contentType: tipoDoArquivo(file.name),
           },
         },
       );

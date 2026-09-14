@@ -8,6 +8,8 @@ import { type Etapa } from 'src/api/types';
 import { Historico } from 'src/ui/Historico';
 import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
 import { CardEditavel } from 'src/ui/CardEditavel';
+import { CamposDoPerfil } from 'src/modules/perfil/ui/CamposDoPerfil';
+import { FotoDePerfil } from 'src/modules/perfil/ui/FotoDePerfil';
 import { NovaVenda } from 'src/ui/NovaVenda';
 import { Arquivar } from 'src/ui/Arquivar';
 import { Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe } from 'src/ui/primitives';
@@ -164,6 +166,34 @@ export const MembroDetalhe = () => {
       )}
 
       {aba === 'cad' && (
+        <>
+        <Card titulo="Perfil">
+          <FotoDePerfil
+            membroId={membro.id}
+            nome={membro.name}
+            fotoUrl={membro.fotoUrl ?? null}
+            onTrocada={(url) => aplicar({ fotoUrl: url })}
+          />
+          <CamposDoPerfil
+            membroId={membro.id}
+            perfil={{
+              nomeCompleto: membro.name ?? '',
+              email: membro.emails?.primaryEmail ?? '',
+              cpf: membro.cpf ?? null,
+              miniBio: membro.miniBio ?? null,
+              fotoUrl: membro.fotoUrl ?? null,
+            }}
+            onSalvo={(salvo) =>
+              aplicar({
+                name: salvo.nomeCompleto,
+                cpf: salvo.cpf,
+                miniBio: salvo.miniBio,
+                emails: { ...(membro.emails ?? {}), primaryEmail: salvo.email },
+              })
+            }
+          />
+        </Card>
+
         <CardEditavel
           titulo={rotuloDe(membro.papel)}
           objeto={objeto}
@@ -171,13 +201,10 @@ export const MembroDetalhe = () => {
           registro={membro}
           onSalvo={aplicar}
           campos={[
-            { nome: 'name', rotulo: 'Nome completo' },
-            { nome: 'cpf' },
             { nome: 'rg' },
             { nome: 'nascimento', rotulo: 'Data de nascimento' },
             { nome: 'profissao', rotulo: 'Profissão' },
             { nome: 'estadoCivil', rotulo: 'Estado civil' },
-            { nome: 'emails', rotulo: 'E-mail' },
             { nome: 'telefones', rotulo: 'Celular' },
             { nome: 'telefoneFixo', rotulo: 'Telefone fixo' },
             { nome: 'sexo' },
@@ -194,6 +221,7 @@ export const MembroDetalhe = () => {
             { nome: 'site' },
           ]}
         />
+        </>
       )}
 
       {aba === 'acc' && (

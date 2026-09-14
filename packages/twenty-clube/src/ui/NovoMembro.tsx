@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { gql } from 'src/api/client';
 import { CRIAR_ETAPAS, CRIAR_MEMBRO, JORNADA_MEMBRO } from 'src/api/clube-novo';
+import { validarPerfil } from 'src/modules/perfil';
 import { micros, numeroLimpo } from './parcelas';
 
 const PAPEIS = [
@@ -45,8 +46,18 @@ export const NovoMembro = ({
   const texto = (valor: string) => (valor.trim() === '' ? null : valor.trim());
 
   const salvar = async () => {
-    if (nome.trim() === '') {
-      setErro('O nome é obrigatório.');
+    // A mesma regra do perfil vale no cadastro: deixar entrar sem e-mail é o
+    // que produz os membros que nunca recebem lembrete de parcela.
+    const problemas = validarPerfil({
+      nomeCompleto: nome,
+      email,
+      cpf: null,
+      miniBio: null,
+      fotoUrl: null,
+    });
+
+    if (problemas.length > 0) {
+      setErro(problemas.map((problema) => problema.mensagem).join(' '));
 
       return;
     }
@@ -65,7 +76,7 @@ export const NovoMembro = ({
           situacao,
           entradaEm: texto(entradaEm),
           nascimento: texto(nascimento),
-          emails: texto(email) === null ? null : { primaryEmail: email.trim() },
+          emails: { primaryEmail: email.trim() },
           telefones:
             digitos.length < 8
               ? null
@@ -125,7 +136,9 @@ export const NovoMembro = ({
 
           <div className="adm-grid adm-grid--2" style={{ marginTop: 20 }}>
             <div>
-              <div className="adm-fieldlabel">E-mail</div>
+              <div className="adm-fieldlabel">
+                E-mail<span className="adm-obrigatorio" aria-hidden="true"> *</span>
+              </div>
               <input
                 className="adm-input"
                 style={entrada}

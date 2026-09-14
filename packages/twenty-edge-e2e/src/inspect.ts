@@ -284,13 +284,18 @@ export const inspectPage = async ({
     // Clicar num botão e ler a tela não cobre uma edição: ela é clicar, digitar
     // e salvar, e é no salvar que a escrita falha.
     if (steps !== undefined && steps.length > 0) {
-      const acoes = JSON.parse(steps) as { click?: string; fill?: string; value?: string }[];
+      const acoes = JSON.parse(steps) as {
+        click?: string;
+        fill?: string;
+        value?: string;
+        imagem?: string;
+      }[];
 
       for (const acao of acoes) {
         const resultado = await page
           .evaluate(`(() => {
             const acao = ${JSON.stringify(JSON.stringify(acao))};
-            const { click, fill, value } = JSON.parse(acao);
+            const { click, fill, value, imagem } = JSON.parse(acao);
 
             if (click) {
               const alvo = Array.from(
@@ -302,6 +307,53 @@ export const inspectPage = async ({
               if (!alvo) return 'clique não encontrou: ' + click;
               alvo.click();
               return 'clicou: ' + click;
+            }
+
+            if (imagem) {
+              // Um arquivo de texto não passa pelo canvas, e era só isso que
+              // esta ferramenta sabia subir: a conversão para webp nunca era
+              // exercitada. Aqui a imagem é pintada de verdade, no formato e
+              // nas medidas que o produto recebe de uma câmera.
+              const [largura, altura] = imagem.split('x').map(Number);
+              const tela = document.createElement('canvas');
+
+              tela.width = largura || 800;
+              tela.height = altura || 400;
+
+              const pincel = tela.getContext('2d');
+
+              pincel.fillStyle = '#0f172a';
+              pincel.fillRect(0, 0, tela.width, tela.height);
+              pincel.fillStyle = '#c5a566';
+              pincel.fillRect(tela.width / 4, tela.height / 4, tela.width / 2, tela.height / 2);
+
+              return new Promise((resolver) => {
+                tela.toBlob((blob) => {
+                  const entradas = Array.from(
+                    document.querySelectorAll('input[type="file"]'),
+                  ).filter((el) => (el.accept || '').includes('image'));
+
+                  if (entradas.length === 0) {
+                    resolver('nenhuma entrada de imagem na página');
+
+                    return;
+                  }
+
+                  const transferencia = new DataTransfer();
+
+                  transferencia.items.add(
+                    new File([blob], 'retrato.png', { type: 'image/png' }),
+                  );
+
+                  entradas[0].files = transferencia.files;
+                  entradas[0].dispatchEvent(new Event('change', { bubbles: true }));
+
+                  resolver(
+                    'subiu imagem ' + tela.width + 'x' + tela.height +
+                      ' (' + blob.size + ' bytes png)',
+                  );
+                }, 'image/png');
+              });
             }
 
             if (fill) {

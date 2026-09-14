@@ -73,6 +73,7 @@ import {
   loadRolePermissions,
 } from 'src/db/core/role-repository';
 import { buildInvitationEmail, sendEmail } from 'src/services/email';
+import { tipoDoArquivo } from 'src/services/tipo-de-arquivo';
 import {
   consumeInvitation,
   createInvitation,
@@ -3255,7 +3256,7 @@ export const METADATA_RESOLVERS = {
       return {
         fileId: file.id,
         uploadUrl: `${context.serverUrl}/files/${folder}/${file.id}?token=${token}`,
-        contentType: 'application/octet-stream',
+        contentType: tipoDoArquivo(args.filename),
         expiresAt: expiresAt.toISOString(),
       };
     },

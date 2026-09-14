@@ -88,7 +88,7 @@ export const CLUBE_QUERY = `
 export const MEMBRO_QUERY = `
   query Membro($id: UUID!) {
     membro(filter: { id: { eq: $id } }) {
-      id name nomeCracha papel situacao entradaEm
+      id name nomeCracha papel situacao entradaEm fotoUrl
       emails ${EMAIL} telefones ${FONE} telefoneFixo ${FONE}
       cpf rg cnpj nascimento sexo estadoCivil nacionalidade naturalidade
       profissao conjuge endereco ${ENDERECO}

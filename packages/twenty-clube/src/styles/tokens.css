@@ -661,3 +661,34 @@ button.adm-kpi { cursor: pointer; text-align: left; font: inherit; }
 @media (max-width: 860px) {
   .adm-filho__linha { grid-template-columns: 1fr 1fr; }
 }
+
+/* ── Pendências ───────────────────────────────────────────── */
+.adm-pendencias { display: grid; gap: 8px; margin-bottom: 14px; }
+.adm-pendencia {
+  display: grid; gap: 10px; align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) 9.5rem minmax(0, 8rem) auto;
+}
+.adm-pendencia--ok .adm-pendencia__texto {
+  color: var(--text-muted); text-decoration: line-through;
+}
+.adm-pendencia--nova { border-top: 1px dashed var(--border); padding-top: 14px; }
+.adm-pendencia__texto { width: 100%; min-width: 0; }
+.adm-pendencia__quando { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.adm-pendencias__resumo { font-size: 12.5px; color: var(--text-muted); margin-top: 12px; }
+
+.adm-check {
+  width: 22px; height: 22px; flex: none; cursor: pointer; padding: 0;
+  border-radius: 50%; border: 1.5px solid var(--border);
+  background: var(--bg-elev-1); color: transparent; font-size: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.adm-check:hover { border-color: var(--emerald); color: rgba(31, 138, 91, 0.4); }
+.adm-check--on {
+  background: rgba(31, 138, 91, 0.14); border-color: var(--emerald); color: var(--emerald);
+}
+.adm-check--vazio { border-style: dashed; cursor: default; }
+
+@media (max-width: 860px) {
+  .adm-pendencia { grid-template-columns: auto 1fr; }
+  .adm-pendencia__quando { display: none; }
+}

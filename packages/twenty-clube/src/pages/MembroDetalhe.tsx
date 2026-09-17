@@ -13,6 +13,7 @@ import { CamposDoPerfil } from 'src/modules/perfil/ui/CamposDoPerfil';
 import { AvatarDoMembro } from 'src/modules/perfil/ui/AvatarDoMembro';
 import { FotoDePerfil } from 'src/modules/perfil/ui/FotoDePerfil';
 import { Filhos, type Dependente } from 'src/ui/Filhos';
+import { Pendencias, type Pendencia } from 'src/ui/Pendencias';
 import { NovaVenda } from 'src/ui/NovaVenda';
 import { Arquivar } from 'src/ui/Arquivar';
 import { Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe } from 'src/ui/primitives';
@@ -335,23 +336,23 @@ export const MembroDetalhe = () => {
           />
 
           <Card titulo="Pendências" flush>
-            {pendencias.length === 0 ? (
-              <Vazio>Nenhuma pendência aberta.</Vazio>
-            ) : (
-              <div>
-                {pendencias.map((pendencia: any) => (
-                  <div className="adm-step" key={pendencia.id}>
-                    <span className="adm-step__label">
-                      {pendencia.descricao ?? pendencia.name}
-                      {pendencia.prazo !== null && (
-                        <span className="adm-table__sub">Prazo: {dataCurta(pendencia.prazo)}</span>
-                      )}
-                    </span>
-                    <Chip valor={pendencia.situacao} />
-                  </div>
-                ))}
-              </div>
-            )}
+            <Pendencias
+              membroId={membro.id}
+              pendencias={pendencias as Pendencia[]}
+              onMudou={(proximas) =>
+                setMembro((atual) =>
+                  atual === null
+                    ? atual
+                    : {
+                        ...atual,
+                        pendencias: {
+                          ...atual.pendencias,
+                          edges: proximas.map((node) => ({ node })),
+                        },
+                      },
+                )
+              }
+            />
           </Card>
         </>
       )}

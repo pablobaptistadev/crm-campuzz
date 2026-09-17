@@ -298,11 +298,21 @@ export const inspectPage = async ({
             const { click, fill, value, imagem } = JSON.parse(acao);
 
             if (click) {
-              const alvo = Array.from(
+              // Um botão de ícone não tem texto: o nome dele está no
+              // aria-label, e era justamente o que não dava para clicar.
+              const clicaveis = Array.from(
                 document.querySelectorAll('button, [role="button"], a'),
-              ).find((el) => (el.textContent || '').trim().toLowerCase() === click.toLowerCase())
-                ?? Array.from(document.querySelectorAll('button, [role="button"], a'))
-                  .find((el) => (el.textContent || '').toLowerCase().includes(click.toLowerCase()));
+              );
+              const nomeDe = (el) =>
+                ((el.textContent || '').trim() || el.getAttribute('aria-label') || '')
+                  .toLowerCase();
+              const procurado = click.toLowerCase();
+
+              const alvo = clicaveis.find((el) => nomeDe(el) === procurado)
+                ?? clicaveis.find(
+                  (el) => (el.getAttribute('aria-label') || '').toLowerCase() === procurado,
+                )
+                ?? clicaveis.find((el) => nomeDe(el).includes(procurado));
 
               if (!alvo) return 'clique não encontrou: ' + click;
               alvo.click();

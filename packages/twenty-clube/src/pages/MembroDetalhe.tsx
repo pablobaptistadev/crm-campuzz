@@ -3,11 +3,12 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { gql } from 'src/api/client';
 import { carregarMetadata, type ObjetoMeta } from 'src/api/metadata';
-import { ARQUIVAR_MEMBRO, MEMBRO_QUERY } from 'src/api/queries';
+import { ARQUIVAR_MEMBRO, montarMembroQuery } from 'src/api/queries';
 import { type Etapa } from 'src/api/types';
 import { Historico } from 'src/ui/Historico';
 import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
 import { CardEditavel } from 'src/ui/CardEditavel';
+import { CadastroCompleto, type GrupoDeCampos } from 'src/ui/CadastroCompleto';
 import { CamposDoPerfil } from 'src/modules/perfil/ui/CamposDoPerfil';
 import { AvatarDoMembro } from 'src/modules/perfil/ui/AvatarDoMembro';
 import { FotoDePerfil } from 'src/modules/perfil/ui/FotoDePerfil';
@@ -33,6 +34,36 @@ const ABAS: { id: Aba; rotulo: string }[] = [
   { id: 'acc', rotulo: 'Acompanhamento' },
   { id: 'cx', rotulo: 'Rel. CX' },
   { id: 'his', rotulo: 'Histórico' },
+];
+
+// Ordem do que já conhecemos; o resto entra em "Outros campos" e continua
+// editável, então um campo novo não depende de alguém lembrar desta lista.
+const GRUPOS_DO_MEMBRO: GrupoDeCampos[] = [
+  {
+    titulo: 'Documentos',
+    campos: ['rg', 'cnpj', 'nascimento', 'sexo', 'estadoCivil', 'nacionalidade', 'naturalidade', 'profissao', 'conjuge'],
+  },
+  {
+    titulo: 'Contato',
+    campos: ['telefones', 'telefoneFixo', 'endereco', 'instagram', 'linkedin', 'site'],
+  },
+  {
+    titulo: 'No clube',
+    campos: ['nomeCracha', 'papel', 'situacao', 'entradaEm'],
+  },
+  {
+    titulo: 'Contrato',
+    campos: ['contratoNumero', 'contratoSituacao', 'contratoAssinadoEm', 'contratoLink', 'valorTotal', 'modeloPagamento', 'linkFastpay'],
+  },
+  {
+    titulo: 'Presentes e preferências',
+    campos: ['camiseta', 'calca', 'moletom', 'calcado', 'chocolateFavorito', 'frutaFavorita', 'placaEntregue', 'placaEntregueEm'],
+  },
+  {
+    titulo: 'Contato de emergência',
+    campos: ['contatoEmergenciaNome', 'contatoEmergenciaTelefone'],
+  },
+  { titulo: 'Anotações', campos: ['maiorObjetivo', 'observacoes'] },
 ];
 
 const linkTexto = (valor: { primaryLinkUrl: string | null; primaryLinkLabel: string | null } | null) =>
@@ -65,14 +96,22 @@ export const MembroDetalhe = () => {
 
     void (async () => {
       try {
-        const [dados, metadata] = await Promise.all([
-          gql<{ membro: Record<string, any> }>(MEMBRO_QUERY, { id }),
-          carregarMetadata(),
-        ]);
+        // O metadata decide quais campos pedir, então vem primeiro.
+        const metadata = await carregarMetadata();
+        const doMembro = metadata.get('membro') ?? null;
+
+        if (doMembro === null) {
+          throw new Error('Não encontramos o objeto membro neste workspace.');
+        }
+
+        const dados = await gql<{ membro: Record<string, any> }>(
+          montarMembroQuery(doMembro),
+          { id },
+        );
 
         if (!cancelado) {
           setMembro(dados.membro);
-          setObjeto(metadata.get('membro') ?? null);
+          setObjeto(doMembro);
         }
       } catch (causa) {
         if (!cancelado) {
@@ -195,32 +234,13 @@ export const MembroDetalhe = () => {
           />
         </Card>
 
-        <CardEditavel
-          titulo={rotuloDe(membro.papel)}
+        <CadastroCompleto
           objeto={objeto}
           registroId={membro.id}
           registro={membro}
           onSalvo={aplicar}
-          campos={[
-            { nome: 'rg' },
-            { nome: 'nascimento', rotulo: 'Data de nascimento' },
-            { nome: 'profissao', rotulo: 'Profissão' },
-            { nome: 'estadoCivil', rotulo: 'Estado civil' },
-            { nome: 'telefones', rotulo: 'Celular' },
-            { nome: 'telefoneFixo', rotulo: 'Telefone fixo' },
-            { nome: 'sexo' },
-            { nome: 'nacionalidade' },
-            { nome: 'naturalidade' },
-            { nome: 'cnpj' },
-            { nome: 'conjuge', rotulo: 'Cônjuge' },
-            { nome: 'papel' },
-            { nome: 'situacao', rotulo: 'Status' },
-            { nome: 'entradaEm', rotulo: 'Entrou em' },
-            { nome: 'endereco', rotulo: 'Endereço' },
-            { nome: 'instagram' },
-            { nome: 'linkedin', rotulo: 'LinkedIn' },
-            { nome: 'site' },
-          ]}
+          grupos={GRUPOS_DO_MEMBRO}
+          excluir={['name', 'emails', 'cpf', 'miniBio', 'fotoUrl']}
         />
         </>
       )}

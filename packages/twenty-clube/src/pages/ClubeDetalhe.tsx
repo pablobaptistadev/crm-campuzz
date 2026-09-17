@@ -3,11 +3,12 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { gql } from 'src/api/client';
 import { carregarMetadata, type ObjetoMeta } from 'src/api/metadata';
-import { ARQUIVAR_CLUBE, CLUBE_QUERY } from 'src/api/queries';
+import { ARQUIVAR_CLUBE, montarClubeQuery } from 'src/api/queries';
 import { type Etapa, type Socio } from 'src/api/types';
 import { Historico } from 'src/ui/Historico';
 import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
 import { CardEditavel } from 'src/ui/CardEditavel';
+import { CadastroCompleto, type GrupoDeCampos } from 'src/ui/CadastroCompleto';
 import { AvatarDoMembro, MembroComFoto } from 'src/modules/perfil/ui/AvatarDoMembro';
 import { NovoMembro } from 'src/ui/NovoMembro';
 import { Arquivar } from 'src/ui/Arquivar';
@@ -32,6 +33,61 @@ const ABAS: { id: Aba; rotulo: string }[] = [
   { id: 'mem', rotulo: 'Membros' },
   { id: 'cx', rotulo: 'Rel. CX' },
   { id: 'his', rotulo: 'Histórico' },
+];
+
+// Ordem, não filtro: o que não estiver aqui cai em "Outros campos" e continua
+// editável. É o que garante que um campo criado amanhã apareça sozinho.
+const GRUPOS_DO_CLUBE: GrupoDeCampos[] = [
+  {
+    titulo: 'Identificação',
+    campos: [
+      { nome: 'name', rotulo: 'Nome do clube' },
+      'nomeCracha',
+      'mentor',
+      'responsavel',
+      'nicho',
+      'situacao',
+      'inicio',
+      'miniBio',
+    ],
+  },
+  {
+    titulo: 'Financeiro',
+    campos: [
+      { nome: 'capitalNegociado', rotulo: 'Valor total' },
+      { nome: 'modeloFinanceiro', rotulo: 'Modelo de pagamento' },
+      'linkFastpay',
+      'linkCheckout',
+    ],
+  },
+  {
+    titulo: 'Contrato e MOU',
+    campos: [
+      'mouSituacao',
+      'mouAssinadoEm',
+      'mouValidade',
+      'mouLink',
+      'origemContrato',
+      'contratoMlsAssinado',
+      'contratoMlsEm',
+      'mlsId',
+      'contratoScpAssinado',
+      'contratoScpEm',
+    ],
+  },
+  {
+    titulo: 'Operação',
+    campos: ['kickoffFeito', 'kickoffEm', 'lms', 'bu', 'mlsHouse', 'fastval', 'scpCriada', 'scpCriadaEm', 'grupoWhatsapp'],
+  },
+  {
+    titulo: 'Presentes e preferências',
+    campos: ['camiseta', 'calca', 'moletom', 'calcado', 'chocolateFavorito', 'frutaFavorita', 'placaEntregue', 'placaEntregueEm'],
+  },
+  {
+    titulo: 'Contato de emergência',
+    campos: ['contatoEmergenciaNome', 'contatoEmergenciaTelefone'],
+  },
+  { titulo: 'Anotações', campos: ['maiorObjetivo', 'observacoes'] },
 ];
 
 const sim = (valor: boolean | null) => (valor === true ? 'Sim' : valor === false ? 'Não' : TRACO);
@@ -100,14 +156,23 @@ export const ClubeDetalhe = () => {
 
     void (async () => {
       try {
-        const [dados, metadata] = await Promise.all([
-          gql<{ clube: Record<string, any> }>(CLUBE_QUERY, { id }),
-          carregarMetadata(),
-        ]);
+        // O metadata vem antes porque é ele que diz quais campos pedir: a
+        // consulta do clube é montada a partir dele, não escrita à mão.
+        const metadata = await carregarMetadata();
+        const doClube = metadata.get('clube') ?? null;
+
+        if (doClube === null) {
+          throw new Error('Não encontramos o objeto clube neste workspace.');
+        }
+
+        const dados = await gql<{ clube: Record<string, any> }>(
+          montarClubeQuery(doClube),
+          { id },
+        );
 
         if (!cancelado) {
           setClube(dados.clube);
-          setMetaClube(metadata.get('clube') ?? null);
+          setMetaClube(doClube);
           setMetaSocio(metadata.get('socio') ?? null);
         }
       } catch (causa) {
@@ -182,44 +247,59 @@ export const ClubeDetalhe = () => {
         </Card>
       )}
 
-      {aba === 'cad' &&
-        (socios.length === 0 ? (
-          <Card titulo="Sócios">
-            <Vazio>Nenhum sócio cadastrado.</Vazio>
-          </Card>
-        ) : (
-          socios.map((socio) => (
-            <CardEditavel
-              key={socio.id}
-              titulo={socio.papel ?? 'Sócio'}
-              objeto={metaSocio}
-              registroId={socio.id}
-              registro={socio as unknown as Record<string, unknown>}
-              onSalvo={aplicarSocio(socio.id)}
-              campos={[
-                { nome: 'name', rotulo: 'Nome completo' },
-                { nome: 'papel' },
-                { nome: 'cpf' },
-                { nome: 'rg' },
-                { nome: 'cnpj' },
-                { nome: 'nascimento', rotulo: 'Data de nascimento' },
-                { nome: 'profissao', rotulo: 'Profissão' },
-                { nome: 'estadoCivil', rotulo: 'Estado civil' },
-                { nome: 'emails', rotulo: 'E-mail' },
-                { nome: 'telefones', rotulo: 'Celular' },
-                { nome: 'telefoneFixo', rotulo: 'Telefone fixo' },
-                { nome: 'sexo' },
-                { nome: 'nacionalidade' },
-                { nome: 'naturalidade' },
-                { nome: 'conjuge', rotulo: 'Cônjuge' },
-                { nome: 'endereco', rotulo: 'Endereço' },
-                { nome: 'instagram' },
-                { nome: 'linkedin', rotulo: 'LinkedIn' },
-                { nome: 'site' },
-              ]}
-            />
-          ))
-        ))}
+      {aba === 'cad' && (
+        <>
+          <CadastroCompleto
+            objeto={metaClube}
+            registroId={clube.id}
+            registro={clube}
+            onSalvo={aplicar}
+            grupos={GRUPOS_DO_CLUBE}
+          />
+
+          {socios.length === 0 ? (
+            <Card titulo="Sócios">
+              <Vazio>Nenhum sócio cadastrado.</Vazio>
+            </Card>
+          ) : (
+            socios.map((socio) => (
+              <CadastroCompleto
+                key={socio.id}
+                objeto={metaSocio}
+                registroId={socio.id}
+                registro={socio as unknown as Record<string, unknown>}
+                onSalvo={aplicarSocio(socio.id)}
+                grupos={[
+                  {
+                    titulo: socio.papel ?? 'Sócio',
+                    campos: [
+                      'name',
+                      'papel',
+                      'cpf',
+                      'rg',
+                      'cnpj',
+                      'nascimento',
+                      'profissao',
+                      'estadoCivil',
+                      'emails',
+                      'telefones',
+                      'telefoneFixo',
+                      'sexo',
+                      'nacionalidade',
+                      'naturalidade',
+                      'conjuge',
+                      'endereco',
+                      'instagram',
+                      'linkedin',
+                      'site',
+                    ],
+                  },
+                ]}
+              />
+            ))
+          )}
+        </>
+      )}
 
       {aba === 'acc' && (
         <>

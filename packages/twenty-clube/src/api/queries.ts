@@ -1,3 +1,6 @@
+import { type ObjetoMeta } from './metadata';
+import { selecaoDeCampos } from './selecao';
+
 const ETAPA = `
   id name ordem escopo situacao concluidaEm observacoes responsavel prazo
   attachments { edges { node { id name fullPath type } } }
@@ -44,21 +47,14 @@ export const PIPELINE_QUERY = `
   }
 `;
 
-export const CLUBE_QUERY = `
+// Os campos próprios do clube saem do metadata: escrever a lista à mão é como
+// metade do cadastro ficava fora da tela — o campo existia no banco, não na
+// consulta, e o editor não tinha o que mostrar. As relações seguem escritas,
+// porque cada uma quer a própria sub-consulta.
+export const montarClubeQuery = (objeto: ObjetoMeta): string => `
   query Clube($id: UUID!) {
     clube(filter: { id: { eq: $id } }) {
-      id name mentor situacao nicho responsavel inicio modeloFinanceiro
-      capitalNegociado ${MOEDA}
-      mouSituacao mouAssinadoEm mouValidade mouLink ${LINK}
-      origemContrato mlsId
-      contratoMlsAssinado contratoMlsEm contratoScpAssinado contratoScpEm
-      kickoffFeito kickoffEm
-      lms bu mlsHouse fastval scpCriada scpCriadaEm
-      grupoWhatsapp ${LINK} linkCheckout ${LINK} linkFastpay ${LINK}
-      miniBio nomeCracha camiseta calca moletom calcado
-      chocolateFavorito frutaFavorita
-      contatoEmergenciaNome contatoEmergenciaTelefone ${FONE}
-      maiorObjetivo observacoes placaEntregue placaEntregueEm
+      ${selecaoDeCampos(objeto)}
       jornada { edges { node { ${ETAPA} } } }
       socios {
         edges { node {
@@ -85,19 +81,10 @@ export const CLUBE_QUERY = `
   }
 `;
 
-export const MEMBRO_QUERY = `
+export const montarMembroQuery = (objeto: ObjetoMeta): string => `
   query Membro($id: UUID!) {
     membro(filter: { id: { eq: $id } }) {
-      id name nomeCracha papel situacao entradaEm fotoUrl
-      emails ${EMAIL} telefones ${FONE} telefoneFixo ${FONE}
-      cpf rg cnpj nascimento sexo estadoCivil nacionalidade naturalidade
-      profissao conjuge endereco ${ENDERECO}
-      instagram ${LINK} linkedin ${LINK} site ${LINK}
-      miniBio camiseta calca moletom calcado chocolateFavorito frutaFavorita
-      contatoEmergenciaNome contatoEmergenciaTelefone ${FONE}
-      maiorObjetivo observacoes placaEntregue placaEntregueEm
-      contratoNumero contratoSituacao contratoAssinadoEm contratoLink ${LINK}
-      valorTotal ${MOEDA} modeloPagamento linkFastpay ${LINK}
+      ${selecaoDeCampos(objeto)}
       clube { id name }
       jornada { edges { node { ${ETAPA} } } }
       parcelas {

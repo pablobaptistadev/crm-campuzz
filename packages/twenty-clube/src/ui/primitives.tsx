@@ -85,14 +85,34 @@ const ROTULOS: Record<string, string> = {
   CONVIDADO: 'Convidado',
 };
 
-export const Chip = ({ valor }: { valor: string | null | undefined }) => {
+export const Chip = ({
+  valor,
+  sufixo,
+}: {
+  valor: string | null | undefined;
+  // A seta de "dá para trocar" mora dentro da pílula: do lado de fora ela
+  // vira um ícone solto que não se lê como parte do mesmo controle.
+  sufixo?: ReactNode;
+}) => {
   if (valor === null || valor === undefined || valor === '') {
-    return <span className="adm-table__muted">{TRACO}</span>;
+    return sufixo === undefined ? (
+      <span className="adm-table__muted">{TRACO}</span>
+    ) : (
+      <span className="adm-chip adm-chip--slate">
+        {TRACO}
+        {sufixo}
+      </span>
+    );
   }
 
   const tom = TONS[valor as keyof typeof TONS] ?? 'slate';
 
-  return <span className={`adm-chip adm-chip--${tom}`}>{ROTULOS[valor] ?? valor}</span>;
+  return (
+    <span className={`adm-chip adm-chip--${tom}`}>
+      {ROTULOS[valor] ?? valor}
+      {sufixo}
+    </span>
+  );
 };
 
 export const rotuloDe = (valor: string | null | undefined): string =>

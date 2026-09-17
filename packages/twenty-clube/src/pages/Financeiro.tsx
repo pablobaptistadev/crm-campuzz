@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { gql } from 'src/api/client';
+import { carregarMetadata, type ObjetoMeta } from 'src/api/metadata';
 import {
-  ATUALIZAR_CLUBE_STATUS,
   ATUALIZAR_PARCELA,
   CLUBES_SIMPLES_QUERY,
   FINANCEIRO_QUERY,
@@ -11,6 +11,7 @@ import {
 } from 'src/api/queries';
 import { NovaVenda } from 'src/ui/NovaVenda';
 import { Chip, Vazio } from 'src/ui/primitives';
+import { StatusEditavel } from 'src/ui/StatusEditavel';
 import { MembroComFoto } from 'src/modules/perfil/ui/AvatarDoMembro';
 import { paginar } from 'src/ui/paginar';
 import { TRACO, dataCurta, dinheiroCurto } from 'src/ui/format';
@@ -111,13 +112,6 @@ const naFaixa = (parcela: Parcela, faixa: Faixa): boolean => {
   }
 };
 
-const STATUS_CLUBE = [
-  { value: 'ATIVO', label: 'Ativo' },
-  { value: 'EM_ATRASO', label: 'Em atraso' },
-  { value: 'PAUSADO', label: 'Pausado' },
-  { value: 'PERDIDO', label: 'Perdido' },
-];
-
 export const Financeiro = () => {
   const [parcelas, setParcelas] = useState<Parcela[] | null>(null);
   // O clube e o membro de cada parcela vêm por id: buscá-los aninhados custaria
@@ -127,16 +121,21 @@ export const Financeiro = () => {
   const [erro, setErro] = useState<string | null>(null);
   const [faixa, setFaixa] = useState<Faixa>('atrasados');
   const [abrindoVenda, setAbrindoVenda] = useState(false);
+  const [metaParcela, setMetaParcela] = useState<ObjetoMeta | null>(null);
+  const [metaClube, setMetaClube] = useState<ObjetoMeta | null>(null);
 
   const carregar = async () => {
     try {
-      const [listaParcelas, listaClubes, listaMembros] = await Promise.all([
+      const [listaParcelas, listaClubes, listaMembros, metadata] = await Promise.all([
         paginar<Parcela>(FINANCEIRO_QUERY, 'parcelas'),
         paginar<Referencia>(CLUBES_SIMPLES_QUERY, 'clubes'),
         paginar<Referencia>(MEMBROS_SIMPLES_QUERY, 'membros'),
+        carregarMetadata(),
       ]);
 
       setParcelas(listaParcelas);
+      setMetaParcela(metadata.get('parcela') ?? null);
+      setMetaClube(metadata.get('clube') ?? null);
       setClubes(new Map(listaClubes.map((clube) => [clube.id, clube])));
       setMembros(new Map(listaMembros.map((membro) => [membro.id, membro])));
     } catch (causa) {
@@ -185,7 +184,9 @@ export const Financeiro = () => {
     await gql(ATUALIZAR_PARCELA, { id: parcela.id, data: proximo }).catch(() => void carregar());
   };
 
-  const mudarStatusClube = async (clubeId: string, situacao: string) => {
+  // O StatusEditavel já grava; aqui só acompanha a mudança na tela, senão a
+  // mesma troca iria ao banco duas vezes.
+  const mudarStatusClube = (clubeId: string, situacao: string) => {
     setClubes((atual) => {
       const proximo = new Map(atual);
       const clube = proximo.get(clubeId);
@@ -196,15 +197,13 @@ export const Financeiro = () => {
 
       return proximo;
     });
-
-    await gql(ATUALIZAR_CLUBE_STATUS, { id: clubeId, situacao }).catch(() => void carregar());
   };
 
   if (erro !== null) {
     return <div className="adm-error">{erro}</div>;
   }
 
-  if (parcelas === null) {
+  if (parcelas === null || metaParcela === null || metaClube === null) {
     return <div className="adm-loading">Carregando o financeiro…</div>;
   }
 
@@ -337,24 +336,35 @@ export const Financeiro = () => {
                   </td>
                   <td className="adm-table__num">{dinheiroCurto(parcela.valor)}</td>
                   <td>
-                    <Chip valor={atrasada ? 'ATRASADA' : parcela.situacao} />
+                    {atrasada ? (
+                      <Chip valor="ATRASADA" />
+                    ) : (
+                      <StatusEditavel
+                        objeto={metaParcela}
+                        registroId={parcela.id}
+                        valor={parcela.situacao}
+                        onSalvo={(proximo) =>
+                          setParcelas((atual) =>
+                            (atual ?? []).map((linha) =>
+                              linha.id === parcela.id
+                                ? { ...linha, situacao: proximo }
+                                : linha,
+                            ),
+                          )
+                        }
+                      />
+                    )}
                   </td>
                   <td>
                     {clube === undefined ? (
                       <span className="adm-table__muted">{TRACO}</span>
                     ) : (
-                      <select
-                        className="adm-input"
-                        style={{ minWidth: 0, width: 140, padding: '5px 9px', fontSize: 12.5 }}
-                        value={clube.situacao ?? ''}
-                        onChange={(evento) => void mudarStatusClube(clube.id, evento.target.value)}
-                      >
-                        {STATUS_CLUBE.map((opcao) => (
-                          <option key={opcao.value} value={opcao.value}>
-                            {opcao.label}
-                          </option>
-                        ))}
-                      </select>
+                      <StatusEditavel
+                        objeto={metaClube}
+                        registroId={clube.id}
+                        valor={clube.situacao ?? null}
+                        onSalvo={(proximo) => mudarStatusClube(clube.id, proximo)}
+                      />
                     )}
                   </td>
                   <td>

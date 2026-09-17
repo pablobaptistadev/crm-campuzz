@@ -85,12 +85,30 @@ export const MembroDetalhe = () => {
   const navegar = useNavigate();
   const [membro, setMembro] = useState<Record<string, any> | null>(null);
   const [objeto, setObjeto] = useState<ObjetoMeta | null>(null);
+  const [metaParcela, setMetaParcela] = useState<ObjetoMeta | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState<Aba>('crm');
   const [abrindoVenda, setAbrindoVenda] = useState(false);
 
   // Uma alteração salva já vale na tela; recarregar o registro inteiro para
   // repintar um campo custaria uma volta ao banco por edição.
+  const aplicarParcela = (parcelaId: string, situacao: string) =>
+    setMembro((atual) =>
+      atual === null
+        ? atual
+        : {
+            ...atual,
+            parcelas: {
+              ...atual.parcelas,
+              edges: atual.parcelas.edges.map((aresta: { node: { id: string } }) =>
+                aresta.node.id === parcelaId
+                  ? { ...aresta, node: { ...aresta.node, situacao } }
+                  : aresta,
+              ),
+            },
+          },
+    );
+
   const aplicar = (mudancas: Record<string, unknown>) =>
     setMembro((atual) => (atual === null ? atual : { ...atual, ...mudancas }));
 
@@ -115,6 +133,7 @@ export const MembroDetalhe = () => {
         if (!cancelado) {
           setMembro(dados.membro);
           setObjeto(doMembro);
+          setMetaParcela(metadata.get('parcela') ?? null);
         }
       } catch (causa) {
         if (!cancelado) {
@@ -132,7 +151,7 @@ export const MembroDetalhe = () => {
     return <div className="adm-error">{erro}</div>;
   }
 
-  if (membro === null || objeto === null) {
+  if (membro === null || objeto === null || metaParcela === null) {
     return <div className="adm-loading">Carregando…</div>;
   }
 
@@ -170,11 +189,13 @@ export const MembroDetalhe = () => {
           <div className="adm-record__sub">{clube?.name ?? TRACO}</div>
         </div>
         <span className="adm-record__spacer" />
+        <div className="adm-record__acoes">
         <StatusEditavel
           objeto={objeto}
           registroId={membro.id}
           valor={membro.situacao}
           onSalvo={(proximo) => aplicar({ situacao: proximo })}
+          tamanho="titulo"
         />
         <Arquivar
           mutation={ARQUIVAR_MEMBRO}
@@ -183,6 +204,7 @@ export const MembroDetalhe = () => {
           oQue="membro"
           onArquivado={() => navegar(clube === null ? '/' : `/clubes/${clube.id}`)}
         />
+        </div>
       </div>
 
       <Tabs itens={ABAS} valor={aba} onChange={setAba} />
@@ -328,7 +350,14 @@ export const MembroDetalhe = () => {
                           <td className="adm-table__num">{dinheiroCurto(parcela.valor)}</td>
                           <td className="adm-table__muted">{dataCurta(parcela.vencimento)}</td>
                           <td>
-                            <Chip valor={parcela.situacao} />
+                            <StatusEditavel
+                              objeto={metaParcela}
+                              registroId={parcela.id}
+                              valor={parcela.situacao}
+                              onSalvo={(proximo) =>
+                                aplicarParcela(parcela.id, proximo)
+                              }
+                            />
                           </td>
                           <td className="adm-table__muted">{dataCurta(parcela.pagaEm)}</td>
                         </tr>

@@ -711,10 +711,39 @@ button.adm-kpi { cursor: pointer; text-align: left; font: inherit; }
 }
 
 /* ── Status clicável ──────────────────────────────────────── */
-.adm-status {
-  border: 0; background: transparent; padding: 0; cursor: pointer;
-  border-radius: 999px; line-height: 0;
-}
-.adm-status:hover { box-shadow: 0 0 0 3px rgba(197, 165, 102, 0.22); }
-.adm-status:disabled { opacity: 0.55; cursor: progress; }
 .adm-status__select { min-width: 9rem; padding: 4px 8px; font-size: 12.5px; }
+
+/* ── Cabeçalho: status e ação lado a lado ─────────────────── */
+.adm-record__acoes { display: flex; align-items: center; gap: 10px; }
+
+/* O chip com line-height 0 saía do alinhamento do botão vizinho: a caixa
+   colapsava e ele flutuava alguns pixels acima da linha. */
+.adm-status { display: inline-flex; align-items: center; }
+.adm-status--clicavel { border: 0; background: transparent; padding: 0; cursor: pointer; }
+.adm-status--clicavel:hover { box-shadow: 0 0 0 3px rgba(197, 165, 102, 0.22); }
+.adm-status--clicavel:disabled { opacity: 0.55; cursor: progress; }
+.adm-status--linha { border-radius: 999px; }
+
+/* No cabeçalho o status é um controle ao lado de outro, então veste a mesma
+   altura, o mesmo raio e a mesma tipografia do botão. */
+.adm-status--titulo { border-radius: 9px; }
+.adm-status--titulo .adm-chip {
+  padding: 8px 14px; font-size: 13px; border-radius: 9px;
+  border: 1px solid transparent;
+}
+.adm-status__select--titulo { padding: 8px 12px; font-size: 13px; border-radius: 9px; }
+
+/* ── Densidade da tabela ──────────────────────────────────── */
+/* Tudo a 11px menos o nome do registro: é por ele que se procura a linha, e
+   ele encolhido faz a tabela inteira virar um bloco cinza sem entrada. */
+.adm-table tbody td { font-size: 11px; }
+.adm-table thead th { font-size: 11px; }
+.adm-table__link { font-size: 13.5px; }
+.adm-table__sub { font-size: 11px; }
+.adm-table tbody td .adm-chip { font-size: 11px; padding: 2px 9px; }
+
+.adm-status__seta {
+  width: 11px; height: 11px; margin-left: 5px; margin-right: -2px;
+  opacity: 0.65; flex: none;
+}
+.adm-status--clicavel:hover .adm-status__seta { opacity: 1; }

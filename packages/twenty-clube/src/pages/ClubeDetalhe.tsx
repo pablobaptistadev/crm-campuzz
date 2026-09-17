@@ -113,11 +113,29 @@ export const ClubeDetalhe = () => {
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState<Aba>('crm');
   const [adicionandoMembro, setAdicionandoMembro] = useState(false);
+  const [metaParcela, setMetaParcela] = useState<ObjetoMeta | null>(null);
   const [adicionandoSocio, setAdicionandoSocio] = useState(false);
   const [modoMembros, setModoMembros] = useModoVisao('membros', 'lista');
 
   // Uma alteração salva já vale na tela; recarregar o clube inteiro para
   // repintar um campo custaria uma volta ao banco por edição.
+  const aplicarParcela = (parcelaId: string, situacao: string) =>
+    setClube((atual) =>
+      atual === null
+        ? atual
+        : {
+            ...atual,
+            parcelas: {
+              ...atual.parcelas,
+              edges: atual.parcelas.edges.map((aresta: { node: { id: string } }) =>
+                aresta.node.id === parcelaId
+                  ? { ...aresta, node: { ...aresta.node, situacao } }
+                  : aresta,
+              ),
+            },
+          },
+    );
+
   const aplicar = (mudancas: Record<string, unknown>) =>
     setClube((atual) => (atual === null ? atual : { ...atual, ...mudancas }));
 
@@ -137,6 +155,24 @@ export const ClubeDetalhe = () => {
             },
           },
     );
+
+  const aplicarCampoDoMembro =
+    (membroId: string, campo: string) => (valor: string) =>
+      setClube((atual) =>
+        atual === null
+          ? atual
+          : {
+              ...atual,
+              membros: {
+                ...atual.membros,
+                edges: atual.membros.edges.map((aresta: { node: { id: string } }) =>
+                  aresta.node.id === membroId
+                    ? { ...aresta, node: { ...aresta.node, [campo]: valor } }
+                    : aresta,
+                ),
+              },
+            },
+      );
 
   const aplicarMembro = (membroId: string) => (situacao: string) =>
     setClube((atual) =>
@@ -196,6 +232,7 @@ export const ClubeDetalhe = () => {
           setMetaClube(doClube);
           setMetaSocio(metadata.get('socio') ?? null);
           setMetaMembro(metadata.get('membro') ?? null);
+          setMetaParcela(metadata.get('parcela') ?? null);
         }
       } catch (causa) {
         if (!cancelado) {
@@ -213,7 +250,7 @@ export const ClubeDetalhe = () => {
     return <div className="adm-error">{erro}</div>;
   }
 
-  if (clube === null || metaClube === null || metaSocio === null || metaMembro === null) {
+  if (clube === null || metaClube === null || metaSocio === null || metaMembro === null || metaParcela === null) {
     return <div className="adm-loading">Carregando…</div>;
   }
 
@@ -247,11 +284,13 @@ export const ClubeDetalhe = () => {
           </div>
         </div>
         <span className="adm-record__spacer" />
+        <div className="adm-record__acoes">
         <StatusEditavel
           objeto={metaClube}
           registroId={clube.id}
           valor={clube.situacao}
           onSalvo={(proximo) => aplicar({ situacao: proximo })}
+          tamanho="titulo"
         />
         <Arquivar
           mutation={ARQUIVAR_CLUBE}
@@ -260,6 +299,7 @@ export const ClubeDetalhe = () => {
           oQue="clube"
           onArquivado={() => navegar('/')}
         />
+        </div>
       </div>
 
       <Tabs itens={abas} valor={aba} onChange={setAba} />
@@ -444,7 +484,14 @@ export const ClubeDetalhe = () => {
                           <td className="adm-table__num">{dinheiroCurto(parcela.valor)}</td>
                           <td className="adm-table__muted">{dataCurta(parcela.vencimento)}</td>
                           <td>
-                            <Chip valor={parcela.situacao} />
+                            <StatusEditavel
+                              objeto={metaParcela}
+                              registroId={parcela.id}
+                              valor={parcela.situacao}
+                              onSalvo={(proximo) =>
+                                aplicarParcela(parcela.id, proximo)
+                              }
+                            />
                           </td>
                         </tr>
                       ))}
@@ -557,7 +604,13 @@ export const ClubeDetalhe = () => {
                   <div className="adm-colecao__linhas">
                     <div className="adm-colecao__linha">
                       <span className="adm-colecao__rotulo">Contrato</span>
-                      <Chip valor={membro.contratoSituacao} />
+                      <StatusEditavel
+                        objeto={metaMembro}
+                        registroId={membro.id}
+                        campo="contratoSituacao"
+                        valor={membro.contratoSituacao}
+                        onSalvo={aplicarCampoDoMembro(membro.id, 'contratoSituacao')}
+                      />
                     </div>
                     <div className="adm-colecao__linha">
                       <span className="adm-colecao__rotulo">Valor</span>
@@ -609,7 +662,13 @@ export const ClubeDetalhe = () => {
                     />
                   </td>
                   <td>
-                    <Chip valor={membro.contratoSituacao} />
+                    <StatusEditavel
+                      objeto={metaMembro}
+                      registroId={membro.id}
+                      campo="contratoSituacao"
+                      valor={membro.contratoSituacao}
+                      onSalvo={aplicarCampoDoMembro(membro.id, 'contratoSituacao')}
+                    />
                   </td>
                   <td className="adm-table__num">{dinheiroCurto(membro.valorTotal)}</td>
                   <td className="adm-table__muted">

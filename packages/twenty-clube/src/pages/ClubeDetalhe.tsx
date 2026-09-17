@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { gql } from 'src/api/client';
 import { carregarMetadata, type ObjetoMeta } from 'src/api/metadata';
-import { ARQUIVAR_CLUBE, montarClubeQuery } from 'src/api/queries';
+import { ARQUIVAR_CLUBE, ARQUIVAR_SOCIO, montarClubeQuery } from 'src/api/queries';
 import { type Etapa, type Socio } from 'src/api/types';
 import { Historico } from 'src/ui/Historico';
 import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
@@ -11,6 +11,7 @@ import { CardEditavel } from 'src/ui/CardEditavel';
 import { CadastroCompleto, type GrupoDeCampos } from 'src/ui/CadastroCompleto';
 import { AvatarDoMembro, MembroComFoto } from 'src/modules/perfil/ui/AvatarDoMembro';
 import { NovoMembro } from 'src/ui/NovoMembro';
+import { NovoSocio } from 'src/ui/NovoSocio';
 import { Arquivar } from 'src/ui/Arquivar';
 import { AlternarVisao, Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe, useModoVisao } from 'src/ui/primitives';
 import {
@@ -110,6 +111,7 @@ export const ClubeDetalhe = () => {
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState<Aba>('crm');
   const [adicionandoMembro, setAdicionandoMembro] = useState(false);
+  const [adicionandoSocio, setAdicionandoSocio] = useState(false);
   const [modoMembros, setModoMembros] = useModoVisao('membros', 'lista');
 
   // Uma alteração salva já vale na tela; recarregar o clube inteiro para
@@ -257,14 +259,53 @@ export const ClubeDetalhe = () => {
             grupos={GRUPOS_DO_CLUBE}
           />
 
+          <div className="adm-toolbar">
+            <span className="adm-toolbar__title">
+              {socios.length === 0
+                ? 'Sócios'
+                : `${socios.length} ${socios.length === 1 ? 'sócio' : 'sócios'}`}
+            </span>
+            <span className="adm-toolbar__spacer" />
+            <button
+              type="button"
+              className="adm-btn adm-btn--primary"
+              onClick={() => setAdicionandoSocio(true)}
+            >
+              + Adicionar sócio
+            </button>
+          </div>
+
+          {adicionandoSocio && (
+            <NovoSocio
+              clubeId={clube.id}
+              onFechar={() => setAdicionandoSocio(false)}
+              onCriado={(socio) => {
+                setAdicionandoSocio(false);
+                // Entra na tela sem recarregar o clube inteiro: o registro
+                // recém-criado já traz o que o card precisa mostrar.
+                setClube((atual) =>
+                  atual === null
+                    ? atual
+                    : {
+                        ...atual,
+                        socios: {
+                          ...atual.socios,
+                          edges: [...atual.socios.edges, { node: socio }],
+                        },
+                      },
+                );
+              }}
+            />
+          )}
+
           {socios.length === 0 ? (
             <Card titulo="Sócios">
               <Vazio>Nenhum sócio cadastrado.</Vazio>
             </Card>
           ) : (
             socios.map((socio) => (
+              <div key={socio.id}>
               <CadastroCompleto
-                key={socio.id}
                 objeto={metaSocio}
                 registroId={socio.id}
                 registro={socio as unknown as Record<string, unknown>}
@@ -273,7 +314,7 @@ export const ClubeDetalhe = () => {
                   {
                     titulo: socio.papel ?? 'Sócio',
                     campos: [
-                      'name',
+                      { nome: 'name', rotulo: 'Nome completo' },
                       'papel',
                       'cpf',
                       'rg',
@@ -296,6 +337,33 @@ export const ClubeDetalhe = () => {
                   },
                 ]}
               />
+              <div
+                className="adm-row-actions"
+                style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -8, marginBottom: 16 }}
+              >
+                <Arquivar
+                  mutation={ARQUIVAR_SOCIO}
+                  registroId={socio.id}
+                  nome={socio.name}
+                  oQue="sócio"
+                  onArquivado={() =>
+                    setClube((atual) =>
+                      atual === null
+                        ? atual
+                        : {
+                            ...atual,
+                            socios: {
+                              ...atual.socios,
+                              edges: atual.socios.edges.filter(
+                                (aresta: { node: Socio }) => aresta.node.id !== socio.id,
+                              ),
+                            },
+                          },
+                    )
+                  }
+                />
+              </div>
+            </div>
             ))
           )}
         </>

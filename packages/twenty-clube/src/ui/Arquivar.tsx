@@ -15,7 +15,7 @@ export const Arquivar = ({
   mutation: string;
   registroId: string;
   nome: string;
-  oQue: 'clube' | 'membro';
+  oQue: 'clube' | 'membro' | 'sócio';
   onArquivado: () => void;
 }) => {
   const [confirmando, setConfirmando] = useState(false);
@@ -55,7 +55,9 @@ export const Arquivar = ({
           <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, margin: '0 0 18px' }}>
             {oQue === 'clube'
               ? 'O clube sai do painel levando junto o que é dele: membros, sócios, jornada, vendas e parcelas.'
-              : 'O membro sai da lista do clube levando junto o que é dele: dependentes, jornada, vendas e parcelas.'}
+              : oQue === 'sócio'
+                ? 'O sócio sai da lista do clube.'
+                : 'O membro sai da lista do clube levando junto o que é dele: dependentes, jornada, vendas e parcelas.'}
           </p>
           <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, margin: '0 0 18px' }}>
             Nada é apagado do banco. Restaurar em <strong>Arquivados</strong> traz

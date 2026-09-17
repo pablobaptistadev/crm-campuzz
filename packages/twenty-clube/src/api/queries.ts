@@ -237,6 +237,12 @@ export const ARQUIVAR_CLUBE = `
   }
 `;
 
+export const ARQUIVAR_SOCIO = `
+  mutation ArquivarSocio($id: UUID!) {
+    deleteSocio(id: $id) { id deletedAt }
+  }
+`;
+
 export const ARQUIVAR_MEMBRO = `
   mutation ArquivarMembro($id: UUID!) {
     deleteMembro(id: $id) { id deletedAt }

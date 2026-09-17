@@ -363,12 +363,24 @@ export const inspectPage = async ({
               );
               // Nem todo campo tem rótulo irmão: o nome grande do onboarding só
               // tem placeholder, e é justamente o que destrava o passo.
+              // O rótulo pode carregar um asterisco de obrigatório ou um
+              // "· opcional", então a comparação exata erra justamente nos
+              // campos que mais importam. O id e o começo do texto resolvem.
+              const chave = fill.toLowerCase();
+              const porId = document.getElementById(fill)
+                ?? document.querySelector('#' + CSS.escape(fill));
+              const rotuloParcial = rotulos.find((el) =>
+                (el.textContent || '').trim().toLowerCase().startsWith(chave),
+              );
+
               const campo =
                 rotulo?.parentElement?.querySelector('input, select, textarea')
+                ?? (porId && porId.matches('input, select, textarea') ? porId : null)
+                ?? rotuloParcial?.parentElement?.querySelector('input, select, textarea')
                 ?? Array.from(document.querySelectorAll('input, textarea')).find(
                   (el) => (el.getAttribute('placeholder') || '')
                     .toLowerCase()
-                    .includes(fill.toLowerCase()),
+                    .includes(chave),
                 );
 
               if (!campo) return 'campo não encontrou: ' + fill;

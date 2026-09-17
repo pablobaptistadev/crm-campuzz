@@ -15,6 +15,7 @@ import { FotoDePerfil } from 'src/modules/perfil/ui/FotoDePerfil';
 import { Filhos, type Dependente } from 'src/ui/Filhos';
 import { Pendencias, type Pendencia } from 'src/ui/Pendencias';
 import { NovaVenda } from 'src/ui/NovaVenda';
+import { StatusEditavel } from 'src/ui/StatusEditavel';
 import { Arquivar } from 'src/ui/Arquivar';
 import { Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe } from 'src/ui/primitives';
 import {
@@ -169,7 +170,12 @@ export const MembroDetalhe = () => {
           <div className="adm-record__sub">{clube?.name ?? TRACO}</div>
         </div>
         <span className="adm-record__spacer" />
-        <Chip valor={membro.situacao} />
+        <StatusEditavel
+          objeto={objeto}
+          registroId={membro.id}
+          valor={membro.situacao}
+          onSalvo={(proximo) => aplicar({ situacao: proximo })}
+        />
         <Arquivar
           mutation={ARQUIVAR_MEMBRO}
           registroId={membro.id}

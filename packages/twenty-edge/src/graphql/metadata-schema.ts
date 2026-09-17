@@ -55,6 +55,7 @@ import {
   type RelationCreationPayload,
   attachActivityRelations,
   createFieldMetadata,
+  updateFieldMetadata,
   createObjectMetadata,
   deleteFieldMetadata,
   deleteObjectMetadata,
@@ -921,6 +922,15 @@ input FieldCreateInput {
 
 # A relation is two fields, not one: this describes the far side, which is
 # created with it. The names are the front's own.
+input FieldUpdateInput {
+  id: UUID!
+  label: String
+  icon: String
+  # Opções novas são acrescentadas; as que já existem ficam. Uma opção já
+  # gravada em alguma linha não pode sumir sem levar o valor daquelas linhas.
+  options: [FieldOptionInput!]
+}
+
 input RelationCreationPayloadInput {
   type: String!
   targetObjectMetadataId: UUID!
@@ -1072,6 +1082,7 @@ type Mutation {
   setWorkspaceCustomDomain(customDomain: String): Workspace!
   createOneObject(input: ObjectCreateInput!): Object!
   createOneField(input: FieldCreateInput!): Field!
+  updateOneField(input: FieldUpdateInput!): Field!
   deleteOneObject(id: UUID!): Object
   deleteOneField(id: UUID!): Field
   createView(input: CreateViewInput!): View!
@@ -2832,6 +2843,39 @@ export const METADATA_RESOLVERS = {
       );
 
       return object;
+    },
+
+    updateOneField: async (
+      _parent: unknown,
+      args: {
+        input: {
+          id: string;
+          label?: string;
+          icon?: string;
+          options?: { value: string; label: string; color?: string }[];
+        };
+      },
+      context: MetadataContext,
+    ) => {
+      const workspaceId = await requireWorkspaceId(context);
+      const metadata = await loadMetadataForSession(context);
+
+      const object = metadata.objects.find((entry) =>
+        entry.fields.some((field) => field.id === args.input.id),
+      );
+      const field = object?.fields.find((entry) => entry.id === args.input.id);
+
+      if (object === undefined || field === undefined) {
+        throw new UserFacingError('FIELD_NOT_FOUND');
+      }
+
+      return updateFieldMetadata({
+        client: context.client,
+        workspaceId,
+        object,
+        field,
+        input: args.input,
+      });
     },
 
     createOneField: async (

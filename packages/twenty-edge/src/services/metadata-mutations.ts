@@ -636,3 +636,70 @@ export const deleteFieldMetadata = async ({
 
   return field;
 };
+
+// Editar um SELECT é quase sempre acrescentar opção. Tirar uma que já está
+// gravada em alguma linha não é edição, é perder o valor daquelas linhas — o
+// Postgres nem deixa remover o rótulo do enum —, então a lista só cresce.
+export const updateFieldMetadata = async ({
+  client,
+  workspaceId,
+  object,
+  field,
+  input,
+}: {
+  client: Client;
+  workspaceId: string;
+  object: FlatObjectMetadata;
+  field: FlatFieldMetadata;
+  input: {
+    label?: string;
+    icon?: string;
+    options?: { value: string; label: string; color?: string }[];
+  };
+}): Promise<FlatFieldMetadata> => {
+  const opcoes =
+    input.options === undefined
+      ? field.options
+      : (() => {
+          const existentes = field.options ?? [];
+          const jaTem = new Set(existentes.map((opcao) => opcao.value));
+
+          return [
+            ...existentes,
+            ...input.options.filter((opcao) => !jaTem.has(opcao.value)),
+          ];
+        })();
+
+  const atualizado: FlatFieldMetadata = {
+    ...field,
+    label: input.label ?? field.label,
+    icon: input.icon ?? field.icon,
+    options: opcoes,
+  };
+
+  await client.query(
+    `UPDATE core."fieldMetadata"
+     SET "label" = $1, "icon" = $2, "options" = $3, "updatedAt" = now()
+     WHERE "id" = $4 AND "workspaceId" = $5`,
+    [
+      atualizado.label,
+      atualizado.icon,
+      atualizado.options === null ? null : JSON.stringify(atualizado.options),
+      field.id,
+      workspaceId,
+    ],
+  );
+
+  // O enum no banco não muda sozinho: sem o ALTER TYPE, a opção nova passa na
+  // validação do GraphQL e é recusada pelo Postgres na primeira gravação.
+  await applyFieldColumns({
+    client,
+    schemaName: getWorkspaceSchemaName(workspaceId),
+    tableName: computeTableName(object.nameSingular, object.isCustom),
+    field: atualizado,
+  });
+
+  await bumpMetadataVersion({ client, workspaceId });
+
+  return atualizado;
+};

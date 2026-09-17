@@ -709,3 +709,12 @@ button.adm-kpi { cursor: pointer; text-align: left; font: inherit; }
   .adm-nota { grid-template-columns: 1fr 1fr; }
   .adm-nota__texto { grid-column: 1 / -1; }
 }
+
+/* ── Status clicável ──────────────────────────────────────── */
+.adm-status {
+  border: 0; background: transparent; padding: 0; cursor: pointer;
+  border-radius: 999px; line-height: 0;
+}
+.adm-status:hover { box-shadow: 0 0 0 3px rgba(197, 165, 102, 0.22); }
+.adm-status:disabled { opacity: 0.55; cursor: progress; }
+.adm-status__select { min-width: 9rem; padding: 4px 8px; font-size: 12.5px; }

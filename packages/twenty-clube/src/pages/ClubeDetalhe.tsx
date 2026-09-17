@@ -12,6 +12,7 @@ import { CadastroCompleto, type GrupoDeCampos } from 'src/ui/CadastroCompleto';
 import { AvatarDoMembro, MembroComFoto } from 'src/modules/perfil/ui/AvatarDoMembro';
 import { NovoMembro } from 'src/ui/NovoMembro';
 import { NovoSocio } from 'src/ui/NovoSocio';
+import { StatusEditavel } from 'src/ui/StatusEditavel';
 import { Arquivar } from 'src/ui/Arquivar';
 import { AlternarVisao, Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe, useModoVisao } from 'src/ui/primitives';
 import {
@@ -108,6 +109,7 @@ export const ClubeDetalhe = () => {
   const [clube, setClube] = useState<Record<string, any> | null>(null);
   const [metaClube, setMetaClube] = useState<ObjetoMeta | null>(null);
   const [metaSocio, setMetaSocio] = useState<ObjetoMeta | null>(null);
+  const [metaMembro, setMetaMembro] = useState<ObjetoMeta | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState<Aba>('crm');
   const [adicionandoMembro, setAdicionandoMembro] = useState(false);
@@ -130,6 +132,23 @@ export const ClubeDetalhe = () => {
               edges: atual.jornada.edges.map((aresta: { node: Etapa }) =>
                 aresta.node.id === proxima.id
                   ? { ...aresta, node: { ...aresta.node, ...proxima } }
+                  : aresta,
+              ),
+            },
+          },
+    );
+
+  const aplicarMembro = (membroId: string) => (situacao: string) =>
+    setClube((atual) =>
+      atual === null
+        ? atual
+        : {
+            ...atual,
+            membros: {
+              ...atual.membros,
+              edges: atual.membros.edges.map((aresta: { node: { id: string } }) =>
+                aresta.node.id === membroId
+                  ? { ...aresta, node: { ...aresta.node, situacao } }
                   : aresta,
               ),
             },
@@ -176,6 +195,7 @@ export const ClubeDetalhe = () => {
           setClube(dados.clube);
           setMetaClube(doClube);
           setMetaSocio(metadata.get('socio') ?? null);
+          setMetaMembro(metadata.get('membro') ?? null);
         }
       } catch (causa) {
         if (!cancelado) {
@@ -193,7 +213,7 @@ export const ClubeDetalhe = () => {
     return <div className="adm-error">{erro}</div>;
   }
 
-  if (clube === null || metaClube === null || metaSocio === null) {
+  if (clube === null || metaClube === null || metaSocio === null || metaMembro === null) {
     return <div className="adm-loading">Carregando…</div>;
   }
 
@@ -227,7 +247,12 @@ export const ClubeDetalhe = () => {
           </div>
         </div>
         <span className="adm-record__spacer" />
-        <Chip valor={clube.situacao} />
+        <StatusEditavel
+          objeto={metaClube}
+          registroId={clube.id}
+          valor={clube.situacao}
+          onSalvo={(proximo) => aplicar({ situacao: proximo })}
+        />
         <Arquivar
           mutation={ARQUIVAR_CLUBE}
           registroId={clube.id}
@@ -521,7 +546,12 @@ export const ClubeDetalhe = () => {
                         abaixo={rotuloDe(membro.papel)}
                       />
                     </Link>
-                    <Chip valor={membro.situacao} />
+                    <StatusEditavel
+                      objeto={metaMembro}
+                      registroId={membro.id}
+                      valor={membro.situacao}
+                      onSalvo={aplicarMembro(membro.id)}
+                    />
                   </div>
 
                   <div className="adm-colecao__linhas">
@@ -571,7 +601,12 @@ export const ClubeDetalhe = () => {
                   </td>
                   <td className="adm-table__muted">{rotuloDe(membro.papel)}</td>
                   <td>
-                    <Chip valor={membro.situacao} />
+                    <StatusEditavel
+                      objeto={metaMembro}
+                      registroId={membro.id}
+                      valor={membro.situacao}
+                      onSalvo={aplicarMembro(membro.id)}
+                    />
                   </td>
                   <td>
                     <Chip valor={membro.contratoSituacao} />

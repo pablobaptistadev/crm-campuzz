@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { gql } from 'src/api/client';
+import { carregarMetadata, type ObjetoMeta } from 'src/api/metadata';
 import { CLUBES_QUERY, MEMBROS_RESUMO_QUERY, PIPELINE_QUERY } from 'src/api/queries';
 import { type ClubeResumo } from 'src/api/types';
 import { AlternarVisao, Chip, Pipeline, Vazio, useModoVisao } from 'src/ui/primitives';
+import { StatusEditavel } from 'src/ui/StatusEditavel';
 import { TRACO, dataCurta, dinheiroCurto } from 'src/ui/format';
 
 type Pagina<TNo> = {
@@ -69,20 +71,30 @@ export const Dashboard = () => {
   const [erro, setErro] = useState<string | null>(null);
   const [busca, setBusca] = useState('');
   const [modo, setModo] = useModoVisao('clubes', 'lista');
+  const [metaClube, setMetaClube] = useState<ObjetoMeta | null>(null);
+
+  const trocarStatus = (clubeId: string) => (situacao: string) =>
+    setClubes((atual) =>
+      atual === null
+        ? atual
+        : atual.map((clube) => (clube.id === clubeId ? { ...clube, situacao } : clube)),
+    );
 
   useEffect(() => {
     let cancelado = false;
 
     const carregar = async () => {
       try {
-        const [listaClubes, listaMembros, listaPipeline] = await Promise.all([
+        const [listaClubes, listaMembros, listaPipeline, metadata] = await Promise.all([
           paginar<Clube>(CLUBES_QUERY, 'clubes'),
           paginar<MembroResumo>(MEMBROS_RESUMO_QUERY, 'membros'),
           paginar<EtapaResumo>(PIPELINE_QUERY, 'etapasJornada'),
+          carregarMetadata(),
         ]);
 
         if (!cancelado) {
           setClubes(listaClubes);
+          setMetaClube(metadata.get('clube') ?? null);
           setMembros(listaMembros);
           setPipeline(listaPipeline);
         }
@@ -137,7 +149,7 @@ export const Dashboard = () => {
     return <div className="adm-error">{erro}</div>;
   }
 
-  if (clubes === null) {
+  if (clubes === null || metaClube === null) {
     return <div className="adm-loading">Carregando os clubes…</div>;
   }
 
@@ -212,7 +224,12 @@ export const Dashboard = () => {
                       </Link>
                       <div className="adm-colecao__sub">{clube.mentor ?? TRACO}</div>
                     </div>
-                    <Chip valor={clube.situacao} />
+                    <StatusEditavel
+                      objeto={metaClube}
+                      registroId={clube.id}
+                      valor={clube.situacao}
+                      onSalvo={trocarStatus(clube.id)}
+                    />
                   </div>
 
                   <div className="adm-colecao__linhas">
@@ -285,7 +302,12 @@ export const Dashboard = () => {
                     <div className="adm-table__sub">{clube.mentor ?? TRACO}</div>
                   </td>
                   <td>
-                    <Chip valor={clube.situacao} />
+                    <StatusEditavel
+                      objeto={metaClube}
+                      registroId={clube.id}
+                      valor={clube.situacao}
+                      onSalvo={trocarStatus(clube.id)}
+                    />
                   </td>
                   <td className="adm-table__muted">{dataCurta(clube.inicio)}</td>
                   <td className="adm-table__num">{dinheiroCurto(clube.capitalNegociado)}</td>

@@ -621,6 +621,21 @@ export const ClubeDetalhe = () => {
         <Card titulo="Histórico" flush>
           <Historico
             linhas={clube.timelineActivities.edges.map((aresta: { node: any }) => aresta.node)}
+            campoAlvo="targetClubeId"
+            alvoId={clube.id}
+            onMudou={(proximas) =>
+              setClube((atual) =>
+                atual === null
+                  ? atual
+                  : {
+                      ...atual,
+                      timelineActivities: {
+                        ...atual.timelineActivities,
+                        edges: proximas.map((node) => ({ node })),
+                      },
+                    },
+              )
+            }
           />
         </Card>
       )}

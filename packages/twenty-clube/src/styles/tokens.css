@@ -692,3 +692,20 @@ button.adm-kpi { cursor: pointer; text-align: left; font: inherit; }
   .adm-pendencia { grid-template-columns: auto 1fr; }
   .adm-pendencia__quando { display: none; }
 }
+
+/* ── Anotação no histórico ────────────────────────────────── */
+.adm-nota {
+  display: grid; gap: 10px; align-items: center;
+  grid-template-columns: minmax(0, 1fr) 9.5rem auto;
+  padding: 16px 18px; border-bottom: 1px solid var(--border);
+}
+.adm-nota__texto { width: 100%; min-width: 0; }
+.adm-step--nota { background: rgba(197, 165, 102, 0.06); }
+.adm-step__nota {
+  display: block; margin-top: 3px; color: var(--text);
+  font-size: 13.5px; line-height: 1.5;
+}
+@media (max-width: 720px) {
+  .adm-nota { grid-template-columns: 1fr 1fr; }
+  .adm-nota__texto { grid-column: 1 / -1; }
+}

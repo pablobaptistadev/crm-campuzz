@@ -406,6 +406,21 @@ export const MembroDetalhe = () => {
         <Card titulo="Histórico" flush>
           <Historico
             linhas={membro.timelineActivities.edges.map((aresta: { node: any }) => aresta.node)}
+            campoAlvo="targetMembroId"
+            alvoId={membro.id}
+            onMudou={(proximas) =>
+              setMembro((atual) =>
+                atual === null
+                  ? atual
+                  : {
+                      ...atual,
+                      timelineActivities: {
+                        ...atual.timelineActivities,
+                        edges: proximas.map((node) => ({ node })),
+                      },
+                    },
+              )
+            }
           />
         </Card>
       )}

@@ -377,10 +377,19 @@ export const inspectPage = async ({
                 rotulo?.parentElement?.querySelector('input, select, textarea')
                 ?? (porId && porId.matches('input, select, textarea') ? porId : null)
                 ?? rotuloParcial?.parentElement?.querySelector('input, select, textarea')
+                // aria-label é o rótulo de campos que não têm um <label>
+                // visível ao lado — as linhas repetidas de uma lista, por
+                // exemplo. Sem isto elas ficavam impossíveis de preencher.
+                ?? Array.from(document.querySelectorAll('input, select, textarea')).find(
+                  (el) => (el.getAttribute('aria-label') || '').toLowerCase() === chave,
+                )
                 ?? Array.from(document.querySelectorAll('input, textarea')).find(
                   (el) => (el.getAttribute('placeholder') || '')
                     .toLowerCase()
                     .includes(chave),
+                )
+                ?? Array.from(document.querySelectorAll('input, select, textarea')).find(
+                  (el) => (el.getAttribute('aria-label') || '').toLowerCase().includes(chave),
                 );
 
               if (!campo) return 'campo não encontrou: ' + fill;

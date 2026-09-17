@@ -12,6 +12,7 @@ import { CadastroCompleto, type GrupoDeCampos } from 'src/ui/CadastroCompleto';
 import { CamposDoPerfil } from 'src/modules/perfil/ui/CamposDoPerfil';
 import { AvatarDoMembro } from 'src/modules/perfil/ui/AvatarDoMembro';
 import { FotoDePerfil } from 'src/modules/perfil/ui/FotoDePerfil';
+import { Filhos, type Dependente } from 'src/ui/Filhos';
 import { NovaVenda } from 'src/ui/NovaVenda';
 import { Arquivar } from 'src/ui/Arquivar';
 import { Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe } from 'src/ui/primitives';
@@ -379,22 +380,23 @@ export const MembroDetalhe = () => {
             { nome: 'placaEntregueEm', rotulo: 'Placa entregue em' },
           ]}
           extra={
-            <>
-              <Secao>Filhos</Secao>
-              {dependentes.length === 0 ? (
-                <div className="adm-fieldvalue adm-fieldvalue--empty">{TRACO}</div>
-              ) : (
-                <Grid colunas={3}>
-                  {dependentes.map((dependente: any) => (
-                    <Campo
-                      key={dependente.id}
-                      rotulo={dependente.parentesco ?? 'Filho(a)'}
-                      valor={`${dependente.name}${dependente.nascimento !== null ? ` · ${dataCurta(dependente.nascimento)}` : ''}`}
-                    />
-                  ))}
-                </Grid>
-              )}
-            </>
+            <Filhos
+              membroId={membro.id}
+              dependentes={dependentes as Dependente[]}
+              onMudou={(proximos) =>
+                setMembro((atual) =>
+                  atual === null
+                    ? atual
+                    : {
+                        ...atual,
+                        dependentes: {
+                          ...atual.dependentes,
+                          edges: proximos.map((node) => ({ node })),
+                        },
+                      },
+                )
+              }
+            />
           }
         />
       )}

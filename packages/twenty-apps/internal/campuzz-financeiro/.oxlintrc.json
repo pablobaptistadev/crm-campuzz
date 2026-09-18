@@ -1,0 +1,83 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript"],
+  "categories": {
+    "correctness": "off"
+  },
+  "ignorePatterns": ["node_modules", "dist"],
+  "rules": {
+    "no-unused-vars": "off",
+
+    "typescript/no-unused-vars": [
+      "warn",
+      {
+        "argsIgnorePattern": "^_"
+      }
+    ],
+    "typescript/no-explicit-any": "error"
+  },
+  "overrides": [
+    {
+      "files": ["src/core/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "twenty-sdk",
+                  "twenty-sdk/*",
+                  "twenty-client-sdk",
+                  "twenty-client-sdk/*",
+                  "twenty-shared",
+                  "twenty-shared/*",
+                  "react",
+                  "react-dom",
+                  "axios",
+                  "src/infrastructure/*",
+                  "src/twenty/*",
+                  "**/infrastructure/**",
+                  "**/twenty/**"
+                ],
+                "message": "A camada core nao conhece o mundo de fora. Ela so pode importar de src/core/**. Se precisa falar com gateway, banco, cofre ou SDK, declare uma porta em src/core/ports e implemente o adaptador em src/infrastructure."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/infrastructure/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["src/twenty/*", "**/twenty/**"],
+                "message": "A infraestrutura nao depende da casca do SDK. A direcao e twenty/ -> infrastructure/ -> core/, nunca o contrario."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["**/*.logic-function.ts", "**/logic-functions/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["twenty-shared", "twenty-shared/*"],
+                "message": "Logic functions must not import from twenty-shared directly. Import runtime types and helpers from `twenty-sdk/logic-function` instead so the logic-function bundle stays minimal."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

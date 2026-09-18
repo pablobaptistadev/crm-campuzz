@@ -2,7 +2,11 @@ import { makeExecutableSchema } from '@graphql-tools/schema';
 import { parse, validate } from 'graphql';
 import { describe, expect, it } from 'vitest';
 
-import { METADATA_SDL } from 'src/graphql/metadata-schema';
+import {
+  METADATA_SDL,
+  urlDoDominioProprio,
+  urlDoWorkspace,
+} from 'src/graphql/metadata-schema';
 
 // twenty-front's own documents, copied verbatim from
 // packages/twenty-front/src/modules/**. If one of these stops validating, the
@@ -1148,5 +1152,33 @@ describe('twenty-front metadata documents', () => {
         removeQueryFromEventStream(input: $input)
       }
     `);
+  });
+});
+
+// getWorkspaceUrl() no front devolve customUrl ?? subdomainUrl, e o resultado
+// entra em new URL() em WorkspaceProviderEffect. Devolver o hostname pelado
+// passa no GraphQL e só estoura no navegador de quem tem domínio próprio.
+describe('URL do workspace', () => {
+  it('entrega o domínio próprio com esquema, pronto para new URL()', () => {
+    const url = urlDoDominioProprio('clubes.campuzz.com.br');
+
+    expect(url).toBe('https://clubes.campuzz.com.br');
+    expect(() => new URL(url as string)).not.toThrow();
+  });
+
+  it('deixa customUrl nulo quando não há domínio próprio, para o front cair no subdomainUrl', () => {
+    expect(urlDoDominioProprio(null)).toBeNull();
+  });
+
+  it('usa a URL do projeto para quem não tem domínio próprio', () => {
+    expect(urlDoWorkspace(null, 'https://crm.campuzz.com.br')).toBe(
+      'https://crm.campuzz.com.br',
+    );
+  });
+
+  it('prefere o domínio próprio ao host de onde veio a requisição', () => {
+    expect(
+      urlDoWorkspace('clubes.campuzz.com.br', 'https://crm.campuzz.com.br'),
+    ).toBe('https://clubes.campuzz.com.br');
   });
 });

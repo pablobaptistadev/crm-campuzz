@@ -1154,15 +1154,28 @@ type SyncStandardMetadataResult {
 }
 `;
 
-// Single-workspace on a single host: the front redirects to subdomainUrl after
-// login, so it has to be the server we are actually served from, not a
-// subdomain that resolves nowhere.
+// O domínio próprio vira URL absoluta porque é assim que o front a consome: ela
+// entra direto em new URL(), e um hostname pelado estoura ali.
+export const urlDoDominioProprio = (
+  customDomain: string | null,
+): string | null => (customDomain === null ? null : `https://${customDomain}`);
+
+// A URL do workspace é a do domínio próprio dele. Quem não tem domínio próprio
+// usa a URL do projeto, que é o host de onde a requisição veio.
+export const urlDoWorkspace = (
+  customDomain: string | null,
+  serverUrl: string,
+): string => urlDoDominioProprio(customDomain) ?? serverUrl;
+
+// subdomainUrl é o host que de fato nos serviu: o front redireciona para ele
+// depois do login, e um subdomínio por workspace que não resolve o deixaria a
+// ver navios.
 const buildWorkspaceUrls = (
   workspace: { subdomain: string; customDomain: string | null },
   serverUrl: string,
 ) => ({
   subdomainUrl: serverUrl,
-  customUrl: workspace.customDomain,
+  customUrl: urlDoDominioProprio(workspace.customDomain),
 });
 
 const toAvailableWorkspace = (
@@ -1335,14 +1348,21 @@ const deliverInvitationEmail = async ({
   invitation: WorkspaceInvitation;
   token: string;
 }): Promise<string | null> => {
-  const { rows } = await context.client.query<{ displayName: string | null }>(
-    `SELECT "displayName" FROM core."workspace" WHERE "id" = $1`,
+  const { rows } = await context.client.query<{
+    displayName: string | null;
+    customDomain: string | null;
+  }>(
+    `SELECT "displayName","customDomain" FROM core."workspace" WHERE "id" = $1`,
     [workspaceId],
   );
 
   const inviter = context.sessionContext?.user ?? null;
 
-  const link = `${context.serverUrl}/invite/${token}`;
+  // O convite é aberto de fora, num e-mail, sem sessão nenhuma: o link tem de
+  // apontar para a URL do workspace, e não para o host em que quem convidou por
+  // acaso estava. São apps diferentes em hosts diferentes — errar aqui joga a
+  // pessoa convidada na tela errada.
+  const link = `${urlDoWorkspace(rows[0]?.customDomain ?? null, context.serverUrl)}/invite/${token}`;
 
   const result = await sendEmail({
     bindings: context.bindings,

@@ -47,8 +47,11 @@
   ],
 
   "vars": {
-    "SERVER_URL": "https://campuzz-edge-prod.andre-51e.workers.dev",
-    "FRONT_DOMAIN": "campuzz-edge-prod.andre-51e.workers.dev",
+    // A URL principal do projeto: é ela que atende quem não tem domínio
+    // próprio, e é ela que o front mostra ao sugerir um subdomínio. O
+    // workers.dev continua de pé como fallback, mas não é endereço de produto.
+    "SERVER_URL": "https://crm.campuzz.com.br",
+    "FRONT_DOMAIN": "crm.campuzz.com.br",
     "DEFAULT_SUBDOMAIN": "app",
     "APP_DOMAIN": "crm.campuzz.com.br",
     "IS_MULTIWORKSPACE_ENABLED": "false",

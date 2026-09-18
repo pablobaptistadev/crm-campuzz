@@ -62,51 +62,80 @@ webhook que nunca entrega.
 
 ## 3. Instalação
 
-### 3.1 Apontar o CLI para o servidor
+> **`plan` e `apply` NÃO são o caminho de produção.** Eles são o loop de desenvolvimento:
+> registram o app com `sourceType: LOCAL`, e o servidor pula a instalação de apps LOCAL.
+> Para um servidor de verdade, o caminho é **publicar o tarball e instalar**, que é
+> exatamente o que a CI faz em `.github/actions/deploy-twenty-app` e `install-twenty-app`.
+
+### 3.1 Subir a versão
 
 ```bash
 cd packages/twenty-apps/internal/campuzz-financeiro
-
-npx twenty remote add --as prod --url https://SEU-SERVIDOR --api-key "$TWENTY_API_KEY"
-npx twenty remote switch prod
-npx twenty remote status
+# editar "version" no package.json — tem de ser ESTRITAMENTE MAIOR que a instalada
 ```
 
-`--api-key` é o caminho **não interativo** — não abre navegador. A config fica em
-`~/.twenty/config.json` (`packages/twenty-sdk/src/cli/utilities/config/get-config-path.ts`).
-Esse arquivo guarda credencial: trate-o como segredo.
+O servidor recusa reinstalar a mesma versão e recusa downgrade:
 
-### 3.2 Instalar dependências
+- `This version of the application is already installed in this workspace.`
+- `A higher version of this application is already installed. Downgrading is not allowed.`
+
+(`application.exception.ts:75-77`, `application-version-validation.service.ts:148`)
+
+**Cada deploy precisa de um bump.** A versão atual é `0.1.0`.
+
+### 3.2 Apontar o CLI para o servidor
+
+O CLI **não lê variáveis de ambiente** para descobrir o alvo: ele lê `~/.twenty/config.json`.
+
+Para um agente de deploy (sem navegador), escreva o arquivo direto — é o que a CI faz:
+
+```bash
+mkdir -p ~/.twenty
+node -e "
+  const fs = require('fs'), path = require('path'), os = require('os');
+  fs.writeFileSync(path.join(os.homedir(), '.twenty', 'config.json'), JSON.stringify({
+    version: 1,
+    remotes: { target: { apiUrl: process.env.API_URL, apiKey: process.env.API_KEY, accessToken: process.env.API_KEY } }
+  }, null, 2));
+"
+```
+
+com `API_URL` e `API_KEY` no ambiente. Alternativa equivalente, interativa:
+
+```bash
+npx twenty remote add --as target --url "$API_URL" --api-key "$API_KEY"
+```
+
+Esse arquivo guarda credencial. Trate como segredo e não o deixe num runner compartilhado.
+
+### 3.3 Instalar dependências
 
 ```bash
 corepack enable
 yarn install --immutable
 ```
 
-### 3.3 Conferir antes de aplicar
+### 3.4 Publicar e instalar
+
+```bash
+npx twenty app:publish --private --remote target
+npx twenty app:install --remote target
+```
+
+- `app:publish --private` faz build + typecheck + `npm pack` e sobe o `.tgz` para o registry
+  **do servidor** (mutation `uploadAppTarball`). **Sem `--private` ele publica no npm público** —
+  não é o que queremos.
+- `app:install` lê o `.twenty/output/manifest.json` local e chama `installApplication` no
+  servidor. Exige que o publish tenha rodado antes.
+
+### 3.5 Conferir antes, se quiser (opcional)
 
 ```bash
 npx twenty plan .
 ```
 
-Mostra a prévia das mudanças de metadata **sem aplicar**. Leia a saída antes de seguir:
-é a última chance de ver o que vai mudar no workspace.
-
-### 3.4 Aplicar
-
-```bash
-npx twenty apply .
-```
-
-Opções que importam:
-
-| Flag | Quando usar |
-|---|---|
-| `--no-delete` | mantém entidades que sumiram do fonte, em vez de apagá-las |
-| `-f, --force` | aplica mudanças destrutivas sem confirmar — **não use em produção sem ter lido o `plan`** |
-| `-v, --verbose` | log detalhado, útil quando algo falha |
-
----
+Mostra o diff de metadata sem gravar nada. Útil para revisar, mas **não substitui** o
+publish+install: ele opera sobre a registration de desenvolvimento.
 
 ## 4. Configuração pós-instalação
 
@@ -116,9 +145,18 @@ Opções que importam:
 |---|---|---|---|
 | `ROUTERFY_API_URL` | não | `https://api.routerfy.com` | apontar para sandbox/homologação da Routerfy |
 
-É declarada como `serverVariable` no `src/application.config.ts` e definida pelo admin do
-servidor **na instalação do app**, não no `.env` do app. Em branco, usa o default — que é o
-mesmo default do Campuzz em produção (`api/src/settings.ts:50`).
+É declarada como `serverVariable` no `src/application.config.ts`. **Não vai no `.env` de
+lugar nenhum.** O deploy cria a chave com valor **vazio**, e alguém a preenche pela interface:
+
+- **Settings → Applications → (a registration)**, para quem é dono da registration, ou
+- **Admin Panel → Apps**, para o admin do servidor
+
+(`application-registration-variable.service.ts:119-176`, que cria as chaves vazias e apaga as
+que sumiram do manifest.)
+
+Valor vazio é **pulado** na injeção, então o app cai no default do código — que é o mesmo
+default do Campuzz em produção (`api/src/settings.ts:50`). Ou seja: **para apontar para a
+Routerfy de produção, não é preciso fazer nada.**
 
 ### 4.2 Cadastrar a primeira BU
 
@@ -224,6 +262,25 @@ Habilitar o Actions em *Settings → Actions* liga o `ci-twenty-apps.yaml`, que 
 faz lint, typecheck, testes **e instala o app num Twenty de verdade** — que é a validação
 que falta.
 
+### Uma armadilha do ambiente: dev mente sobre as variáveis
+
+Vale saber, porque já custou um bug aqui. O ambiente que uma logic function enxerga é
+**diferente entre dev e produção**:
+
+| Driver | Como o env é montado | Efeito |
+|---|---|---|
+| **local** (dev) | o processo filho herda o `process.env` **inteiro** do twenty-server | enxerga variáveis do servidor, como `SERVER_URL` |
+| **lambda** (produção) | `{ ...process.env do container Lambda, ...env injetado }` | **não** enxerga `SERVER_URL` |
+
+O env injetado tem exatamente seis nomes fixos — `TWENTY_API_URL`, `TWENTY_APP_ACCESS_TOKEN`,
+`TWENTY_APP_APPLICATION_ACCESS_TOKEN`, `TWENTY_API_KEY`, `TWENTY_FUNCTIONS_URL`,
+`APPLICATION_ID` — mais os `serverVariables` e os `applicationVariables`.
+
+Consequência prática: **ler uma variável do servidor funciona em dev local e devolve
+`undefined` em produção, sem erro.** Foi assim que a URL de webhook deste app quase nasceu
+relativa. Ao escrever código novo aqui, use `TWENTY_API_URL` para a base pública e nunca
+`SERVER_URL`.
+
 ### O webhook da Routerfy não é assinado
 
 A Routerfy não assina as entregas. O app trata isso assim, e vale saber ao operar:
@@ -251,11 +308,23 @@ Ficam no `kv`, alcançável só de dentro de uma logic function. O registro da B
 fingerprint — não as chaves. Mesmo assim, avalie restringir o objeto `businessUnit` a um
 papel administrativo.
 
-### Desinstalar
+### Desinstalar apaga os dados
 
-`npx twenty app:uninstall` remove o app. **Antes de desinstalar**, remova os webhooks no
-painel da Routerfy: eles foram registrados por BU e, sem o resolver do lado de cá, passam a
-bater num 404 indefinidamente.
+```bash
+npx twenty app:uninstall . --remote target
+```
+
+**Isto não remove só o app: zera a metadata dele e, com ela, as tabelas e os registros.**
+Contratos, faturas e BUs cadastradas somem. Não é uma operação reversível por `install`.
+
+Antes de desinstalar:
+
+1. exporte o que precisar guardar (contratos e faturas são registros normais do CRM)
+2. remova os webhooks no painel da Routerfy — foram registrados por BU e, sem o resolver do
+   lado de cá, passam a bater num 404 indefinidamente
+
+O mesmo vale para **remover uma entidade do código**: o `sync` apaga do workspace o que sumiu
+do fonte. Use `--no-delete` se quiser aplicar sem remover nada.
 
 ---
 
@@ -285,16 +354,17 @@ npx twenty dev:function:logs .
 cd packages/twenty-apps/internal/campuzz-financeiro
 
 # apontar para o servidor (uma vez)
-npx twenty remote add --as prod --url https://SEU-SERVIDOR --api-key "$TWENTY_API_KEY"
-npx twenty remote switch prod
+npx twenty remote add --as target --url "$API_URL" --api-key "$API_KEY"
 
-# deploy
+# deploy (bump de versao no package.json ANTES)
 yarn install --immutable
 yarn lint && yarn typecheck && yarn test:unit
-npx twenty plan .
-npx twenty apply .
+npx twenty app:publish --private --remote target
+npx twenty app:install --remote target
 
-# operação
+# operacao
 npx twenty dev:function:logs .
-npx twenty app:uninstall .
+
+# CUIDADO: apaga metadata E registros (contratos, faturas, BUs)
+npx twenty app:uninstall . --remote target
 ```

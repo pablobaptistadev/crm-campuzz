@@ -699,6 +699,12 @@ type WorkspaceInvitation {
 # result has to be a union even though only one member ever comes back today.
 union WorkspaceInvitationResult = WorkspaceInvitation
 
+type UsuarioCriado {
+  userId: UUID!
+  email: String!
+  jaExistia: Boolean!
+}
+
 type SendInvitationsOutput {
   success: Boolean!
   errors: [String!]!
@@ -1124,6 +1130,16 @@ type Mutation {
   upsertFieldPermissions(upsertFieldPermissionsInput: UpsertFieldPermissionsInput!): [FieldPermission!]!
   upsertPermissionFlags(upsertPermissionFlagsInput: UpsertPermissionFlagsInput!): [RolePermissionFlag!]!
   sendInvitations(emails: [String!]!, roleId: UUID): SendInvitationsOutput!
+  # Convite é para quem escolhe a própria senha. Isto é para quem administra o
+  # workspace entregar o acesso pronto — o caso de uma equipe interna sendo
+  # cadastrada de uma vez.
+  criarUsuarioNoWorkspace(
+    email: String!
+    password: String!
+    firstName: String
+    lastName: String
+    roleId: UUID
+  ): UsuarioCriado!
   resendWorkspaceInvitation(appTokenId: String!): SendInvitationsOutput!
   deleteWorkspaceInvitation(appTokenId: String!): String!
   addQueryToEventStream(input: AddQuerySubscriptionInput!): Boolean!
@@ -2638,6 +2654,83 @@ export const METADATA_RESOLVERS = {
           availableWorkspacesForSignUp: [],
         },
         tokens: toAuthTokenPair(loginToken),
+      };
+    },
+
+    // Convite é para quem escolhe a própria senha. Isto é para quem administra
+    // o workspace entregar o acesso pronto — o caso de uma equipe interna sendo
+    // cadastrada de uma vez.
+    criarUsuarioNoWorkspace: async (
+      _parent: unknown,
+      args: {
+        email: string;
+        password: string;
+        firstName?: string | null;
+        lastName?: string | null;
+        roleId?: string | null;
+      },
+      context: MetadataContext,
+    ) => {
+      const workspaceId = await requireSettingsAccess(context);
+      const email = args.email.trim().toLowerCase();
+
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        throw new UserFacingError('E-mail inválido');
+      }
+
+      if (args.password.length < 8) {
+        throw new UserFacingError('A senha precisa ter pelo menos 8 caracteres');
+      }
+
+      // Alguém pode já ter conta em outro workspace: aí é só dar acesso a este,
+      // sem tocar na senha que a pessoa já usa.
+      const existing = await findUserByEmail({ client: context.client, email });
+
+      const user =
+        existing ??
+        (await insertUser({
+          client: context.client,
+          email,
+          firstName: args.firstName ?? '',
+          lastName: args.lastName ?? '',
+          passwordHash: await hashPassword(args.password),
+        }));
+
+      const { rows: membershipRows } = await context.client.query<{ id: string }>(
+        `INSERT INTO core."userWorkspace" ("userId","workspaceId")
+         VALUES ($1,$2)
+         ON CONFLICT ("userId","workspaceId") WHERE "deletedAt" IS NULL
+         DO UPDATE SET "updatedAt" = now()
+         RETURNING "id"`,
+        [user.id, workspaceId],
+      );
+
+      await seedWorkspaceMember({
+        client: context.client,
+        workspaceId,
+        userId: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+      });
+
+      await context.client.query(
+        `INSERT INTO core."roleTarget" ("workspaceId","roleId","userWorkspaceId")
+         SELECT $1,
+                COALESCE(
+                  (SELECT "id" FROM core."role" WHERE "workspaceId" = $1 AND "id" = $3),
+                  (SELECT "id" FROM core."role" WHERE "workspaceId" = $1 AND "isDefaultRole" = true LIMIT 1)
+                ),
+                $2
+         ON CONFLICT ("userWorkspaceId") WHERE "userWorkspaceId" IS NOT NULL
+         DO UPDATE SET "roleId" = EXCLUDED."roleId", "updatedAt" = now()`,
+        [workspaceId, membershipRows[0].id, args.roleId ?? null],
+      );
+
+      return {
+        userId: user.id,
+        email: user.email,
+        jaExistia: existing !== null,
       };
     },
 

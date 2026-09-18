@@ -13,6 +13,8 @@ import {
 export const OBJETO_DO_CLUBE = 'clube';
 export const OBJETO_DO_MEMBRO = 'membro';
 export const OBJETO_DA_BU = 'businessUnit';
+export const OBJETO_DO_CONTRATO = 'gatewayContract';
+export const OBJETO_DA_FATURA = 'gatewayInvoice';
 
 export const formaDaTabela = (
   metadata: WorkspaceMetadata,

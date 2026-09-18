@@ -8,6 +8,7 @@ import { type Etapa, type Socio } from 'src/api/types';
 import { Historico } from 'src/ui/Historico';
 import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
 import { CardEditavel } from 'src/ui/CardEditavel';
+import { Bus } from 'src/ui/Bus';
 import { CadastroCompleto, type GrupoDeCampos } from 'src/ui/CadastroCompleto';
 import { AvatarDoMembro, MembroComFoto } from 'src/modules/perfil/ui/AvatarDoMembro';
 import { NovoMembro } from 'src/ui/NovoMembro';
@@ -26,7 +27,7 @@ import {
   texto,
 } from 'src/ui/format';
 
-type Aba = 'crm' | 'cad' | 'acc' | 'mem' | 'cx' | 'his';
+type Aba = 'crm' | 'cad' | 'acc' | 'mem' | 'cx' | 'his' | 'cfg';
 
 const ABAS: { id: Aba; rotulo: string }[] = [
   { id: 'crm', rotulo: 'CRM' },
@@ -35,6 +36,7 @@ const ABAS: { id: Aba; rotulo: string }[] = [
   { id: 'mem', rotulo: 'Membros' },
   { id: 'cx', rotulo: 'Rel. CX' },
   { id: 'his', rotulo: 'Histórico' },
+  { id: 'cfg', rotulo: 'Configurações' },
 ];
 
 // Ordem, não filtro: o que não estiver aqui cai em "Outros campos" e continua
@@ -708,6 +710,25 @@ export const ClubeDetalhe = () => {
             { nome: 'placaEntregue', rotulo: 'Placa / reconhecimento' },
             { nome: 'placaEntregueEm', rotulo: 'Placa entregue em' },
           ]}
+        />
+      )}
+
+      {aba === 'cfg' && (
+        <Bus
+          dono="clube"
+          donoId={clube.id as string}
+          businessUnitId={(clube.businessUnit as { id?: string } | null)?.id ?? null}
+          onLigada={(businessUnitId) =>
+            setClube((atual) =>
+              atual === null
+                ? atual
+                : {
+                    ...atual,
+                    businessUnit:
+                      businessUnitId === null ? null : { id: businessUnitId },
+                  },
+            )
+          }
         />
       )}
 

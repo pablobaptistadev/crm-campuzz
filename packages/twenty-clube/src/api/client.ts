@@ -56,3 +56,31 @@ export const gql = <TData>(query: string, variables?: Record<string, unknown>) =
 
 export const meta = <TData>(query: string, variables?: Record<string, unknown>) =>
   request<TData>('/metadata', query, variables);
+
+// O financeiro de gateway não passa por GraphQL: a chave da BU não pode virar
+// campo de registro, então o cadastro dela é uma rota própria que grava no cofre
+// e nunca devolve a chave. Aqui o status importa, e o corpo de erro traz a
+// mensagem já escrita para quem está na tela.
+export const api = async <TData>(
+  caminho: string,
+  corpo?: unknown,
+): Promise<TData> => {
+  const response = await fetch(`/financeiro${caminho}`, {
+    method: corpo === undefined ? 'GET' : 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: corpo === undefined ? undefined : JSON.stringify(corpo),
+  });
+
+  if (response.status === 401) {
+    throw new ApiError('Sua sessão expirou.', true);
+  }
+
+  const body = (await response.json()) as TData & { message?: string };
+
+  if (!response.ok) {
+    throw new ApiError(body.message ?? 'Não conseguimos concluir essa ação.');
+  }
+
+  return body;
+};

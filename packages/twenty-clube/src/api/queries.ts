@@ -55,6 +55,7 @@ export const montarClubeQuery = (objeto: ObjetoMeta): string => `
   query Clube($id: UUID!) {
     clube(filter: { id: { eq: $id } }) {
       ${selecaoDeCampos(objeto)}
+      businessUnit { id name }
       jornada { edges { node { ${ETAPA} } } }
       socios {
         edges { node {
@@ -86,6 +87,7 @@ export const montarMembroQuery = (objeto: ObjetoMeta): string => `
     membro(filter: { id: { eq: $id } }) {
       ${selecaoDeCampos(objeto)}
       clube { id name }
+      businessUnit { id name }
       jornada { edges { node { ${ETAPA} } } }
       parcelas {
         edges { node { id name valor ${MOEDA} vencimento situacao pagaEm formaPagamento } }

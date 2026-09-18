@@ -8,6 +8,7 @@ import { type Etapa } from 'src/api/types';
 import { Historico } from 'src/ui/Historico';
 import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
 import { CardEditavel } from 'src/ui/CardEditavel';
+import { Bus } from 'src/ui/Bus';
 import { CadastroCompleto, type GrupoDeCampos } from 'src/ui/CadastroCompleto';
 import { CamposDoPerfil } from 'src/modules/perfil/ui/CamposDoPerfil';
 import { AvatarDoMembro } from 'src/modules/perfil/ui/AvatarDoMembro';
@@ -29,13 +30,14 @@ import {
   texto,
 } from 'src/ui/format';
 
-type Aba = 'crm' | 'cad' | 'acc' | 'cx' | 'his';
+type Aba = 'crm' | 'cad' | 'acc' | 'cx' | 'his' | 'fin';
 
 const ABAS: { id: Aba; rotulo: string }[] = [
   { id: 'crm', rotulo: 'CRM' },
   { id: 'cad', rotulo: 'Cadastro' },
   { id: 'acc', rotulo: 'Acompanhamento' },
   { id: 'cx', rotulo: 'Rel. CX' },
+  { id: 'fin', rotulo: 'Financeiro' },
   { id: 'his', rotulo: 'Histórico' },
 ];
 
@@ -433,6 +435,25 @@ export const MembroDetalhe = () => {
                 )
               }
             />
+          }
+        />
+      )}
+
+      {aba === 'fin' && (
+        <Bus
+          dono="membro"
+          donoId={membro.id as string}
+          businessUnitId={(membro.businessUnit as { id?: string } | null)?.id ?? null}
+          onLigada={(businessUnitId) =>
+            setMembro((atual) =>
+              atual === null
+                ? atual
+                : {
+                    ...atual,
+                    businessUnit:
+                      businessUnitId === null ? null : { id: businessUnitId },
+                  },
+            )
           }
         />
       )}

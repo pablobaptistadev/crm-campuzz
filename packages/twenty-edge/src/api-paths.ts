@@ -12,6 +12,7 @@ export const API_PATH_PREFIXES = new Set([
   'file',
   'file-upload',
   'files',
+  'financeiro',
   'graphql',
   'healthz',
   'mcp',

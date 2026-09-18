@@ -5,6 +5,7 @@ import { isApiPath } from 'src/api-paths';
 import { type AppEnv, type Bindings } from 'src/env';
 import { clientConfigRoute } from 'src/routes/client-config';
 import { filesRoute } from 'src/routes/files';
+import { financeiroRoute } from 'src/routes/financeiro';
 import { graphqlRoute } from 'src/routes/graphql';
 import { healthRoute } from 'src/routes/health';
 import { metadataRoute } from 'src/routes/metadata';
@@ -102,6 +103,7 @@ app.route('/healthz', healthRoute);
 app.route('/metadata', metadataRoute);
 app.route('/graphql', graphqlRoute);
 app.route('/rest', restRoute);
+app.route('/financeiro', financeiroRoute);
 app.route('/files', filesRoute);
 app.route('/file', filesRoute);
 

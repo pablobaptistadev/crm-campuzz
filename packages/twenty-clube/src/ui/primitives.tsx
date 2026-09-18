@@ -61,9 +61,16 @@ const TONS = {
   PERDIDO: 'rose',
   EXPIRADO: 'rose',
   ATRASADA: 'rose',
+  // Situação da conexão com o gateway de pagamento.
+  ACTIVE: 'green',
+  INVALID: 'rose',
+  PENDING: 'slate',
 } as const;
 
 const ROTULOS: Record<string, string> = {
+  ACTIVE: 'Ativa',
+  INVALID: 'Chaves inválidas',
+  PENDING: 'Pendente',
   ATIVO: 'Ativo',
   PAUSADO: 'Pausado',
   INATIVO: 'Inativo',

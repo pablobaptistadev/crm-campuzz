@@ -56,6 +56,9 @@ export const montarClubeQuery = (objeto: ObjetoMeta): string => `
     clube(filter: { id: { eq: $id } }) {
       ${selecaoDeCampos(objeto)}
       businessUnit { id name }
+      contratos {
+        edges { node { id faturas { edges { node { invoiceStatus dueAt paidAt } } } } }
+      }
       jornada { edges { node { ${ETAPA} } } }
       socios {
         edges { node {
@@ -88,6 +91,9 @@ export const montarMembroQuery = (objeto: ObjetoMeta): string => `
       ${selecaoDeCampos(objeto)}
       clube { id name }
       businessUnit { id name }
+      contratos {
+        edges { node { id faturas { edges { node { invoiceStatus dueAt paidAt } } } } }
+      }
       jornada { edges { node { ${ETAPA} } } }
       parcelas {
         edges { node { id name valor ${MOEDA} vencimento situacao pagaEm formaPagamento } }

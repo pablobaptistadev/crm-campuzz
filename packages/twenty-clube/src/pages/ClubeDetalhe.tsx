@@ -8,11 +8,12 @@ import { type Etapa, type Socio } from 'src/api/types';
 import { Historico } from 'src/ui/Historico';
 import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
 import { CardEditavel } from 'src/ui/CardEditavel';
-import { FinanceiroDuplo } from 'src/ui/FinanceiroDuplo';
+import { FinanceiroAutomatico } from 'src/ui/FinanceiroAutomatico';
 import { CadastroCompleto, type GrupoDeCampos } from 'src/ui/CadastroCompleto';
 import { AvatarDoMembro, MembroComFoto } from 'src/modules/perfil/ui/AvatarDoMembro';
 import { NovoMembro } from 'src/ui/NovoMembro';
 import { NovoSocio } from 'src/ui/NovoSocio';
+import { ChipDeAtraso } from 'src/ui/ChipDeAtraso';
 import { StatusEditavel } from 'src/ui/StatusEditavel';
 import { Arquivar } from 'src/ui/Arquivar';
 import { AlternarVisao, Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe, useModoVisao } from 'src/ui/primitives';
@@ -287,6 +288,10 @@ export const ClubeDetalhe = () => {
         </div>
         <span className="adm-record__spacer" />
         <div className="adm-record__acoes">
+        <ChipDeAtraso
+          parcelas={parcelas}
+          contratos={clube.contratos}
+        />
         <StatusEditavel
           objeto={metaClube}
           registroId={clube.id}
@@ -454,7 +459,7 @@ export const ClubeDetalhe = () => {
           />
 
           <CardEditavel
-            titulo="Financeiro (lançado à mão)"
+            titulo="Financeiro"
             objeto={metaClube}
             registroId={clube.id}
             registro={clube}
@@ -714,10 +719,10 @@ export const ClubeDetalhe = () => {
       )}
 
       {aba === 'cfg' && (
-        <FinanceiroDuplo
+        <FinanceiroAutomatico
           dono="clube"
           donoId={clube.id as string}
-          parcelas={parcelas}
+          parcelasManuais={parcelas}
           businessUnitId={(clube.businessUnit as { id?: string } | null)?.id ?? null}
           onLigada={(businessUnitId) =>
             setClube((atual) =>

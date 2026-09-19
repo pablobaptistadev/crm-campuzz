@@ -8,7 +8,7 @@ import { type Etapa } from 'src/api/types';
 import { Historico } from 'src/ui/Historico';
 import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
 import { CardEditavel } from 'src/ui/CardEditavel';
-import { FinanceiroDuplo } from 'src/ui/FinanceiroDuplo';
+import { FinanceiroAutomatico } from 'src/ui/FinanceiroAutomatico';
 import { CadastroCompleto, type GrupoDeCampos } from 'src/ui/CadastroCompleto';
 import { CamposDoPerfil } from 'src/modules/perfil/ui/CamposDoPerfil';
 import { AvatarDoMembro } from 'src/modules/perfil/ui/AvatarDoMembro';
@@ -16,6 +16,7 @@ import { FotoDePerfil } from 'src/modules/perfil/ui/FotoDePerfil';
 import { Filhos, type Dependente } from 'src/ui/Filhos';
 import { Pendencias, type Pendencia } from 'src/ui/Pendencias';
 import { NovaVenda } from 'src/ui/NovaVenda';
+import { ChipDeAtraso } from 'src/ui/ChipDeAtraso';
 import { StatusEditavel } from 'src/ui/StatusEditavel';
 import { Arquivar } from 'src/ui/Arquivar';
 import { Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe } from 'src/ui/primitives';
@@ -192,6 +193,10 @@ export const MembroDetalhe = () => {
         </div>
         <span className="adm-record__spacer" />
         <div className="adm-record__acoes">
+        <ChipDeAtraso
+          parcelas={parcelas}
+          contratos={membro.contratos}
+        />
         <StatusEditavel
           objeto={objeto}
           registroId={membro.id}
@@ -307,7 +312,7 @@ export const MembroDetalhe = () => {
           )}
 
           <CardEditavel
-            titulo="Financeiro (lançado à mão)"
+            titulo="Financeiro"
             objeto={objeto}
             registroId={membro.id}
             registro={membro}
@@ -440,10 +445,10 @@ export const MembroDetalhe = () => {
       )}
 
       {aba === 'fin' && (
-        <FinanceiroDuplo
+        <FinanceiroAutomatico
           dono="membro"
           donoId={membro.id as string}
-          parcelas={parcelas}
+          parcelasManuais={parcelas}
           businessUnitId={(membro.businessUnit as { id?: string } | null)?.id ?? null}
           onLigada={(businessUnitId) =>
             setMembro((atual) =>

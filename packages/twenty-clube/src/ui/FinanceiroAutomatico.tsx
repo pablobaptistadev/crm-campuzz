@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { gql } from 'src/api/client';
 import { type Cobranca, situacaoDeCobranca } from 'src/ui/atraso';
 import { dataCurta, dinheiroCurto } from 'src/ui/format';
-import { Bus } from 'src/ui/Bus';
 import { Card, Chip, Secao, Vazio } from 'src/ui/primitives';
 
 type Moeda = { amountMicros: number | null; currencyCode: string | null } | null;
@@ -52,15 +51,11 @@ const CONTRATOS = `
 export const FinanceiroAutomatico = ({
   dono,
   donoId,
-  businessUnitId,
   parcelasManuais,
-  onLigada,
 }: {
   dono: 'clube' | 'membro';
   donoId: string;
-  businessUnitId: string | null;
   parcelasManuais: ParcelaManual[];
-  onLigada: (businessUnitId: string | null) => void;
 }) => {
   const [contratos, setContratos] = useState<Contrato[] | null>(null);
 
@@ -135,7 +130,7 @@ export const FinanceiroAutomatico = ({
           <Vazio>Carregando…</Vazio>
         ) : contratos.length === 0 ? (
           <Vazio>
-            Nenhum contrato puxado ainda. Cadastre a chave do gateway abaixo.
+            Nenhum contrato puxado ainda. Cadastre a chave do gateway na aba Configurações.
           </Vazio>
         ) : (
           contratos.map((contrato) => (
@@ -194,13 +189,6 @@ export const FinanceiroAutomatico = ({
           ))
         )}
       </Card>
-
-      <Bus
-        dono={dono}
-        donoId={donoId}
-        businessUnitId={businessUnitId}
-        onLigada={onLigada}
-      />
     </>
   );
 };

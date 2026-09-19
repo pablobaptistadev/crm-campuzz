@@ -8,6 +8,7 @@ import { type Etapa } from 'src/api/types';
 import { Historico } from 'src/ui/Historico';
 import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
 import { CardEditavel } from 'src/ui/CardEditavel';
+import { Bus } from 'src/ui/Bus';
 import { FinanceiroAutomatico } from 'src/ui/FinanceiroAutomatico';
 import { CadastroCompleto, type GrupoDeCampos } from 'src/ui/CadastroCompleto';
 import { CamposDoPerfil } from 'src/modules/perfil/ui/CamposDoPerfil';
@@ -31,15 +32,15 @@ import {
   texto,
 } from 'src/ui/format';
 
-type Aba = 'crm' | 'cad' | 'acc' | 'cx' | 'his' | 'fin';
+type Aba = 'crm' | 'cad' | 'acc' | 'cx' | 'his' | 'cfg';
 
 const ABAS: { id: Aba; rotulo: string }[] = [
   { id: 'crm', rotulo: 'CRM' },
   { id: 'cad', rotulo: 'Cadastro' },
   { id: 'acc', rotulo: 'Acompanhamento' },
   { id: 'cx', rotulo: 'Rel. CX' },
-  { id: 'fin', rotulo: 'Financeiro' },
   { id: 'his', rotulo: 'Histórico' },
+  { id: 'cfg', rotulo: 'Configurações' },
 ];
 
 // Ordem do que já conhecemos; o resto entra em "Outros campos" e continua
@@ -377,6 +378,12 @@ export const MembroDetalhe = () => {
             }
           />
 
+          <FinanceiroAutomatico
+            dono="membro"
+            donoId={membro.id as string}
+            parcelasManuais={parcelas}
+          />
+
           <Card titulo="Pendências" flush>
             <Pendencias
               membroId={membro.id}
@@ -444,11 +451,10 @@ export const MembroDetalhe = () => {
         />
       )}
 
-      {aba === 'fin' && (
-        <FinanceiroAutomatico
+      {aba === 'cfg' && (
+        <Bus
           dono="membro"
           donoId={membro.id as string}
-          parcelasManuais={parcelas}
           businessUnitId={(membro.businessUnit as { id?: string } | null)?.id ?? null}
           onLigada={(businessUnitId) =>
             setMembro((atual) =>

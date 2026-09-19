@@ -8,6 +8,7 @@ import { type Etapa, type Socio } from 'src/api/types';
 import { Historico } from 'src/ui/Historico';
 import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
 import { CardEditavel } from 'src/ui/CardEditavel';
+import { Bus } from 'src/ui/Bus';
 import { FinanceiroAutomatico } from 'src/ui/FinanceiroAutomatico';
 import { CadastroCompleto, type GrupoDeCampos } from 'src/ui/CadastroCompleto';
 import { AvatarDoMembro, MembroComFoto } from 'src/modules/perfil/ui/AvatarDoMembro';
@@ -509,6 +510,12 @@ export const ClubeDetalhe = () => {
             }
           />
 
+          <FinanceiroAutomatico
+            dono="clube"
+            donoId={clube.id as string}
+            parcelasManuais={parcelas}
+          />
+
           <CardEditavel
             titulo="Contratos"
             objeto={metaClube}
@@ -719,10 +726,9 @@ export const ClubeDetalhe = () => {
       )}
 
       {aba === 'cfg' && (
-        <FinanceiroAutomatico
+        <Bus
           dono="clube"
           donoId={clube.id as string}
-          parcelasManuais={parcelas}
           businessUnitId={(clube.businessUnit as { id?: string } | null)?.id ?? null}
           onLigada={(businessUnitId) =>
             setClube((atual) =>

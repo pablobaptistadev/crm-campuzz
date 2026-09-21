@@ -66,3 +66,45 @@ export const situacaoDeCobranca = (
     atrasadasPorOrigem,
   };
 };
+
+type ParcelaManual = {
+  situacao: string | null;
+  vencimento: string | null;
+  pagaEm: string | null;
+};
+
+type FaturaDoGateway = {
+  invoiceStatus: string | null;
+  dueAt: string | null;
+  paidAt: string | null;
+};
+
+export type ContratosDoRegistro = {
+  edges: { node: { faturas: { edges: { node: FaturaDoGateway }[] } } }[];
+} | null;
+
+// As duas listas viram uma só aqui, e não em cada tela que precisa da regra: o
+// chip da ficha e o filtro da lista de membros perguntam a mesma coisa, e duas
+// montagens iguais é como as duas passam a discordar.
+export const cobrancasDe = ({
+  parcelas,
+  contratos,
+}: {
+  parcelas: readonly ParcelaManual[];
+  contratos: ContratosDoRegistro;
+}): Cobranca[] => [
+  ...parcelas.map((parcela) => ({
+    origem: 'manual' as const,
+    situacao: parcela.situacao,
+    vence: parcela.vencimento,
+    pagaEm: parcela.pagaEm,
+  })),
+  ...(contratos?.edges ?? []).flatMap((aresta) =>
+    aresta.node.faturas.edges.map(({ node: fatura }) => ({
+      origem: 'automatico' as const,
+      situacao: fatura.invoiceStatus,
+      vence: fatura.dueAt,
+      pagaEm: fatura.paidAt,
+    })),
+  ),
+];

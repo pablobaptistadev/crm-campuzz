@@ -271,6 +271,21 @@ button { font: inherit; }
   text-transform: uppercase; color: var(--text-muted);
 }
 .adm-toolbar__spacer { flex: 1; }
+/* A barra de filtros mora dentro da toolbar e encolhe antes dos botões: num
+   monitor estreito quem some é a largura da busca, não o "+ Adicionar". */
+.adm-filtros {
+  display: flex; align-items: center; gap: 8px;
+  flex: 0 1 auto; min-width: 0; flex-wrap: wrap;
+}
+.adm-filtros .adm-input { height: 32px; font-size: 13px; }
+.adm-filtros__busca { flex: 1 1 200px; min-width: 140px; max-width: 260px; }
+/* O X nativo do type="search" vem em cinza-chumbo do sistema e destoa. */
+.adm-filtros__busca::-webkit-search-cancel-button {
+  -webkit-appearance: none; appearance: none;
+  height: 12px; width: 12px; cursor: pointer;
+  background: var(--text-muted);
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M2 2l8 8M10 2l-8 8' stroke='black' stroke-width='2' stroke-linecap='round'/></svg>") center / contain no-repeat;
+}
 .adm-toolbar__alerta {
   font-size: 12.5px; font-weight: 600; color: var(--gold-deep);
   background: rgba(197, 165, 102, 0.16);

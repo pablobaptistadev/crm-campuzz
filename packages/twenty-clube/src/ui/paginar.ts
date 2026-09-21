@@ -6,14 +6,18 @@ type Pagina<TNo> = {
 };
 
 // A API limita a página em 200; quem chama quer a lista inteira.
-export const paginar = async <TNo>(query: string, campo: string): Promise<TNo[]> => {
+export const paginar = async <TNo>(
+  query: string,
+  campo: string,
+  variaveis: Record<string, unknown> = {},
+): Promise<TNo[]> => {
   const acumulado: TNo[] = [];
   let cursor: string | null = null;
 
   for (;;) {
     const resposta: Record<string, Pagina<TNo>> = await gql<Record<string, Pagina<TNo>>>(
       query,
-      { after: cursor },
+      { ...variaveis, after: cursor },
     );
     const pagina: Pagina<TNo> | undefined = resposta[campo];
 

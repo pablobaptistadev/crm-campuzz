@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { gql } from 'src/api/client';
 import { carregarMetadata, type ObjetoMeta } from 'src/api/metadata';
-import { ARQUIVAR_CLUBE, ARQUIVAR_SOCIO, montarClubeQuery } from 'src/api/queries';
+import { ARQUIVAR_CLUBE, ARQUIVAR_SOCIO, MEMBROS_DO_CLUBE_QUERY, montarClubeQuery } from 'src/api/queries';
 import { type Etapa, type Socio } from 'src/api/types';
 import { Historico } from 'src/ui/Historico';
 import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
@@ -15,6 +15,14 @@ import { AvatarDoMembro, MembroComFoto } from 'src/modules/perfil/ui/AvatarDoMem
 import { NovoMembro } from 'src/ui/NovoMembro';
 import { NovoSocio } from 'src/ui/NovoSocio';
 import { ChipDeAtraso } from 'src/ui/ChipDeAtraso';
+import {
+  FILTRO_DE_MEMBRO_VAZIO,
+  type FiltroDeMembro,
+  filtrarMembros,
+  FiltrosDeMembro,
+  temFiltroAtivo,
+} from 'src/ui/FiltrosDeMembro';
+import { paginar } from 'src/ui/paginar';
 import { StatusEditavel } from 'src/ui/StatusEditavel';
 import { Arquivar } from 'src/ui/Arquivar';
 import { AlternarVisao, Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe, useModoVisao } from 'src/ui/primitives';
@@ -120,6 +128,8 @@ export const ClubeDetalhe = () => {
   const [metaParcela, setMetaParcela] = useState<ObjetoMeta | null>(null);
   const [adicionandoSocio, setAdicionandoSocio] = useState(false);
   const [modoMembros, setModoMembros] = useModoVisao('membros', 'lista');
+  const [membros, setMembros] = useState<any[] | null>(null);
+  const [filtro, setFiltro] = useState<FiltroDeMembro>(FILTRO_DE_MEMBRO_VAZIO);
 
   // Uma alteração salva já vale na tela; recarregar o clube inteiro para
   // repintar um campo custaria uma volta ao banco por edição.
@@ -162,38 +172,16 @@ export const ClubeDetalhe = () => {
 
   const aplicarCampoDoMembro =
     (membroId: string, campo: string) => (valor: string) =>
-      setClube((atual) =>
+      setMembros((atual) =>
         atual === null
           ? atual
-          : {
-              ...atual,
-              membros: {
-                ...atual.membros,
-                edges: atual.membros.edges.map((aresta: { node: { id: string } }) =>
-                  aresta.node.id === membroId
-                    ? { ...aresta, node: { ...aresta.node, [campo]: valor } }
-                    : aresta,
-                ),
-              },
-            },
+          : atual.map((membro) =>
+              membro.id === membroId ? { ...membro, [campo]: valor } : membro,
+            ),
       );
 
   const aplicarMembro = (membroId: string) => (situacao: string) =>
-    setClube((atual) =>
-      atual === null
-        ? atual
-        : {
-            ...atual,
-            membros: {
-              ...atual.membros,
-              edges: atual.membros.edges.map((aresta: { node: { id: string } }) =>
-                aresta.node.id === membroId
-                  ? { ...aresta, node: { ...aresta.node, situacao } }
-                  : aresta,
-              ),
-            },
-          },
-    );
+    aplicarCampoDoMembro(membroId, 'situacao')(situacao);
 
   const aplicarSocio = (socioId: string) => (mudancas: Record<string, unknown>) =>
     setClube((atual) =>
@@ -226,13 +214,16 @@ export const ClubeDetalhe = () => {
           throw new Error('Não encontramos o objeto clube neste workspace.');
         }
 
-        const dados = await gql<{ clube: Record<string, any> }>(
-          montarClubeQuery(doClube),
-          { id },
-        );
+        // Em paralelo: a lista de membros tem consulta própria e não adianta
+        // segurar a tela inteira esperando uma depois da outra.
+        const [dados, doClubeMembros] = await Promise.all([
+          gql<{ clube: Record<string, any> }>(montarClubeQuery(doClube), { id }),
+          paginar<any>(MEMBROS_DO_CLUBE_QUERY, 'membros', { id }),
+        ]);
 
         if (!cancelado) {
           setClube(dados.clube);
+          setMembros(doClubeMembros);
           setMetaClube(doClube);
           setMetaSocio(metadata.get('socio') ?? null);
           setMetaMembro(metadata.get('membro') ?? null);
@@ -263,11 +254,23 @@ export const ClubeDetalhe = () => {
   const etapas = todasEtapas.filter((etapa) => (etapa.ordem ?? 0) <= 100).sort(porOrdem);
   const pipeline = todasEtapas.filter((etapa) => (etapa.ordem ?? 0) > 100).sort(porOrdem);
   const socios: Socio[] = clube.socios.edges.map((aresta: { node: Socio }) => aresta.node);
-  const membros = clube.membros.edges.map((aresta: { node: any }) => aresta.node);
   const parcelas = clube.parcelas.edges.map((aresta: { node: any }) => aresta.node);
+  const todosOsMembros = membros ?? [];
+  const membrosNaTela = filtrarMembros(todosOsMembros, filtro);
 
+  // "Nenhum membro" e "nenhum que case com o filtro" levam a acoes opostas, e
+  // a mesma frase para os dois manda a pessoa cadastrar quem ja esta ali.
+  const vazioDosMembros = temFiltroAtivo(filtro)
+    ? 'Nenhum membro com esses filtros. Tente limpar a busca.'
+    : 'Este clube ainda não tem membros.';
+
+  // A aba conta o clube inteiro; o cabeçalho da lista conta o que está à
+  // vista. Enquanto carrega, a aba fica sem número em vez de mostrar zero —
+  // um zero ali se lê como "clube sem membros".
   const abas = ABAS.map((item) =>
-    item.id === 'mem' ? { ...item, contagem: clube.membros.totalCount } : item,
+    item.id === 'mem' && membros !== null
+      ? { ...item, contagem: todosOsMembros.length }
+      : item,
   );
 
   return (
@@ -567,8 +570,23 @@ export const ClubeDetalhe = () => {
       {aba === 'mem' && (
         <>
         <div className="adm-toolbar">
-          <span className="adm-toolbar__title">{membros.length} membros</span>
+          <span className="adm-toolbar__title">
+            {membros === null
+              ? 'Carregando…'
+              : temFiltroAtivo(filtro)
+                ? `${membrosNaTela.length} de ${todosOsMembros.length} membros`
+                : `${todosOsMembros.length} membros`}
+          </span>
           <span className="adm-toolbar__spacer" />
+          {metaMembro !== null && (
+            <FiltrosDeMembro
+              valor={filtro}
+              onMudou={setFiltro}
+              opcoesDeContrato={
+                metaMembro.campoPorNome.get('contratoSituacao')?.options ?? []
+              }
+            />
+          )}
           <AlternarVisao modo={modoMembros} onChange={setModoMembros} />
           <button
             type="button"
@@ -582,7 +600,7 @@ export const ClubeDetalhe = () => {
         {adicionandoMembro && (
           <NovoMembro
             clubeId={clube.id}
-            posicao={membros.length + 1}
+            posicao={todosOsMembros.length + 1}
             onFechar={() => setAdicionandoMembro(false)}
             onCriado={() => {
               setAdicionandoMembro(false);
@@ -592,11 +610,11 @@ export const ClubeDetalhe = () => {
         )}
 
         {modoMembros === 'cards' ? (
-          membros.length === 0 ? (
-            <Vazio>Este clube ainda não tem membros.</Vazio>
+          membrosNaTela.length === 0 ? (
+            <Vazio>{vazioDosMembros}</Vazio>
           ) : (
             <div className="adm-colecao">
-              {membros.map((membro: any) => (
+              {membrosNaTela.map((membro: any) => (
                 <article className="adm-colecao__card" key={membro.id}>
                   <div className="adm-colecao__topo">
                     <Link to={`/membros/${membro.id}`} style={{ minWidth: 0 }}>
@@ -659,7 +677,7 @@ export const ClubeDetalhe = () => {
               </tr>
             </thead>
             <tbody>
-              {membros.map((membro: any) => (
+              {membrosNaTela.map((membro: any) => (
                 <tr key={membro.id}>
                   <td>
                     <Link className="adm-table__link" to={`/membros/${membro.id}`}>
@@ -693,7 +711,7 @@ export const ClubeDetalhe = () => {
               ))}
             </tbody>
           </table>
-          {membros.length === 0 && <Vazio>Este clube ainda não tem membros.</Vazio>}
+          {membrosNaTela.length === 0 && <Vazio>{vazioDosMembros}</Vazio>}
         </div>
         )}
         </>

@@ -68,19 +68,31 @@ export const montarClubeQuery = (objeto: ObjetoMeta): string => `
           instagram ${LINK} linkedin ${LINK} site ${LINK}
         } }
       }
-      membros {
-        totalCount
-        edges { node {
-          id name situacao papel contratoSituacao fotoUrl
-          emails ${EMAIL} telefones ${FONE} valorTotal ${MOEDA}
-        } }
-      }
       parcelas {
         edges { node { id name valor ${MOEDA} vencimento situacao pagaEm } }
       }
       timelineActivities {
         edges { node { id name happensAt createdAt properties } }
       }
+    }
+  }
+`;
+
+// Os membros do clube saem daqui, e nao de `clube { membros }`: a relacao
+// aninhada nao aceita `first:` e devolve uma pagina fixa de 60. Num clube de 78
+// a aba mostrava 78 e a lista 60, e os 18 que faltavam nao apareciam em busca
+// nem em filtro — o pior tipo de ausencia, a que ninguem ve.
+export const MEMBROS_DO_CLUBE_QUERY = `
+  query MembrosDoClube($id: UUID!, $after: String) {
+    membros(first: 200, after: $after, filter: { clubeId: { eq: $id } }) {
+      totalCount
+      pageInfo { hasNextPage endCursor }
+      edges { node {
+        id name situacao papel contratoSituacao fotoUrl
+        emails ${EMAIL} emailFinanceiro telefones ${FONE} valorTotal ${MOEDA}
+        parcelas { edges { node { situacao vencimento pagaEm } } }
+        contratos { edges { node { faturas { edges { node { invoiceStatus dueAt paidAt } } } } } }
+      } }
     }
   }
 `;

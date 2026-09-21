@@ -796,3 +796,12 @@ select.adm-input {
 }
 /* O status do cabeçalho tem seta própria, desenhada ao lado do chip. */
 select.adm-status__select { background-image: none; padding-right: 8px; }
+
+/* Célula de tabela que vira campo ao clicar. O tracejado é o que diz que dá
+   para clicar; sem ele a célula vazia parece só vazia. */
+.adm-editavel {
+  background: transparent; border: 0; padding: 0; cursor: pointer;
+  font: inherit; color: inherit; text-align: left;
+  border-bottom: 1px dashed var(--border);
+}
+.adm-editavel:hover { border-bottom-color: var(--gold); color: var(--text); }

@@ -7,6 +7,7 @@ import {
   CampoSelecao,
   Campos,
   CampoTexto,
+  TextoEditavel,
 } from 'src/ui/campos';
 import { Card, Chip, Vazio } from 'src/ui/primitives';
 
@@ -120,6 +121,20 @@ export const Bus = ({
     }
   };
 
+  const trocarFinanceiro = async (bu: Bu, email: string) => {
+    setErro(null);
+
+    try {
+      await api('/bus/financeiro', {
+        businessUnitId: bu.id,
+        financeEmail: email,
+      });
+      await carregar();
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : 'Erro inesperado.');
+    }
+  };
+
   const herdarDe =
     dono === 'membro' ? 'do clube ou da BU padrão' : 'da BU padrão';
 
@@ -209,6 +224,11 @@ export const Bus = ({
             />
           </Campos>
 
+          <p className="adm-painel__ajuda">
+            O financeiro do clube pode ser corrigido a qualquer momento: clique
+            no e-mail na tabela abaixo. As chaves ficam como estão.
+          </p>
+
           <table className="adm-table">
             <thead>
               <tr>
@@ -225,7 +245,14 @@ export const Bus = ({
                     {bu.name}
                     {bu.isDefault && <span className="adm-table__sub">padrão</span>}
                   </td>
-                  <td className="adm-table__muted">{bu.financeEmail ?? '—'}</td>
+                  <td className="adm-table__muted">
+                    <TextoEditavel
+                      valor={bu.financeEmail}
+                      placeholder="financeiro@clube.com.br"
+                      vazio="— definir"
+                      aoSalvar={(email) => trocarFinanceiro(bu, email)}
+                    />
+                  </td>
                   <td className="adm-table__muted">{bu.apiKeyPreview || '—'}</td>
                   <td>
                     <Chip valor={bu.connectionStatus} />

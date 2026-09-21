@@ -313,4 +313,42 @@ export const financeiroRoute = new Hono<AppEnv>()
         throw comoErroDeNegocio(causa, corpo.identifier ?? '');
       }
     }),
+  )
+  // Trocar o financeiro não passa por saveBusinessUnit de propósito: aquele
+  // valida credencial e reinstala o webhook, e quem só quer corrigir um e-mail
+  // não tem as chaves em mãos — elas estão no cofre e nunca voltam para a tela.
+  .post('/bus/financeiro', (context) =>
+    comSessao(context, async (sessao) => {
+      const corpo = await context.req.json<{
+        businessUnitId?: string;
+        financeEmail?: string | null;
+      }>();
+
+      const dependencias = montarDependencias(
+        sessao,
+        context.env.APP_SECRET ?? '',
+      );
+
+      const atual =
+        corpo.businessUnitId === undefined
+          ? null
+          : await dependencias.businessUnits.findById(corpo.businessUnitId);
+
+      if (atual === null) {
+        throw new FinanceiroError('INVALID_INPUT', 'Escolha uma BU existente.');
+      }
+
+      const email = (corpo.financeEmail ?? '').trim();
+
+      if (email !== '' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        throw new FinanceiroError('INVALID_INPUT', 'E-mail inválido.');
+      }
+
+      return {
+        bu: await dependencias.businessUnits.save({
+          ...atual,
+          financeEmail: email === '' ? null : email,
+        }),
+      };
+    }),
   );

@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 
 // Os campos de formulário moram aqui, e só aqui. Antes cada tela montava o seu
 // com label solta e input cru: o select nativo vinha sem borda nem seta, e a
@@ -122,3 +122,77 @@ export const CampoMarcar = ({
 export const AcoesDoFormulario = ({ children }: { children: ReactNode }) => (
   <div className="adm-campos__acoes">{children}</div>
 );
+
+// Texto que vira campo ao clicar, do jeito que o StatusEditavel já faz com o
+// chip. Mora aqui porque o padrão é o mesmo em qualquer célula de tabela que
+// precise virar editável, não só nesta.
+export const TextoEditavel = ({
+  valor,
+  aoSalvar,
+  vazio = '—',
+  placeholder,
+}: {
+  valor: string | null;
+  aoSalvar: (valor: string) => Promise<void>;
+  vazio?: string;
+  placeholder?: string;
+}) => {
+  const [editando, setEditando] = useState(false);
+  const [rascunho, setRascunho] = useState(valor ?? '');
+  const [salvando, setSalvando] = useState(false);
+
+  const confirmar = async () => {
+    if (rascunho === (valor ?? '')) {
+      setEditando(false);
+
+      return;
+    }
+
+    setSalvando(true);
+
+    try {
+      await aoSalvar(rascunho.trim());
+      setEditando(false);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  if (!editando) {
+    return (
+      <button
+        type="button"
+        className="adm-editavel"
+        onClick={() => {
+          setRascunho(valor ?? '');
+          setEditando(true);
+        }}
+      >
+        {valor === null || valor === '' ? vazio : valor}
+      </button>
+    );
+  }
+
+  return (
+    <input
+      className="adm-input adm-campo__controle"
+      autoFocus
+      disabled={salvando}
+      value={rascunho}
+      placeholder={placeholder}
+      onChange={(evento) => setRascunho(evento.target.value)}
+      // Blur confirma em vez de descartar: clicar fora depois de digitar é o
+      // gesto de quem terminou, e perder o que escreveu ali irrita sem motivo.
+      onBlur={() => void confirmar()}
+      onKeyDown={(evento) => {
+        if (evento.key === 'Enter') {
+          void confirmar();
+        }
+
+        if (evento.key === 'Escape') {
+          setEditando(false);
+        }
+      }}
+    />
+  );
+};

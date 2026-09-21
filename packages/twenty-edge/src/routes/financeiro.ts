@@ -94,6 +94,58 @@ const montarDependencias = (sessao: Sessao, appSecret: string) => {
   };
 };
 
+/**
+ * Procura o contrato na BU escolhida e, se nao achar, nas outras.
+ *
+ * Quem digita um numero de contrato nao sabe de cor em qual das BUs ele mora —
+ * e errar a BU devolve "nao localizamos", que parece numero errado. A busca so
+ * se espalha depois do CONTRACT_NOT_FOUND, e a resposta diz qual BU achou, para
+ * a tela trocar o seletor e o vinculo gravar na BU certa.
+ *
+ * So o preview faz isso. Vincular continua gravando exatamente na BU que
+ * recebeu: um write que escolhe sozinho onde vai parar seria surpresa.
+ */
+const procurarNasBus = async (
+  dependencias: ReturnType<typeof montarDependencias>,
+  entrada: { holder: ContractHolder; businessUnitId: string; identifier: string },
+) => {
+  const tentar = (businessUnitId: string) =>
+    previewContract(
+      { ...dependencias, gateway: new RouterfyGateway() },
+      { ...entrada, businessUnitId },
+    );
+
+  try {
+    return await tentar(entrada.businessUnitId);
+  } catch (causa) {
+    const erro = comoErroDeNegocio(causa, entrada.identifier);
+
+    if (
+      !(erro instanceof FinanceiroError) ||
+      erro.code !== 'CONTRACT_NOT_FOUND'
+    ) {
+      throw erro;
+    }
+
+    const outras = (await dependencias.businessUnits.listAll()).filter(
+      (bu) => bu.id !== entrada.businessUnitId,
+    );
+
+    // Em paralelo: sequencial somaria a busca paginada de cada BU, e a pessoa
+    // ficaria olhando o botao girar.
+    const achadas = await Promise.all(
+      outras.map((bu) => tentar(bu.id).catch(() => null)),
+    );
+    const achada = achadas.find((tentativa) => tentativa !== null);
+
+    if (achada == null) {
+      throw erro;
+    }
+
+    return achada;
+  }
+};
+
 const donoDoCorpo = (corpo: {
   clubeId?: string;
   membroId?: string;
@@ -270,10 +322,11 @@ export const financeiroRoute = new Hono<AppEnv>()
       const identifier = corpo.identifier ?? '';
 
       try {
-        return await previewContract(
-          { ...dependencias, gateway: new RouterfyGateway() },
-          { holder, businessUnitId, identifier },
-        );
+        return await procurarNasBus(dependencias, {
+          holder,
+          businessUnitId,
+          identifier,
+        });
       } catch (causa) {
         throw comoErroDeNegocio(causa, identifier);
       }

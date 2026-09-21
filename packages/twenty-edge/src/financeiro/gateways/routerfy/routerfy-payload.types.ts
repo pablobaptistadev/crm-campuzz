@@ -70,7 +70,35 @@ export type RouterfyTransactionPayload = {
  * — `Array.isArray(list) ? list : list?.data ?? []`. Aceitar so um formato
  * quebraria em producao no dia em que a API voltasse para o outro.
  */
-export type RouterfyListPayload<TItem> = TItem[] | { data?: TItem[] };
+export type RouterfyPaging = {
+  totalItems?: number;
+  page?: number;
+  size?: number;
+  totalPages?: number;
+};
+
+export type RouterfyListPayload<TItem> =
+  | TItem[]
+  | { data?: TItem[]; paging?: RouterfyPaging };
+
+/**
+ * Quantas paginas a Routerfy diz que existem.
+ *
+ * Sem isto a varredura adivinhava o fim pelo tamanho do lote — e um lote menor
+ * que o pedido nem sempre e a ultima pagina. O formato de array cru nao traz
+ * paginacao nenhuma, e ai uma pagina so e tudo que ha.
+ */
+export const totalPagesOf = <TItem>(
+  payload: RouterfyListPayload<TItem> | null,
+): number | null => {
+  if (payload === null || Array.isArray(payload)) {
+    return null;
+  }
+
+  const total = payload.paging?.totalPages;
+
+  return typeof total === 'number' && total > 0 ? total : null;
+};
 
 export const unwrapList = <TItem>(
   payload: RouterfyListPayload<TItem> | null,

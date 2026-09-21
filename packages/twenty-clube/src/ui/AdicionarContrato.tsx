@@ -92,7 +92,14 @@ export const AdicionarContrato = ({
 
     try {
       setConfirmaTitular(false);
-      setPrevia(await api<Previa>('/contrato/preview', corpo()));
+
+      const encontrada = await api<Previa>('/contrato/preview', corpo());
+
+      // O preview procura nas outras BUs quando não acha na escolhida. Sem
+      // trazer a escolha de volta para o seletor, o vincular mandaria de novo a
+      // BU que não tem o contrato.
+      setBusinessUnitId(encontrada.businessUnit.id);
+      setPrevia(encontrada);
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : 'Erro inesperado.');
     } finally {
@@ -144,17 +151,19 @@ export const AdicionarContrato = ({
 
           <Campos colunas={2}>
             <CampoTexto
-              rotulo="Número do contrato ou da transação"
+              rotulo="Número ou ID do contrato"
               valor={identificador}
               onMudou={setIdentificador}
               onEnter={() => void buscar()}
-              placeholder="Como aparece no painel da Routerfy"
+              placeholder="2026051000000266 ou vxbh20i3athd2bbyvtpkg9ln67"
+              dica="Serve o número que aparece no painel da Routerfy ou o ID interno do contrato."
               autoFoco
             />
             <CampoSelecao
               rotulo="Procurar em qual BU"
               valor={businessUnitId}
               onMudou={setBusinessUnitId}
+              dica="Se não estiver nesta, procuramos nas outras."
               opcoes={bus.map((bu) => ({
                 valor: bu.id,
                 rotulo: bu.isDefault ? `${bu.name} (padrão)` : bu.name,

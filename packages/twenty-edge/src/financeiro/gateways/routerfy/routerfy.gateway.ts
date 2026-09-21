@@ -13,11 +13,19 @@ import {
   type RouterfyListPayload,
   type RouterfySubscriptionPayload,
   type RouterfyTransactionPayload,
+  totalPagesOf,
   unwrapList,
 } from 'src/financeiro/gateways/routerfy/routerfy-payload.types';
 import { routerfyRequest } from 'src/financeiro/gateways/routerfy/routerfy-http.client';
 
 const encode = (value: string): string => encodeURIComponent(value);
+
+// 30 e o maximo que a Routerfy aceita por pagina. O teto de paginas existe
+// porque isto roda dentro de um request e a rota repete a busca nas outras BUs
+// quando nao acha na escolhida; na pratica o `totalPages` da resposta termina
+// a varredura bem antes.
+const TAMANHO_DA_PAGINA = 30;
+const MAXIMO_DE_PAGINAS = 10;
 
 /**
  * A Routerfy como implementacao de PaymentGatewayPort.
@@ -124,16 +132,57 @@ export class RouterfyGateway implements PaymentGatewayPort {
     );
   }
 
+  /**
+   * Varre a listagem atras do code, pagina a pagina.
+   *
+   * O `?code=` da Routerfy e ignorado — conferido mandando um codigo que nao
+   * existe e recebendo a mesma lista de sempre. Sem paginar, a busca via so a
+   * primeira pagina, que traz 10 registros: da 11a assinatura em diante o
+   * numero do painel simplesmente nao era encontrado, e so o id interno
+   * funcionava. O teto existe porque isto roda dentro de um request; quem tem
+   * mais contratos que isso acha pelo id, que e uma chamada direta.
+   */
+  private async searchByCode<TItem extends { id?: string; code?: string }>(
+    caminho: string,
+    code: string,
+    credential: GatewayCredential,
+  ): Promise<TItem | null> {
+    let ultimaPagina = MAXIMO_DE_PAGINAS;
+
+    for (let page = 1; page <= Math.min(ultimaPagina, MAXIMO_DE_PAGINAS); page += 1) {
+      const response = await routerfyRequest<RouterfyListPayload<TItem>>(
+        `${caminho}?page=${page}&size=${TAMANHO_DA_PAGINA}`,
+        credential,
+      ).catch(() => null);
+
+      const lote = unwrapList(response?.body ?? null);
+
+      if (lote.length === 0) {
+        return null;
+      }
+
+      const match = lote.find(
+        (candidate) => candidate.code === code || candidate.id === code,
+      );
+
+      if (match !== undefined) {
+        return match;
+      }
+
+      ultimaPagina = totalPagesOf(response?.body ?? null) ?? page;
+    }
+
+    return null;
+  }
+
   private async searchSubscriptionByCode(
     code: string,
     credential: GatewayCredential,
   ): Promise<GatewayContract | null> {
-    const response = await routerfyRequest<
-      RouterfyListPayload<RouterfySubscriptionPayload>
-    >(`/v1/subscriptions?code=${encode(code)}`, credential);
-
-    const match = unwrapList(response.body).find(
-      (candidate) => candidate.code === code || candidate.id === code,
+    const match = await this.searchByCode<RouterfySubscriptionPayload>(
+      '/v1/subscriptions',
+      code,
+      credential,
     );
 
     if (match?.id == null) {
@@ -155,14 +204,12 @@ export class RouterfyGateway implements PaymentGatewayPort {
     code: string,
     credential: GatewayCredential,
   ): Promise<GatewayContract | null> {
-    const response = await routerfyRequest<
-      RouterfyListPayload<RouterfyTransactionPayload>
-    >(`/v1/transactions?code=${encode(code)}`, credential);
-
-    const match = unwrapList(response.body).find(
-      (candidate) => candidate.code === code || candidate.id === code,
+    const match = await this.searchByCode<RouterfyTransactionPayload>(
+      '/v1/transactions',
+      code,
+      credential,
     );
 
-    return match === undefined ? null : mapTransaction(match);
+    return match === null ? null : mapTransaction(match);
   }
 }

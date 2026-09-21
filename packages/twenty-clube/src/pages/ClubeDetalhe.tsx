@@ -582,6 +582,7 @@ export const ClubeDetalhe = () => {
             <FiltrosDeMembro
               valor={filtro}
               onMudou={setFiltro}
+              opcoesDeStatus={metaMembro.campoPorNome.get('situacao')?.options ?? []}
               opcoesDeContrato={
                 metaMembro.campoPorNome.get('contratoSituacao')?.options ?? []
               }

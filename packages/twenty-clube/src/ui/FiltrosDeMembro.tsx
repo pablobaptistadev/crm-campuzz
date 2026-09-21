@@ -17,18 +17,21 @@ export type MembroFiltravel = {
 
 export type FiltroDeMembro = {
   busca: string;
+  status: string;
   contrato: string;
   financeiro: '' | 'EM_ATRASO' | 'EM_DIA';
 };
 
 export const FILTRO_DE_MEMBRO_VAZIO: FiltroDeMembro = {
   busca: '',
+  status: '',
   contrato: '',
   financeiro: '',
 };
 
 export const temFiltroAtivo = (filtro: FiltroDeMembro): boolean =>
   filtro.busca.trim() !== '' ||
+  filtro.status !== '' ||
   filtro.contrato !== '' ||
   filtro.financeiro !== '';
 
@@ -72,6 +75,10 @@ export const filtrarMembros = <TMembro extends MembroFiltravel>(
       return false;
     }
 
+    if (filtro.status !== '' && membro.situacao !== filtro.status) {
+      return false;
+    }
+
     if (filtro.contrato !== '' && membro.contratoSituacao !== filtro.contrato) {
       return false;
     }
@@ -86,10 +93,12 @@ export const filtrarMembros = <TMembro extends MembroFiltravel>(
 export const FiltrosDeMembro = ({
   valor,
   onMudou,
+  opcoesDeStatus,
   opcoesDeContrato,
 }: {
   valor: FiltroDeMembro;
   onMudou: (filtro: FiltroDeMembro) => void;
+  opcoesDeStatus: CampoMeta['options'];
   opcoesDeContrato: CampoMeta['options'];
 }) => (
   <div className="adm-filtros">
@@ -101,6 +110,20 @@ export const FiltrosDeMembro = ({
       aria-label="Buscar por nome ou e-mail"
       onChange={(evento) => onMudou({ ...valor, busca: evento.target.value })}
     />
+
+    <select
+      className="adm-input"
+      value={valor.status}
+      aria-label="Status do membro"
+      onChange={(evento) => onMudou({ ...valor, status: evento.target.value })}
+    >
+      <option value="">Status: todos</option>
+      {(opcoesDeStatus ?? []).map((opcao) => (
+        <option key={opcao.value} value={opcao.value}>
+          {opcao.label}
+        </option>
+      ))}
+    </select>
 
     <select
       className="adm-input"

@@ -75,6 +75,30 @@ describe('busca por nome e e-mail', () => {
   });
 });
 
+describe('status do membro', () => {
+  const lista = [
+    membro({ name: 'Ativa', situacao: 'ATIVO' }),
+    membro({ name: 'Inativo', situacao: 'INATIVO' }),
+    membro({ name: 'Pausado', situacao: 'PAUSADO' }),
+  ];
+
+  it('filtra pelo status escolhido', () => {
+    expect(filtrarMembros(lista, filtro({ status: 'INATIVO' })).map((m) => m.name)).toEqual([
+      'Inativo',
+    ]);
+  });
+
+  // O campo tem quatro opcoes, nao duas: chumbar "ativo e inativo" esconderia
+  // pausado e pendente, que sao membros de verdade em algum lugar.
+  it('alcanca as opcoes alem de ativo e inativo', () => {
+    expect(filtrarMembros(lista, filtro({ status: 'PAUSADO' }))).toHaveLength(1);
+  });
+
+  it('vazio nao filtra nada', () => {
+    expect(filtrarMembros(lista, FILTRO_DE_MEMBRO_VAZIO)).toHaveLength(3);
+  });
+});
+
 describe('status do contrato', () => {
   const lista = [
     membro({ contratoSituacao: 'PENDENTE' }),
@@ -133,6 +157,20 @@ describe('filtros combinados', () => {
     const achados = filtrarMembros(
       lista,
       filtro({ busca: 'ana', contrato: 'ASSINADO', financeiro: 'EM_ATRASO' }),
+    );
+
+    expect(achados).toHaveLength(1);
+  });
+
+  it('os quatro somam', () => {
+    const lista = [
+      membro({ name: 'Ana', situacao: 'ATIVO', contratoSituacao: 'ASSINADO', ...comParcela('PENDENTE', ONTEM) }),
+      membro({ name: 'Ana', situacao: 'INATIVO', contratoSituacao: 'ASSINADO', ...comParcela('PENDENTE', ONTEM) }),
+    ];
+
+    const achados = filtrarMembros(
+      lista,
+      filtro({ busca: 'ana', status: 'ATIVO', contrato: 'ASSINADO', financeiro: 'EM_ATRASO' }),
     );
 
     expect(achados).toHaveLength(1);

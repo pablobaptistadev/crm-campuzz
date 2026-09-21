@@ -15,10 +15,12 @@ import { diretorioDoCrmEmPostgres } from 'src/financeiro/infra/diretorio-do-crm'
 import { registroDeWebhookEmPostgres } from 'src/financeiro/infra/registro-de-webhook';
 import { repositorioDeBuEmPostgres } from 'src/financeiro/infra/repositorio-de-bu';
 import { repositorioDeContratoEmPostgres } from 'src/financeiro/infra/repositorio-de-contrato';
+import { repositorioDeFaturaEmPostgres } from 'src/financeiro/infra/repositorio-de-fatura';
 import { identificadorDoSistema, relogioDoSistema } from 'src/financeiro/infra/sistema';
 import { RouterfyGateway } from 'src/financeiro/gateways/routerfy/routerfy.gateway';
 import { previewContract } from 'src/financeiro/core/use-cases/preview-contract.use-case';
 import { resolveBusinessUnit } from 'src/financeiro/core/use-cases/resolve-business-unit.use-case';
+import { attachContract } from 'src/financeiro/core/use-cases/attach-contract.use-case';
 import { saveBusinessUnit } from 'src/financeiro/core/use-cases/save-business-unit.use-case';
 import { type WorkspaceMetadata } from 'src/metadata/types';
 
@@ -62,6 +64,10 @@ const montarDependencias = (sessao: Sessao, appSecret: string) => ({
     metadata: sessao.metadata,
   }),
   contracts: repositorioDeContratoEmPostgres({
+    client: sessao.client,
+    metadata: sessao.metadata,
+  }),
+  invoices: repositorioDeFaturaEmPostgres({
     client: sessao.client,
     metadata: sessao.metadata,
   }),
@@ -216,7 +222,7 @@ export const financeiroRoute = new Hono<AppEnv>()
       const holder = donoDoCorpo(corpo);
 
       if (holder === null) {
-        return { error: 'INVALID_INPUT', message: 'Informe o clube ou o membro.' };
+        throw new FinanceiroError('INVALID_INPUT', 'Informe o clube ou o membro.');
       }
 
       const dependencias = montarDependencias(
@@ -238,5 +244,50 @@ export const financeiroRoute = new Hono<AppEnv>()
         },
         { holder, businessUnitId, identifier: corpo.identifier ?? '' },
       );
+    }),
+  )
+  .post('/contrato/vincular', (context) =>
+    comSessao(context, async (sessao) => {
+      const corpo = await context.req.json<{
+        clubeId?: string;
+        membroId?: string;
+        businessUnitId?: string;
+        identifier?: string;
+      }>();
+
+      const holder = donoDoCorpo(corpo);
+
+      if (holder === null) {
+        throw new FinanceiroError('INVALID_INPUT', 'Informe o clube ou o membro.');
+      }
+
+      const dependencias = montarDependencias(
+        sessao,
+        context.env.APP_SECRET ?? '',
+      );
+
+      const businessUnitId =
+        corpo.businessUnitId ??
+        (await resolveBusinessUnit(dependencias, holder)).id;
+
+      await sessao.client.query('BEGIN');
+
+      try {
+        const resultado = await attachContract(
+          {
+            ...dependencias,
+            gateway: new RouterfyGateway(),
+          },
+          { holder, businessUnitId, identifier: corpo.identifier ?? '' },
+        );
+
+        await sessao.client.query('COMMIT');
+
+        return resultado;
+      } catch (causa) {
+        await sessao.client.query('ROLLBACK').catch(() => undefined);
+
+        throw causa;
+      }
     }),
   );

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { gql } from 'src/api/client';
+import { AdicionarContrato } from 'src/ui/AdicionarContrato';
 import { type Cobranca, situacaoDeCobranca } from 'src/ui/atraso';
 import { dataCurta, dinheiroCurto } from 'src/ui/format';
 import { Card, Chip, Secao, Vazio } from 'src/ui/primitives';
@@ -58,9 +59,9 @@ export const FinanceiroAutomatico = ({
   parcelasManuais: ParcelaManual[];
 }) => {
   const [contratos, setContratos] = useState<Contrato[] | null>(null);
+  const [adicionando, setAdicionando] = useState(false);
 
-  useEffect(() => {
-    const carregar = async () => {
+  const carregar = async () => {
       try {
         const dados = await gql<{
           gatewayContracts: { edges: { node: Contrato }[] };
@@ -74,8 +75,9 @@ export const FinanceiroAutomatico = ({
         // contrato", não uma tela quebrada.
         setContratos([]);
       }
-    };
+  };
 
+  useEffect(() => {
     void carregar();
   }, [dono, donoId]);
 
@@ -125,12 +127,35 @@ export const FinanceiroAutomatico = ({
         </p>
       </Card>
 
-      <Card titulo="Financeiro automático">
+      {adicionando && (
+        <AdicionarContrato
+          dono={dono}
+          donoId={donoId}
+          onFechar={() => setAdicionando(false)}
+          onVinculado={() => {
+            setAdicionando(false);
+            void carregar();
+          }}
+        />
+      )}
+
+      <Card
+        titulo="Financeiro automático"
+        acao={
+          <button
+            type="button"
+            className="adm-btn adm-btn--primary"
+            onClick={() => setAdicionando(true)}
+          >
+            + Adicionar contrato
+          </button>
+        }
+      >
         {contratos === null ? (
           <Vazio>Carregando…</Vazio>
         ) : contratos.length === 0 ? (
           <Vazio>
-            Nenhum contrato puxado ainda. Cadastre a chave do gateway na aba Configurações.
+            Nenhum contrato vinculado ainda. Use “+ Adicionar contrato” e informe o número do contrato.
           </Vazio>
         ) : (
           contratos.map((contrato) => (

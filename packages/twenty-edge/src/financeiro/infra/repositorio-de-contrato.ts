@@ -3,7 +3,9 @@ import { type Client } from 'pg';
 import {
   type ContractHolder,
   type GatewayContract,
+  paidInvoiceCountOf,
   type StoredContract,
+  totalValueOf,
 } from 'src/financeiro/core/domain/entities/gateway-contract.entity';
 import { type ContractRepositoryPort } from 'src/financeiro/core/ports/contract-repository.port';
 import { escapeIdentifier } from 'src/ddl/escape';
@@ -84,6 +86,11 @@ export const repositorioDeContratoEmPostgres = ({
     paymentMethod: contrato.paymentMethod,
     customerEmail: contrato.customer.email,
     customerDocument: contrato.customer.document,
+    // Derivados das faturas, nao lidos do gateway: a Routerfy nao manda total
+    // nem contagem de pagas. Sem gravar, o cabecalho do contrato na tela do
+    // financeiro automatico mostrava um traco no lugar do valor.
+    totalMicros: totalValueOf(contrato).amountMicros,
+    paidInvoicesCount: paidInvoiceCountOf(contrato),
   });
 
   return {
@@ -149,10 +156,11 @@ export const repositorioDeContratoEmPostgres = ({
             "contractStatus","amountAmountMicros","amountCurrencyCode",
             "frequency","frequencyInterval","startsAt","endsAt","nextChargeAt",
             "paymentMethod","customerEmail","customerDocument",
+            "totalValueAmountMicros","totalValueCurrencyCode","paidInvoicesCount",
             ${colBu}, ${colClube}, ${colMembro})
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,
                  $10::timestamptz,$11::timestamptz,$12::timestamptz,
-                 $13,$14,$15,$16,$17,$18)
+                 $13,$14,$15,$16,$17,$18,$19,$20,$21)
          RETURNING ${SELECAO}`,
         [
           campos.name,
@@ -170,6 +178,9 @@ export const repositorioDeContratoEmPostgres = ({
           campos.paymentMethod,
           campos.customerEmail,
           campos.customerDocument,
+          campos.totalMicros,
+          campos.currencyCode,
+          campos.paidInvoicesCount,
           draft.businessUnitId,
           draft.holder.type === 'COMPANY' ? draft.holder.recordId : null,
           draft.holder.type === 'PERSON' ? draft.holder.recordId : null,
@@ -195,6 +206,9 @@ export const repositorioDeContratoEmPostgres = ({
            "endsAt" = $8::timestamptz,
            "nextChargeAt" = $9::timestamptz,
            "paymentMethod" = $10,
+           "totalValueAmountMicros" = $11,
+           "totalValueCurrencyCode" = $4,
+           "paidInvoicesCount" = $12,
            "updatedAt" = now()
          WHERE "id" = $1`,
         [
@@ -208,6 +222,8 @@ export const repositorioDeContratoEmPostgres = ({
           campos.endsAt,
           campos.nextChargeAt,
           campos.paymentMethod,
+          campos.totalMicros,
+          campos.paidInvoicesCount,
         ],
       );
     },

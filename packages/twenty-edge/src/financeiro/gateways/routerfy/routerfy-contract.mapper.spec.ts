@@ -1,10 +1,13 @@
+import {
+  paidInvoiceCountOf,
+  totalValueOf,
+} from 'src/financeiro/core/domain/entities/gateway-contract.entity';
 import { describe, expect, it } from 'vitest';
 
 import { moneyFromCents, moneyFromUnits } from 'src/financeiro/core/domain/value-objects/money.value-object';
 import {
   mapSubscription,
   mapTransaction,
-  totalValueOf,
 } from 'src/financeiro/gateways/routerfy/routerfy-contract.mapper';
 import { unwrapList } from 'src/financeiro/gateways/routerfy/routerfy-payload.types';
 
@@ -141,6 +144,10 @@ describe('faturas canceladas', () => {
   // A coluna e um SELECT: o `paid` cru da Routerfy derrubava a vinculacao com
   // `invalid input value for enum`, e por isso nenhum contrato chegou a ser
   // gravado. Quem sai daqui ja tem de estar no vocabulario do dominio.
+  it('conta so as pagas em paidInvoicesCount', () => {
+    expect(paidInvoiceCountOf(contrato)).toBe(2);
+  });
+
   it('entrega as faturas ja traduzidas para o dominio', () => {
     expect(contrato.invoices.map((fatura) => fatura.status)).toEqual([
       'PAID',

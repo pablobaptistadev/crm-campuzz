@@ -1,4 +1,12 @@
-import { type Money } from 'src/financeiro/core/domain/value-objects/money.value-object';
+import {
+  type InvoiceStatus,
+  isInvoiceCanceled,
+  isInvoicePaid,
+} from 'src/financeiro/core/domain/value-objects/invoice-status.value-object';
+import {
+  type Money,
+  sumMoney,
+} from 'src/financeiro/core/domain/value-objects/money.value-object';
 
 /**
  * O contrato como o dominio o enxerga, ja independente do gateway que o leu.
@@ -11,24 +19,6 @@ import { type Money } from 'src/financeiro/core/domain/value-objects/money.value
 export type ContractKind = 'SUBSCRIPTION' | 'TRANSACTION';
 
 export type ContractFrequency = 'day' | 'week' | 'month' | 'year';
-
-/**
- * A situacao de uma fatura, no vocabulario do dominio.
- *
- * Nao e o que o gateway diz: a Routerfy responde `paid`, `scheduled`,
- * `refused` em minusculas, e a coluna `invoiceStatus` e um SELECT que so
- * aceita estes seis valores. Gravar o texto cru do gateway derrubava a
- * vinculacao inteira com `invalid input value for enum ... "paid"` — nenhum
- * contrato chegou a ser gravado ate isto existir. Quem le o gateway traduz
- * para ca; daqui para dentro ha um vocabulario so.
- */
-export type InvoiceStatus =
-  | 'PAID'
-  | 'PENDING'
-  | 'WAITING_PAYMENT'
-  | 'OVERDUE'
-  | 'EXPIRED'
-  | 'CANCELED';
 
 export type GatewayCustomer = {
   name: string | null;
@@ -76,3 +66,24 @@ export type StoredContract = {
   businessUnitId: string;
   holder: ContractHolder;
 };
+
+export const countsTowardTotal = (invoice: GatewayInvoice): boolean =>
+  !isInvoiceCanceled(invoice.status);
+
+/**
+ * Total do contrato pela soma das faturas.
+ *
+ * Mais fiel que `parcela x numero de parcelas` porque desconto e acrescimo so
+ * aparecem na fatura. Sem faturas, cai no valor do contrato. Mesma regra do
+ * `summarize` em api/src/signature/contractFinance.ts.
+ */
+export const totalValueOf = (contract: GatewayContract): Money => {
+  const contam = contract.invoices.filter(countsTowardTotal);
+
+  return contam.length > 0
+    ? sumMoney(contam.map((invoice) => invoice.amount))
+    : contract.amount;
+};
+
+export const paidInvoiceCountOf = (contract: GatewayContract): number =>
+  contract.invoices.filter((invoice) => isInvoicePaid(invoice.status)).length;

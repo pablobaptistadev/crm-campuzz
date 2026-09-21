@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  INVOICE_STATUSES,
   invoiceStatusFromGateway,
   isInvoiceOpen,
   isInvoicePaid,
@@ -52,6 +53,43 @@ describe('invoiceStatusFromGateway', () => {
 
   it('status desconhecido cai em PENDING, para aparecer como a pagar em vez de sumir', () => {
     expect(invoiceStatusFromGateway('status_que_ninguem_viu')).toBe('PENDING');
+  });
+
+  // Lidos da API de producao, nao da documentacao.
+  it.each([
+    ['scheduled', 'PENDING'],
+    ['refused', 'OVERDUE'],
+    ['canceled', 'CANCELED'],
+  ])('traduz %s, que a Routerfy manda de verdade, para %s', (daRouterfy, noDominio) => {
+    expect(invoiceStatusFromGateway(daRouterfy)).toBe(noDominio);
+  });
+
+  // O valor cru caia direto num SELECT do Postgres e derrubava a vinculacao.
+  // Qualquer saida daqui tem de ser gravavel.
+  it.each([
+    'paid',
+    'scheduled',
+    'pending',
+    'processing',
+    'waiting_payment',
+    'refused',
+    'failed',
+    'overdue',
+    'expired',
+    'canceled',
+    'cancelled',
+    'refunded',
+    'chargeback',
+    'status_que_a_routerfy_ainda_vai_inventar',
+    '',
+  ])('devolve um valor que o SELECT aceita para %s', (entrada) => {
+    expect(INVOICE_STATUSES).toContain(invoiceStatusFromGateway(entrada));
+  });
+
+  // Chamar de paga uma fatura que ninguem sabe se foi paga esconde divida; o
+  // contrario so mostra uma cobranca a mais, que a proxima leitura corrige.
+  it('nunca inventa PAID para uma situacao desconhecida', () => {
+    expect(invoiceStatusFromGateway('algo_novo')).not.toBe('PAID');
   });
 
   it('separa o que e a pagar do que e pago', () => {

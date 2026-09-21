@@ -1,13 +1,11 @@
 import {
   type ContractFrequency,
+  countsTowardTotal,
   type GatewayContract,
   type GatewayInvoice,
 } from 'src/financeiro/core/domain/entities/gateway-contract.entity';
-import {
-  moneyFromCents,
-  sumMoney,
-} from 'src/financeiro/core/domain/value-objects/money.value-object';
-import { situacaoDaFatura } from 'src/financeiro/gateways/routerfy/routerfy-invoice-status';
+import { invoiceStatusFromGateway } from 'src/financeiro/core/domain/value-objects/invoice-status.value-object';
+import { moneyFromCents } from 'src/financeiro/core/domain/value-objects/money.value-object';
 import {
   type RouterfyInvoicePayload,
   type RouterfySubscriptionPayload,
@@ -68,19 +66,12 @@ const mapInvoice = (
   externalInvoiceId:
     text(payload.id) ?? text(payload.code) ?? `sem-id-${index}`,
   code: text(payload.code),
-  status: situacaoDaFatura(payload.status),
+  status: invoiceStatusFromGateway(payload.status ?? ''),
   amount: moneyFromCents(payload.amount ?? 0),
   dueAt: text(payload.dueAt),
   paidAt: text(payload.paidAt),
   paymentUrl: text(payload.paymentUrl),
 });
-
-// Fatura cancelada continua na lista da Routerfy, com valor, e nao e divida.
-// Somar as duas canceladas deste contrato dava R$ 8.205 num contrato de
-// R$ 7.111, e apontava como proxima cobranca um vencimento que ninguem vai
-// pagar. Conferido contra o painel da assinatura 2026071000000304.
-export const contaParaOTotal = (invoice: GatewayInvoice): boolean =>
-  invoice.status !== 'CANCELED';
 
 // A Routerfy nao manda a data da proxima cobranca na assinatura. O vencimento em
 // aberto mais proximo e a mesma informacao, e deixar em branco esconderia do
@@ -89,7 +80,7 @@ const proximaCobranca = (invoices: readonly GatewayInvoice[]): string | null => 
   const abertas = invoices
     .filter(
       (invoice) =>
-        contaParaOTotal(invoice) &&
+        countsTowardTotal(invoice) &&
         invoice.status !== 'PAID' &&
         invoice.dueAt !== null,
     )
@@ -164,7 +155,7 @@ export const mapTransaction = (
       {
         externalInvoiceId: text(payload.id) ?? 'transacao-sem-id',
         code: text(payload.code),
-        status: situacaoDaFatura(payload.status),
+        status: invoiceStatusFromGateway(payload.status ?? ''),
         amount,
         dueAt: text(payload.createdAt),
         paidAt: text(payload.paidAt),
@@ -172,19 +163,4 @@ export const mapTransaction = (
       },
     ],
   };
-};
-
-/**
- * Total do contrato pela soma das faturas.
- *
- * Mais fiel que `parcela x numero de parcelas` porque desconto e acrescimo so
- * aparecem na fatura. Sem faturas, cai no valor do contrato. Mesma regra do
- * `summarize` em api/src/signature/contractFinance.ts.
- */
-export const totalValueOf = (contract: GatewayContract) => {
-  const contam = contract.invoices.filter(contaParaOTotal);
-
-  return contam.length > 0
-    ? sumMoney(contam.map((invoice) => invoice.amount))
-    : contract.amount;
 };

@@ -33,6 +33,8 @@ export type SaveBusinessUnitInput = {
   name: string;
   credential: GatewayCredential;
   isDefault: boolean;
+  /** O e-mail do financeiro do clube. Vazio so e problema na hora de vincular. */
+  financeEmail?: string | null;
 };
 
 /**
@@ -118,6 +120,10 @@ export const saveBusinessUnit = async (
     gatewayProvider: gateway.provider,
     apiKeyPreview: apiKeyPreviewFrom(input.credential.apiKey),
     keyFingerprint: fingerprint(input.credential.apiKey),
+    financeEmail:
+      input.financeEmail == null || input.financeEmail.trim() === ''
+        ? null
+        : input.financeEmail.trim(),
     webhookRegistrationId: registrationId,
     gatewayWebhookId,
     connectionStatus: 'ACTIVE',

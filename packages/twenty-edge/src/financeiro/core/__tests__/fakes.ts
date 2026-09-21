@@ -52,6 +52,7 @@ export const buildBusinessUnit = (
   gatewayProvider: 'ROUTERFY',
   apiKeyPreview: 'abc123...',
   keyFingerprint: 'fingerprint-abc',
+  financeEmail: null,
   webhookRegistrationId: 'reg-1',
   gatewayWebhookId: 'gw-hook-1',
   connectionStatus: 'ACTIVE',

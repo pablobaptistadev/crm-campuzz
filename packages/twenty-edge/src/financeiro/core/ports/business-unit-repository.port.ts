@@ -9,6 +9,7 @@ export type BusinessUnitDraft = {
   gatewayProvider: BusinessUnit['gatewayProvider'];
   apiKeyPreview: string;
   keyFingerprint: string;
+  financeEmail: string | null;
   webhookRegistrationId: string | null;
   gatewayWebhookId: string | null;
   connectionStatus: BusinessUnitStatus;

@@ -14,8 +14,11 @@ import {
   FakeInvoiceRepository,
 } from 'src/financeiro/core/__tests__/fakes';
 
+// O dono aqui e um clube, e clube confere contra o financeiro cadastrado na BU.
 const buildDependencies = (existing: boolean, holderEmail = 'contato@exemplo.com.br') => ({
-  businessUnits: new FakeBusinessUnitRepository([buildBusinessUnit()]),
+  businessUnits: new FakeBusinessUnitRepository([
+    buildBusinessUnit({ financeEmail: holderEmail }),
+  ]),
   contracts: new FakeContractRepository(
     existing
       ? [

@@ -16,6 +16,7 @@ export type Bu = {
   apiKeyPreview: string;
   connectionStatus: 'ACTIVE' | 'INVALID' | 'PENDING';
   isDefault: boolean;
+  financeEmail: string | null;
   lastValidatedAt: string | null;
 };
 
@@ -43,6 +44,7 @@ export const Bus = ({
   const [nome, setNome] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [secretKey, setSecretKey] = useState('');
+  const [emailFinanceiro, setEmailFinanceiro] = useState('');
   const [padrao, setPadrao] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
@@ -83,6 +85,14 @@ export const Bus = ({
       return;
     }
 
+    // Sem o financeiro, o contrato de clube não tem contra o que ser conferido,
+    // e o erro só apareceria lá na frente, na tela de vincular.
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailFinanceiro.trim())) {
+      setErro('Informe o e-mail do financeiro do clube.');
+
+      return;
+    }
+
     setSalvando(true);
     setErro(null);
 
@@ -92,11 +102,13 @@ export const Bus = ({
         apiKey: apiKey.trim(),
         secretKey: secretKey.trim(),
         isDefault: padrao,
+        financeEmail: emailFinanceiro.trim(),
       });
 
       setNome('');
       setApiKey('');
       setSecretKey('');
+      setEmailFinanceiro('');
       setPadrao(false);
       setAberto(false);
       await carregar();
@@ -141,6 +153,16 @@ export const Bus = ({
               valor={secretKey}
               onMudou={setSecretKey}
               segredo
+            />
+          </Campos>
+
+          <Campos colunas={2}>
+            <CampoTexto
+              rotulo="E-mail do financeiro do clube"
+              valor={emailFinanceiro}
+              onMudou={setEmailFinanceiro}
+              placeholder="financeiro@clube.com.br"
+              dica="É contra ele que conferimos o titular de um contrato de clube. O membro é conferido pelo e-mail dele, contrato a contrato."
             />
           </Campos>
 
@@ -191,6 +213,7 @@ export const Bus = ({
             <thead>
               <tr>
                 <th>BU</th>
+                <th>Financeiro do clube</th>
                 <th>Chave</th>
                 <th>Situação</th>
               </tr>
@@ -202,6 +225,7 @@ export const Bus = ({
                     {bu.name}
                     {bu.isDefault && <span className="adm-table__sub">padrão</span>}
                   </td>
+                  <td className="adm-table__muted">{bu.financeEmail ?? '—'}</td>
                   <td className="adm-table__muted">{bu.apiKeyPreview || '—'}</td>
                   <td>
                     <Chip valor={bu.connectionStatus} />

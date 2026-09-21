@@ -5,7 +5,6 @@ import {
 } from 'src/financeiro/core/domain/entities/gateway-contract.entity';
 import {
   contractNotFound,
-  emailMismatch,
   invalidCredentials,
   invalidInput,
 } from 'src/financeiro/core/domain/errors/financeiro.error';
@@ -86,9 +85,20 @@ export const previewContract = async (
 
   const contact = await directory.findHolderContact(input.holder);
 
-  if (contact === null || contact.email === null) {
+  // Clube paga pelo financeiro, e o mesmo financeiro assina todos os contratos
+  // do clube: conferir contrato a contrato, como se faz com membro, daria
+  // divergencia em todos. Membro e o contrario — cada um paga com o e-mail
+  // dele, e a conferencia so faz sentido por contrato.
+  const emailDeReferencia =
+    input.holder.type === 'COMPANY'
+      ? businessUnit.financeEmail
+      : (contact?.email ?? null);
+
+  if (emailDeReferencia === null || emailDeReferencia === '') {
     throw invalidInput(
-      'Este registro nao tem e-mail. Preencha o e-mail antes de vincular um contrato, porque e por ele que conferimos o titular no gateway.',
+      input.holder.type === 'COMPANY'
+        ? 'Esta BU nao tem e-mail do financeiro. Cadastre-o junto com as chaves, porque e por ele que conferimos o titular do contrato do clube.'
+        : 'Este membro nao tem e-mail. Preencha o e-mail antes de vincular um contrato, porque e por ele que conferimos o titular no gateway.',
     );
   }
 
@@ -118,7 +128,7 @@ export const previewContract = async (
     customerEmail !== null &&
     emailAddressEquals(
       emailAddressFrom(customerEmail),
-      emailAddressFrom(contact.email),
+      emailAddressFrom(emailDeReferencia),
     );
 
   const existing = await contracts.findByExternalIds({
@@ -129,7 +139,7 @@ export const previewContract = async (
   return {
     businessUnit,
     contract,
-    holderEmail: contact.email,
+    holderEmail: emailDeReferencia,
     emailConfere,
     alreadyLinkedContractId: existing?.id ?? null,
   };

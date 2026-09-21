@@ -17,9 +17,17 @@ const credential = { apiKey: 'api-key', secretKey: 'secret-key' };
 const buildDependencies = (options: {
   contract?: ReturnType<typeof buildGatewayContract> | null;
   holderEmail?: string | null;
+  financeEmail?: string | null;
   existingContract?: boolean;
 }) => {
-  const businessUnits = new FakeBusinessUnitRepository([buildBusinessUnit()]);
+  const businessUnits = new FakeBusinessUnitRepository([
+    buildBusinessUnit({
+      financeEmail:
+        options.financeEmail === undefined
+          ? 'contato@exemplo.com.br'
+          : options.financeEmail,
+    }),
+  ]);
   const contracts = new FakeContractRepository(
     options.existingContract === true
       ? [
@@ -69,6 +77,49 @@ const codeOf = async (promise: Promise<unknown>): Promise<FinanceiroErrorCode> =
 
   throw new Error('esperava um erro e nao veio nenhum');
 };
+
+// A regra pedida: clube confere contra o financeiro da BU, membro contra o
+// e-mail dele. O mesmo financeiro assina todos os contratos do clube, entao
+// conferir contrato a contrato ali daria divergencia em todos.
+describe('de quem e o e-mail que vale', () => {
+  const clube = {
+    holder: { type: 'COMPANY' as const, recordId: 'clube-1' },
+    businessUnitId: 'bu-1',
+    identifier: '2026051000000100',
+  };
+
+  it('no clube, confere contra o financeiro da BU e ignora o e-mail do registro', async () => {
+    const dependencies = buildDependencies({
+      financeEmail: 'contato@exemplo.com.br',
+      holderEmail: 'outro@exemplo.com.br',
+    });
+
+    await expect(previewContract(dependencies, clube)).resolves.toMatchObject({
+      emailConfere: true,
+      holderEmail: 'contato@exemplo.com.br',
+    });
+  });
+
+  it('no membro, confere contra o e-mail dele e ignora o da BU', async () => {
+    const dependencies = buildDependencies({
+      financeEmail: 'outro@exemplo.com.br',
+      holderEmail: 'contato@exemplo.com.br',
+    });
+
+    await expect(previewContract(dependencies, input)).resolves.toMatchObject({
+      emailConfere: true,
+      holderEmail: 'contato@exemplo.com.br',
+    });
+  });
+
+  it('recusa o clube quando a BU nao tem financeiro cadastrado', async () => {
+    const dependencies = buildDependencies({ financeEmail: null });
+
+    expect(await codeOf(previewContract(dependencies, clube))).toBe(
+      'INVALID_INPUT',
+    );
+  });
+});
 
 describe('previewContract', () => {
   it('devolve o contrato quando o e-mail do titular bate', async () => {

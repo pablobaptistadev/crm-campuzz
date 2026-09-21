@@ -18,6 +18,7 @@ type Linha = {
   gatewayProvider: string | null;
   apiKeyPreview: string | null;
   keyFingerprint: string | null;
+  emailFinanceiro: string | null;
   webhookRegistrationId: string | null;
   gatewayWebhookId: string | null;
   connectionStatus: string | null;
@@ -31,6 +32,7 @@ const NOMES_DAS_COLUNAS = [
   'gatewayProvider',
   'apiKeyPreview',
   'keyFingerprint',
+  'emailFinanceiro',
   'webhookRegistrationId',
   'gatewayWebhookId',
   'connectionStatus',
@@ -60,6 +62,7 @@ const paraEntidade = (linha: Linha): BusinessUnit => ({
   gatewayProvider: 'ROUTERFY',
   apiKeyPreview: linha.apiKeyPreview ?? '',
   keyFingerprint: linha.keyFingerprint ?? '',
+  financeEmail: linha.emailFinanceiro,
   webhookRegistrationId: linha.webhookRegistrationId,
   gatewayWebhookId: linha.gatewayWebhookId,
   connectionStatus:
@@ -142,9 +145,9 @@ export const repositorioDeBuEmPostgres = ({
         `INSERT INTO ${bus}
            ("id","name","gatewayProvider","apiKeyPreview","keyFingerprint",
             "webhookRegistrationId","gatewayWebhookId","connectionStatus",
-            "lastValidatedAt","isDefault")
+            "lastValidatedAt","isDefault","emailFinanceiro")
          VALUES (COALESCE($1::uuid, gen_random_uuid()),
-                 $2, $3, $4, $5, $6, $7, $8, $9::timestamptz, $10)
+                 $2, $3, $4, $5, $6, $7, $8, $9::timestamptz, $10, $11)
          ON CONFLICT ("id") DO UPDATE SET
            "name" = EXCLUDED."name",
            "gatewayProvider" = EXCLUDED."gatewayProvider",
@@ -155,6 +158,7 @@ export const repositorioDeBuEmPostgres = ({
            "connectionStatus" = EXCLUDED."connectionStatus",
            "lastValidatedAt" = EXCLUDED."lastValidatedAt",
            "isDefault" = EXCLUDED."isDefault",
+           "emailFinanceiro" = EXCLUDED."emailFinanceiro",
            "updatedAt" = now()
          RETURNING ${COLUNAS}`,
         [
@@ -168,6 +172,7 @@ export const repositorioDeBuEmPostgres = ({
           draft.connectionStatus,
           draft.lastValidatedAt,
           draft.isDefault,
+          draft.financeEmail,
         ],
       );
 

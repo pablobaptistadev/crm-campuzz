@@ -188,6 +188,7 @@ export const financeiroRoute = new Hono<AppEnv>()
         apiKey?: string;
         secretKey?: string;
         isDefault?: boolean;
+        financeEmail?: string;
       }>();
 
       const dependencias = montarDependencias(
@@ -215,6 +216,7 @@ export const financeiroRoute = new Hono<AppEnv>()
           name: corpo.name ?? '',
           credential: { apiKey, secretKey: corpo.secretKey ?? '' },
           isDefault: corpo.isDefault === true || ehAPrimeira,
+          financeEmail: corpo.financeEmail ?? null,
         },
       );
 

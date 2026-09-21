@@ -248,14 +248,19 @@ export const AdicionarContrato = ({
 
               {previa.emailConfere ? (
                 <p className="adm-painel__ajuda">
-                  O e-mail do contrato bate com o deste registro (
-                  {previa.holderEmail}).
+                  O e-mail do contrato bate com {
+                    dono === 'clube'
+                      ? 'o financeiro cadastrado na BU'
+                      : 'o deste membro'
+                  } ({previa.holderEmail}).
                 </p>
               ) : (
                 <div className="adm-error">
                   <strong>O titular no gateway é outra pessoa.</strong> O contrato
-                  está em {contrato.customer.email ?? 'um e-mail não informado'} e
-                  este registro é {previa.holderEmail}. Vincular assim amarra a
+                  está em {contrato.customer.email ?? 'um e-mail não informado'} e{' '}
+                  {dono === 'clube'
+                    ? 'o financeiro desta BU'
+                    : 'o deste membro'} é {previa.holderEmail}. Vincular assim amarra a
                   cobrança de alguém na ficha errada — só siga se souber que é
                   esse mesmo (a empresa que paga pelo membro, o cônjuge, o sócio).
                   <CampoMarcar

@@ -18,6 +18,15 @@ export type BusinessUnit = {
   gatewayProvider: GatewayProvider;
   apiKeyPreview: string;
   keyFingerprint: string;
+  /**
+   * O e-mail do financeiro do clube nesta BU.
+   *
+   * Clube paga pelo financeiro, e o mesmo financeiro assina todos os contratos
+   * do clube — conferir contrato a contrato como se faz com membro so daria
+   * divergencia em todos. Membro nao usa este campo: cada um paga com o e-mail
+   * dele.
+   */
+  financeEmail: string | null;
   /** O UUID que vai na URL do resolver. E o que identifica o bus desta BU. */
   webhookRegistrationId: string | null;
   /** O id que o gateway deu ao registro do webhook. So serve para remove-lo. */

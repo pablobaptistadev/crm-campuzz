@@ -96,6 +96,7 @@ export const repositorioDeBuEmKv = ({
         gatewayProvider: draft.gatewayProvider,
         apiKeyPreview: draft.apiKeyPreview,
         keyFingerprint: draft.keyFingerprint,
+        financeEmail: draft.financeEmail,
         webhookRegistrationId: draft.webhookRegistrationId,
         gatewayWebhookId: draft.gatewayWebhookId,
         connectionStatus: draft.connectionStatus,

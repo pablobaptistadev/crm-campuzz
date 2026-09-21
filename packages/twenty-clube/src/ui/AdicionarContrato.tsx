@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { api } from 'src/api/client';
 import { type Bu } from 'src/ui/Bus';
 import { dataCurta, dinheiroCurto } from 'src/ui/format';
-import { Campo, Grid, Secao } from 'src/ui/primitives';
+import { Campo, Chip, Grid, rotuloDe, Secao } from 'src/ui/primitives';
 
 type Moeda = { amountMicros: number | null; currencyCode: string | null } | null;
 
@@ -111,6 +111,15 @@ export const AdicionarContrato = ({
   };
 
   const contrato = previa?.contract;
+  const CANCELADAS = new Set(['canceled', 'cancelled']);
+  const validas = (contrato?.invoices ?? []).filter(
+    (fatura) => !CANCELADAS.has(fatura.status),
+  );
+  const canceladas = (contrato?.invoices.length ?? 0) - validas.length;
+  const totalEmMicros = validas.reduce(
+    (soma, fatura) => soma + (fatura.amount?.amountMicros ?? 0),
+    0,
+  );
 
   return (
     <div className="adm-modal" role="dialog" aria-label="Adicionar contrato">
@@ -181,11 +190,28 @@ export const AdicionarContrato = ({
                     contrato.kind === 'SUBSCRIPTION' ? 'Recorrência' : 'À vista'
                   }
                 />
-                <Campo rotulo="Situação no gateway" valor={contrato.status} />
-                <Campo rotulo="Valor" valor={dinheiroCurto(contrato.amount)} />
+                <Campo
+                  rotulo="Situação no gateway"
+                  valor={rotuloDe(contrato.status)}
+                />
+                <Campo
+                  rotulo="Valor da parcela"
+                  valor={dinheiroCurto(contrato.amount)}
+                />
                 <Campo
                   rotulo="Parcelas"
-                  valor={String(contrato.invoices.length)}
+                  valor={
+                    canceladas === 0
+                      ? String(validas.length)
+                      : `${validas.length} (${canceladas} cancelada${canceladas > 1 ? 's' : ''})`
+                  }
+                />
+                <Campo
+                  rotulo="Total do contrato"
+                  valor={dinheiroCurto({
+                    amountMicros: totalEmMicros,
+                    currencyCode: contrato.amount?.currencyCode ?? 'BRL',
+                  })}
                 />
                 <Campo
                   rotulo="Próxima cobrança"
@@ -206,7 +232,7 @@ export const AdicionarContrato = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {contrato.invoices.slice(0, 12).map((fatura) => (
+                    {contrato.invoices.map((fatura) => (
                       <tr key={fatura.externalInvoiceId}>
                         <td>{fatura.externalInvoiceId}</td>
                         <td className="adm-table__num">
@@ -215,7 +241,9 @@ export const AdicionarContrato = ({
                         <td className="adm-table__muted">
                           {dataCurta(fatura.dueAt)}
                         </td>
-                        <td>{fatura.status}</td>
+                        <td>
+                          <Chip valor={fatura.status} />
+                        </td>
                       </tr>
                     ))}
                   </tbody>

@@ -144,6 +144,7 @@ export const CURRENT_USER_QUERY = `
     currentUser {
       id email firstName lastName
       currentWorkspace { id displayName }
+      workspaceMember { id avatarUrl }
     }
   }
 `;

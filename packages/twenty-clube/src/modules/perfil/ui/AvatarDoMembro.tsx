@@ -19,18 +19,34 @@ const SemFoto = ({ titulo }: { titulo: string }) => (
 
 export type TamanhoDoAvatar = 'linha' | 'card' | 'titulo';
 
+// Clube sem foto não é uma pessoa sem foto: a silhueta ali leria como "alguém",
+// e o que falta é um logo. Por isso o vazio muda com o dono.
+const iniciaisDe = (nome: string) =>
+  nome
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((parte) => parte[0]?.toUpperCase() ?? '')
+    .join('');
+
 export const AvatarDoMembro = ({
   nome,
   fotoUrl,
   tamanho = 'linha',
+  vazio = 'silhueta',
 }: {
   nome: string;
   fotoUrl?: string | null;
   tamanho?: TamanhoDoAvatar;
+  vazio?: 'silhueta' | 'iniciais';
 }) => (
   <span className={`adm-avatar adm-avatar--${tamanho}`}>
     {fotoUrl === null || fotoUrl === undefined || fotoUrl === '' ? (
-      <SemFoto titulo={`${nome} — sem foto`} />
+      vazio === 'iniciais' ? (
+        <span className="adm-avatar__iniciais">{iniciaisDe(nome) || '—'}</span>
+      ) : (
+        <SemFoto titulo={`${nome} — sem foto`} />
+      )
     ) : (
       <img className="adm-avatar__img" src={fotoUrl} alt={nome} loading="lazy" />
     )}

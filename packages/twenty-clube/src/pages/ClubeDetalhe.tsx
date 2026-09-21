@@ -12,6 +12,7 @@ import { Bus } from 'src/ui/Bus';
 import { FinanceiroAutomatico } from 'src/ui/FinanceiroAutomatico';
 import { CadastroCompleto, type GrupoDeCampos } from 'src/ui/CadastroCompleto';
 import { AvatarDoMembro, MembroComFoto } from 'src/modules/perfil/ui/AvatarDoMembro';
+import { TrocarFoto } from 'src/modules/perfil/ui/TrocarFoto';
 import { NovoMembro } from 'src/ui/NovoMembro';
 import { NovoSocio } from 'src/ui/NovoSocio';
 import { ChipDeAtraso } from 'src/ui/ChipDeAtraso';
@@ -283,7 +284,15 @@ export const ClubeDetalhe = () => {
       </Link>
 
       <div className="adm-record">
-        <span className="adm-record__avatar">{iniciais(clube.name)}</span>
+        <TrocarFoto
+          dono="clube"
+          vazio="iniciais"
+          donoId={clube.id}
+          nome={clube.name}
+          fotoUrl={clube.fotoUrl ?? null}
+          tamanho="titulo"
+          onTrocada={(url) => aplicar({ fotoUrl: url })}
+        />
         <div>
           <div className="adm-record__name">{clube.name}</div>
           <div className="adm-record__sub">

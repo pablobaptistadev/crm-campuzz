@@ -13,7 +13,7 @@ import { FinanceiroAutomatico } from 'src/ui/FinanceiroAutomatico';
 import { CadastroCompleto, type GrupoDeCampos } from 'src/ui/CadastroCompleto';
 import { CamposDoPerfil } from 'src/modules/perfil/ui/CamposDoPerfil';
 import { AvatarDoMembro } from 'src/modules/perfil/ui/AvatarDoMembro';
-import { FotoDePerfil } from 'src/modules/perfil/ui/FotoDePerfil';
+import { TrocarFoto } from 'src/modules/perfil/ui/TrocarFoto';
 import { Filhos, type Dependente } from 'src/ui/Filhos';
 import { Pendencias, type Pendencia } from 'src/ui/Pendencias';
 import { NovaVenda } from 'src/ui/NovaVenda';
@@ -248,8 +248,9 @@ export const MembroDetalhe = () => {
       {aba === 'cad' && (
         <>
         <Card titulo="Perfil">
-          <FotoDePerfil
-            membroId={membro.id}
+          <TrocarFoto
+            dono="membro"
+            donoId={membro.id}
             nome={membro.name}
             fotoUrl={membro.fotoUrl ?? null}
             onTrocada={(url) => aplicar({ fotoUrl: url })}

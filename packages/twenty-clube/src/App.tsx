@@ -11,6 +11,7 @@ import { NovoClube } from 'src/pages/NovoClube';
 import { Radar } from 'src/pages/Radar';
 import { Login } from 'src/pages/Login';
 import { MembroDetalhe } from 'src/pages/MembroDetalhe';
+import { TrocarFoto } from 'src/modules/perfil/ui/TrocarFoto';
 import { iniciais } from 'src/ui/format';
 
 type Usuario = {
@@ -19,6 +20,7 @@ type Usuario = {
   firstName: string | null;
   lastName: string | null;
   currentWorkspace: { id: string; displayName: string } | null;
+  workspaceMember: { id: string; avatarUrl: string | null } | null;
 };
 
 export const App = () => {
@@ -114,9 +116,27 @@ export const App = () => {
 
       <div className="adm-banner__right">
         {temClubes === true && <span className="adm-banner__ok">✓ sincronizado</span>}
-        <span className="adm-banner__avatar" title={nome}>
-          {iniciais(nome)}
-        </span>
+        {usuario.workspaceMember === null ? (
+          <span className="adm-banner__avatar" title={nome}>
+            {iniciais(nome)}
+          </span>
+        ) : (
+          <TrocarFoto
+            dono="usuario"
+          vazio="iniciais"
+            donoId={usuario.workspaceMember.id}
+            nome={nome}
+            fotoUrl={usuario.workspaceMember.avatarUrl}
+            tamanho="linha"
+            onTrocada={(url: string | null) =>
+              setUsuario((atual) =>
+                atual === null || atual === undefined || atual.workspaceMember === null
+                  ? atual
+                  : { ...atual, workspaceMember: { ...atual.workspaceMember, avatarUrl: url } },
+              )
+            }
+          />
+        )}
         <button type="button" className="adm-banner__sair" onClick={() => void sair()}>
           Sair
         </button>

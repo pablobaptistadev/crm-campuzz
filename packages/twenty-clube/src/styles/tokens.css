@@ -361,7 +361,11 @@ button { font: inherit; }
 .adm-etapa__rodape { margin-top: auto; padding-top: 4px; }
 
 /* ── Modal ────────────────────────────────────────────────── */
+/* O modal herda a cor de onde foi montado, e o de foto nasce dentro do banner
+   escuro: sem fixar, o título saía branco sobre a caixa branca. Modal é uma
+   camada por cima da tela, não um filho de quem o abriu. */
 .adm-modal {
+  color: var(--text);
   position: fixed; inset: 0; z-index: 50;
   background: rgba(8, 12, 28, 0.45);
   display: grid; place-items: start center;
@@ -630,6 +634,11 @@ button.adm-kpi { cursor: pointer; text-align: left; font: inherit; }
   border: 1px solid var(--border-soft);
 }
 .adm-avatar--linha { width: 30px; height: 30px; }
+.adm-avatar__iniciais {
+  display: grid; place-items: center; width: 100%; height: 100%;
+  border-radius: inherit; background: var(--gold-soft); color: var(--gold-deep);
+  font-weight: 700; font-size: 0.42em; letter-spacing: 0.04em;
+}
 .adm-avatar--card { width: 42px; height: 42px; }
 .adm-avatar--titulo { width: 52px; height: 52px; border-radius: 16px; }
 .adm-avatar__img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -820,3 +829,73 @@ select.adm-status__select { background-image: none; padding-right: 8px; }
   border-bottom: 1px dashed var(--border);
 }
 .adm-editavel:hover { border-bottom-color: var(--gold); color: var(--text); }
+
+/* ── Foto: recorte e troca ────────────────────────────────── */
+.adm-recorte__caixa { max-width: 400px; }
+.adm-recorte__palco {
+  position: relative; margin: 0 auto 18px;
+  overflow: hidden; border-radius: 14px;
+  background: var(--avatar-fundo);
+  cursor: grab; touch-action: none; user-select: none;
+}
+.adm-recorte__palco:active { cursor: grabbing; }
+.adm-recorte__palco--redondo { border-radius: 50%; }
+.adm-recorte__img {
+  position: absolute; top: 0; left: 0;
+  max-width: none; transform-origin: top left;
+  -webkit-user-drag: none;
+}
+/* A máscara é só a borda por dentro: escurecer o que fica de fora exigiria um
+   segundo palco, e o palco JÁ é o recorte — o que se vê é o que sai. */
+.adm-recorte__mascara {
+  position: absolute; inset: 0; pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55),
+              inset 0 0 0 2px rgba(0, 0, 0, 0.08);
+}
+.adm-recorte__zoom { display: block; margin-bottom: 12px; }
+.adm-recorte__range {
+  width: 100%; margin-top: 6px; height: 4px; padding: 0;
+  appearance: none; -webkit-appearance: none;
+  background: var(--border); border-radius: 999px; outline: none;
+}
+.adm-recorte__range::-webkit-slider-thumb {
+  appearance: none; -webkit-appearance: none;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--gold-deep); border: 2px solid var(--bg-elev-1);
+  box-shadow: var(--sombra-1); cursor: pointer;
+}
+.adm-recorte__range::-moz-range-thumb {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--gold-deep); border: 2px solid var(--bg-elev-1);
+  box-shadow: var(--sombra-1); cursor: pointer;
+}
+.adm-recorte__dica {
+  margin: 0 0 14px; font-size: 12.5px; color: var(--text-muted); text-align: center;
+}
+
+.adm-trocarfoto { display: inline-flex; align-items: center; gap: 10px; }
+.adm-trocarfoto__alvo {
+  position: relative; display: inline-flex; padding: 0;
+  border: none; background: none; cursor: pointer;
+  /* Herdado pela capa e pelas iniciais: no cabeçalho do clube o avatar é
+     quadrado arredondado, e uma capa redonda sobrando nos cantos entrega. */
+  border-radius: 16px;
+}
+.adm-trocarfoto__alvo:disabled { cursor: default; }
+/* A capa só aparece no hover: um rótulo permanente sobre a foto cobre
+   justamente o rosto que a foto existe para mostrar. */
+.adm-trocarfoto__capa {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  border-radius: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+  color: #fff; background: rgba(0, 0, 0, 0.5);
+  opacity: 0; transition: opacity 0.14s ease;
+}
+.adm-trocarfoto__alvo:hover .adm-trocarfoto__capa,
+.adm-trocarfoto__alvo:focus-visible .adm-trocarfoto__capa,
+.adm-trocarfoto__alvo:disabled .adm-trocarfoto__capa { opacity: 1; }
+.adm-trocarfoto__remover {
+  border: none; background: none; padding: 0; cursor: pointer;
+  font-size: 12px; color: var(--text-muted); text-decoration: underline;
+}
+.adm-trocarfoto__remover:hover { color: var(--perigo); }

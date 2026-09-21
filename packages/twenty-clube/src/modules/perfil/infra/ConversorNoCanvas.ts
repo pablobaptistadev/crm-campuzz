@@ -1,6 +1,7 @@
 import {
   FORMATO_DA_FOTO,
   QUALIDADE_DA_FOTO,
+  type Recorte,
   deveConverterParaWebp,
   nomeEmWebp,
   recorteCentralQuadrado,
@@ -58,7 +59,7 @@ const paraBlob = (canvas: HTMLCanvasElement): Promise<Blob> =>
   });
 
 export const criarConversorNoCanvas = (): ConversorDeImagem => ({
-  async paraWebp(arquivo, ladoMaximo) {
+  async paraWebp(arquivo, ladoMaximo, recorteEscolhido) {
     const precisaRecortar = ladoMaximo !== undefined;
 
     if (!precisaRecortar && !deveConverterParaWebp(arquivo.type)) {
@@ -68,12 +69,14 @@ export const criarConversorNoCanvas = (): ConversorDeImagem => ({
     const origem = await createImageBitmap(arquivo);
 
     try {
+      // Sem recorte escolhido cai no centro: é o que vale para quem confirmou
+      // sem mexer, e para quem chama sem passar por tela nenhuma.
       const canvas = precisaRecortar
         ? desenhar(
             origem,
             ladoMaximo,
             ladoMaximo,
-            recorteCentralQuadrado(origem.width, origem.height),
+            recorteEscolhido ?? recorteCentralQuadrado(origem.width, origem.height),
           )
         : desenhar(origem, origem.width, origem.height, null);
 

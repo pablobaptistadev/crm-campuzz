@@ -113,14 +113,14 @@ export const FinanceiroAutomatico = ({
   return (
     <>
       <Card titulo="Situação de cobrança">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="adm-toolbar">
           <Chip valor={situacao.emAtraso ? 'ATRASADA' : 'PAGA'} />
-          <strong style={{ fontSize: 13 }}>
+          <span className="adm-toolbar__title">
             {situacao.emAtraso ? 'Em atraso' : 'Em dia'}
-          </strong>
+          </span>
         </div>
 
-        <p style={{ fontSize: 12, color: '#475569', margin: '10px 0 0' }}>
+        <p className="adm-painel__ajuda">
           {situacao.emAtraso
             ? `Contamos ${ondeEstaOAtraso}. Basta um dos dois lados em atraso para o cliente estar em atraso.`
             : `Olhamos as ${cobrancas.length} cobranças dos dois financeiros — o lançado à mão e o puxado do gateway. Nenhuma vencida em aberto.`}
@@ -159,13 +159,13 @@ export const FinanceiroAutomatico = ({
           </Vazio>
         ) : (
           contratos.map((contrato) => (
-            <div key={contrato.id} style={{ marginBottom: 20 }}>
-              <div className="adm-toolbar" style={{ marginBottom: 0 }}>
+            <div key={contrato.id}>
+              <div className="adm-toolbar">
                 <span className="adm-toolbar__title">
                   {contrato.name ?? 'Contrato'}
                 </span>
                 <span className="adm-toolbar__spacer" />
-                <span style={{ fontSize: 11, color: '#64748b' }}>
+                <span className="adm-table__muted">
                   {dinheiroCurto(contrato.totalValue)}
                 </span>
               </div>

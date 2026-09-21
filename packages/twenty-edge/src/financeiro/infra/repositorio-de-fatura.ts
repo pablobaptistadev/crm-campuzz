@@ -9,8 +9,8 @@ import {
 import { escapeIdentifier } from 'src/ddl/escape';
 import {
   colunaDaRelacao,
+  CAMPO_DO_CONTRATO_NA_FATURA,
   OBJETO_DA_FATURA,
-  OBJETO_DO_CONTRATO,
   tabelaDe,
 } from 'src/financeiro/infra/tabela';
 import { type WorkspaceMetadata } from 'src/metadata/types';
@@ -26,7 +26,7 @@ export const repositorioDeFaturaEmPostgres = ({
 }): InvoiceRepositoryPort => {
   const faturas = tabelaDe(metadata, OBJETO_DA_FATURA);
   const colContrato = escapeIdentifier(
-    colunaDaRelacao(metadata, OBJETO_DA_FATURA, OBJETO_DO_CONTRATO),
+    colunaDaRelacao(metadata, OBJETO_DA_FATURA, CAMPO_DO_CONTRATO_NA_FATURA),
   );
 
   return {

@@ -24,8 +24,6 @@ type Previa = {
   };
 };
 
-const entrada = { width: '100%', minWidth: 0 };
-
 export const AdicionarContrato = ({
   dono,
   donoId,
@@ -47,7 +45,15 @@ export const AdicionarContrato = ({
   useEffect(() => {
     const carregar = async () => {
       try {
-        setBus((await api<{ bus: Bu[] }>('/bus')).bus);
+        const lista = (await api<{ bus: Bu[] }>('/bus')).bus;
+
+        setBus(lista);
+        // Já escolhida: com uma BU só e sem marca de padrão, deixar em branco
+        // faria a cascata não achar nenhuma e a busca morrer sem a pessoa
+        // entender por quê.
+        setBusinessUnitId(
+          (lista.find((bu) => bu.isDefault) ?? lista[0])?.id ?? '',
+        );
       } catch {
         // Sem a lista, o seletor some e a cascata escolhe a BU sozinha. Isso é
         // pior do que ter o seletor, mas ainda funciona — não vale travar a tela.
@@ -110,44 +116,42 @@ export const AdicionarContrato = ({
           </button>
         </header>
 
-        <div className="adm-card__body" style={{ display: 'grid', gap: 12 }}>
+        <div className="adm-card__body">
           {erro !== null && <div className="adm-error">{erro}</div>}
 
-          <label style={{ fontSize: 11, display: 'grid', gap: 4 }}>
-            Número do contrato ou da transação
-            <input
-              style={entrada}
-              value={identificador}
-              autoFocus
-              onChange={(evento) => setIdentificador(evento.target.value)}
-              onKeyDown={(evento) => {
-                if (evento.key === 'Enter') {
-                  void buscar();
-                }
-              }}
-              placeholder="Como aparece no painel da Routerfy"
-            />
-          </label>
-
-          {bus.length > 1 && (
-            <label style={{ fontSize: 11, display: 'grid', gap: 4 }}>
-              Procurar em qual BU
+          <div className="adm-grid adm-grid--2">
+            <div>
+              <div className="adm-fieldlabel">Número do contrato ou da transação</div>
+              <input
+                className="adm-input"
+                value={identificador}
+                autoFocus
+                onChange={(evento) => setIdentificador(evento.target.value)}
+                onKeyDown={(evento) => {
+                  if (evento.key === 'Enter') {
+                    void buscar();
+                  }
+                }}
+                placeholder="Como aparece no painel da Routerfy"
+              />
+            </div>
+            <div>
+              <div className="adm-fieldlabel">Procurar em qual BU</div>
               <select
-                style={entrada}
+                className="adm-input"
                 value={businessUnitId}
                 onChange={(evento) => setBusinessUnitId(evento.target.value)}
               >
-                <option value="">
-                  A BU deste {dono} (ou a padrão)
-                </option>
                 {bus.map((bu) => (
                   <option key={bu.id} value={bu.id}>
                     {bu.name}
+                    {bu.isDefault ? ' (padrão)' : ''}
                   </option>
                 ))}
               </select>
-            </label>
-          )}
+            </div>
+          </div>
+
 
           <button
             type="button"
@@ -212,7 +216,7 @@ export const AdicionarContrato = ({
                 </table>
               )}
 
-              <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>
+              <p className="adm-painel__ajuda">
                 Conferimos o e-mail do contrato contra {previa.holderEmail} antes
                 de deixar vincular.
               </p>

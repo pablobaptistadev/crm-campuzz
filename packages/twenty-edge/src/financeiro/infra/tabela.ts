@@ -16,6 +16,9 @@ export const OBJETO_DA_BU = 'businessUnit';
 export const OBJETO_DO_CONTRATO = 'gatewayContract';
 export const OBJETO_DA_FATURA = 'gatewayInvoice';
 
+// O campo que aponta ao contrato dentro da fatura. Nome de campo, não de objeto.
+export const CAMPO_DO_CONTRATO_NA_FATURA = 'contrato';
+
 export const formaDaTabela = (
   metadata: WorkspaceMetadata,
   nameSingular: string,

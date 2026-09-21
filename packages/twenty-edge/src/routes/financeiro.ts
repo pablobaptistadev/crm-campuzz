@@ -58,32 +58,40 @@ const impressaoDigital = async (apiKey: string): Promise<string> => {
     .slice(0, 32);
 };
 
-const montarDependencias = (sessao: Sessao, appSecret: string) => ({
-  businessUnits: repositorioDeBuEmPostgres({
-    client: sessao.client,
-    metadata: sessao.metadata,
-  }),
-  contracts: repositorioDeContratoEmPostgres({
-    client: sessao.client,
-    metadata: sessao.metadata,
-  }),
-  invoices: repositorioDeFaturaEmPostgres({
-    client: sessao.client,
-    metadata: sessao.metadata,
-  }),
-  directory: diretorioDoCrmEmPostgres({
-    client: sessao.client,
-    metadata: sessao.metadata,
-  }),
-  vault: cofreEmPostgres({
-    client: sessao.client,
-    workspaceId: sessao.workspaceId,
-    appSecret,
-  }),
-  webhooks: registroDeWebhookEmPostgres({ client: sessao.client }),
-  clock: relogioDoSistema,
-  identifiers: identificadorDoSistema,
-});
+const montarDependencias = (sessao: Sessao, appSecret: string) => {
+  const comMetadata = { client: sessao.client, metadata: sessao.metadata };
+
+  // Getters, e não um objeto pronto: cada repositório resolve tabela e coluna no
+  // metadata ao nascer, então montar todos de uma vez faz um repositório
+  // quebrado derrubar rotas que nem o usam. Foi assim que um nome de campo
+  // errado nas faturas tirou o GET /bus do ar.
+  return {
+    get businessUnits() {
+      return repositorioDeBuEmPostgres(comMetadata);
+    },
+    get contracts() {
+      return repositorioDeContratoEmPostgres(comMetadata);
+    },
+    get invoices() {
+      return repositorioDeFaturaEmPostgres(comMetadata);
+    },
+    get directory() {
+      return diretorioDoCrmEmPostgres(comMetadata);
+    },
+    get vault() {
+      return cofreEmPostgres({
+        client: sessao.client,
+        workspaceId: sessao.workspaceId,
+        appSecret,
+      });
+    },
+    get webhooks() {
+      return registroDeWebhookEmPostgres({ client: sessao.client });
+    },
+    clock: relogioDoSistema,
+    identifiers: identificadorDoSistema,
+  };
+};
 
 const donoDoCorpo = (corpo: {
   clubeId?: string;
@@ -188,6 +196,8 @@ export const financeiroRoute = new Hono<AppEnv>()
 
       const apiKey = corpo.apiKey ?? '';
       const impressao = await impressaoDigital(apiKey);
+      const jaExistem = await dependencias.businessUnits.listAll();
+      const ehAPrimeira = jaExistem.length === 0;
 
       const bu = await saveBusinessUnit(
         {
@@ -202,7 +212,7 @@ export const financeiroRoute = new Hono<AppEnv>()
           businessUnitId: corpo.businessUnitId,
           name: corpo.name ?? '',
           credential: { apiKey, secretKey: corpo.secretKey ?? '' },
-          isDefault: corpo.isDefault === true,
+          isDefault: corpo.isDefault === true || ehAPrimeira,
         },
       );
 

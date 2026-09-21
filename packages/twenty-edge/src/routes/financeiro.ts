@@ -10,6 +10,7 @@ import { type AppEnv } from 'src/env';
 import { type ContractHolder } from 'src/financeiro/core/domain/entities/gateway-contract.entity';
 import { FinanceiroError } from 'src/financeiro/core/domain/errors/financeiro.error';
 import { cofreEmPostgres } from 'src/financeiro/infra/cofre';
+import { comoErroDeNegocio } from 'src/financeiro/infra/erro-do-gateway';
 import { garantirTabelasDoFinanceiro } from 'src/financeiro/infra/ddl';
 import { diretorioDoCrmEmPostgres } from 'src/financeiro/infra/diretorio-do-crm';
 import { registroDeWebhookEmPostgres } from 'src/financeiro/infra/registro-de-webhook';
@@ -199,7 +200,8 @@ export const financeiroRoute = new Hono<AppEnv>()
       const jaExistem = await dependencias.businessUnits.listAll();
       const ehAPrimeira = jaExistem.length === 0;
 
-      const bu = await saveBusinessUnit(
+      try {
+        const bu = await saveBusinessUnit(
         {
           ...dependencias,
           gateway: new RouterfyGateway(),
@@ -216,7 +218,10 @@ export const financeiroRoute = new Hono<AppEnv>()
         },
       );
 
-      return { bu };
+        return { bu };
+      } catch (causa) {
+        throw comoErroDeNegocio(causa, '');
+      }
     }),
   )
 
@@ -247,13 +252,16 @@ export const financeiroRoute = new Hono<AppEnv>()
         corpo.businessUnitId ??
         (await resolveBusinessUnit(dependencias, holder)).id;
 
-      return await previewContract(
-        {
-          ...dependencias,
-          gateway: new RouterfyGateway(),
-        },
-        { holder, businessUnitId, identifier: corpo.identifier ?? '' },
-      );
+      const identifier = corpo.identifier ?? '';
+
+      try {
+        return await previewContract(
+          { ...dependencias, gateway: new RouterfyGateway() },
+          { holder, businessUnitId, identifier },
+        );
+      } catch (causa) {
+        throw comoErroDeNegocio(causa, identifier);
+      }
     }),
   )
   .post('/contrato/vincular', (context) =>
@@ -284,10 +292,7 @@ export const financeiroRoute = new Hono<AppEnv>()
 
       try {
         const resultado = await attachContract(
-          {
-            ...dependencias,
-            gateway: new RouterfyGateway(),
-          },
+          { ...dependencias, gateway: new RouterfyGateway() },
           { holder, businessUnitId, identifier: corpo.identifier ?? '' },
         );
 
@@ -297,7 +302,7 @@ export const financeiroRoute = new Hono<AppEnv>()
       } catch (causa) {
         await sessao.client.query('ROLLBACK').catch(() => undefined);
 
-        throw causa;
+        throw comoErroDeNegocio(causa, corpo.identifier ?? '');
       }
     }),
   );

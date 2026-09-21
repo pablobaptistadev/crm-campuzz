@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
 
 import { api, gql } from 'src/api/client';
+import {
+  AcoesDoFormulario,
+  CampoMarcar,
+  CampoSelecao,
+  Campos,
+  CampoTexto,
+} from 'src/ui/campos';
 import { Card, Chip, Vazio } from 'src/ui/primitives';
 
 export type Bu = {
@@ -51,6 +58,24 @@ export const Bus = ({
     void carregar();
   }, []);
 
+  const ligar = async (escolhida: string | null) => {
+    setErro(null);
+
+    try {
+      await gql(
+        LIGAR.replace(
+          '__TIPO__',
+          dono === 'clube' ? 'updateClube' : 'updateMembro',
+        ),
+        { id: donoId, businessUnitId: escolhida },
+      );
+
+      onLigada(escolhida);
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : 'Erro inesperado.');
+    }
+  };
+
   const salvar = async () => {
     if (nome.trim() === '' || apiKey.trim() === '' || secretKey.trim() === '') {
       setErro('Preencha o nome, a api key e a secret key.');
@@ -83,23 +108,8 @@ export const Bus = ({
     }
   };
 
-  const ligar = async (escolhida: string | null) => {
-    setErro(null);
-
-    try {
-      await gql(
-        LIGAR.replace(
-          '__TIPO__',
-          dono === 'clube' ? 'updateClube' : 'updateMembro',
-        ),
-        { id: donoId, businessUnitId: escolhida },
-      );
-
-      onLigada(escolhida);
-    } catch (falha) {
-      setErro(falha instanceof Error ? falha.message : 'Erro inesperado.');
-    }
-  };
+  const herdarDe =
+    dono === 'membro' ? 'do clube ou da BU padrão' : 'da BU padrão';
 
   return (
     <Card
@@ -118,50 +128,29 @@ export const Bus = ({
 
       {aberto && (
         <>
-          <div className="adm-grid adm-grid--3">
-            <div>
-              <div className="adm-fieldlabel">Nome da BU</div>
-              <input
-                className="adm-input"
-                value={nome}
-                onChange={(evento) => setNome(evento.target.value)}
-                placeholder="Prosperar - Nome do Clube"
-              />
-            </div>
-            <div>
-              <div className="adm-fieldlabel">API key</div>
-              {/* type=password para a chave não ficar legível por cima do ombro
-                  nem entrar num screenshot; o campo é limpo assim que salva. */}
-              <input
-                className="adm-input"
-                type="password"
-                autoComplete="off"
-                value={apiKey}
-                onChange={(evento) => setApiKey(evento.target.value)}
-              />
-            </div>
-            <div>
-              <div className="adm-fieldlabel">Secret key</div>
-              <input
-                className="adm-input"
-                type="password"
-                autoComplete="off"
-                value={secretKey}
-                onChange={(evento) => setSecretKey(evento.target.value)}
-              />
-            </div>
-          </div>
+          <Campos colunas={3}>
+            <CampoTexto
+              rotulo="Nome da BU"
+              valor={nome}
+              onMudou={setNome}
+              placeholder="Prosperar - Nome do Clube"
+            />
+            <CampoTexto rotulo="API key" valor={apiKey} onMudou={setApiKey} segredo />
+            <CampoTexto
+              rotulo="Secret key"
+              valor={secretKey}
+              onMudou={setSecretKey}
+              segredo
+            />
+          </Campos>
 
-          <div className="adm-toolbar">
-            <label className="adm-fieldlabel">
-              <input
-                type="checkbox"
-                checked={padrao}
-                onChange={(evento) => setPadrao(evento.target.checked)}
-              />{' '}
-              Usar esta BU para todos que não tiverem uma própria
-            </label>
-            <span className="adm-toolbar__spacer" />
+          <CampoMarcar
+            rotulo="Usar esta BU para todos que não tiverem uma própria"
+            marcado={padrao}
+            onMudou={setPadrao}
+          />
+
+          <AcoesDoFormulario>
             <button
               type="button"
               className="adm-btn adm-btn--primary"
@@ -170,7 +159,7 @@ export const Bus = ({
             >
               {salvando ? 'Validando na Routerfy…' : 'Salvar chaves'}
             </button>
-          </div>
+          </AcoesDoFormulario>
 
           <p className="adm-painel__ajuda">
             Validamos as chaves na Routerfy antes de gravar. Elas vão cifradas
@@ -185,30 +174,18 @@ export const Bus = ({
         <Vazio>Nenhuma BU cadastrada ainda. Cadastre uma para puxar contratos.</Vazio>
       ) : (
         <>
-          <div className="adm-grid adm-grid--2">
-            <div>
-              <div className="adm-fieldlabel">
-                BU {dono === 'clube' ? 'deste clube' : 'deste membro'}
-              </div>
-              <select
-                className="adm-input"
-                value={businessUnitId ?? ''}
-                onChange={(evento) =>
-                  void ligar(evento.target.value === '' ? null : evento.target.value)
-                }
-              >
-                <option value="">
-                  Herdar{' '}
-                  {dono === 'membro' ? 'do clube ou da BU padrão' : 'da BU padrão'}
-                </option>
-                {bus.map((bu) => (
-                  <option key={bu.id} value={bu.id}>
-                    {bu.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+          <Campos colunas={2}>
+            <CampoSelecao
+              rotulo={`BU ${dono === 'clube' ? 'deste clube' : 'deste membro'}`}
+              valor={businessUnitId ?? ''}
+              onMudou={(escolhida) => void ligar(escolhida === '' ? null : escolhida)}
+              dica={`Em branco, herda ${herdarDe}.`}
+              opcoes={[
+                { valor: '', rotulo: `Herdar ${herdarDe}` },
+                ...bus.map((bu) => ({ valor: bu.id, rotulo: bu.name })),
+              ]}
+            />
+          </Campos>
 
           <table className="adm-table">
             <thead>

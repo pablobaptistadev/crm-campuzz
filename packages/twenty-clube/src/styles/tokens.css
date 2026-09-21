@@ -747,3 +747,52 @@ button.adm-kpi { cursor: pointer; text-align: left; font: inherit; }
   opacity: 0.65; flex: none;
 }
 .adm-status--clicavel:hover .adm-status__seta { opacity: 1; }
+
+/* ── Campos de formulário ─────────────────────────────────── */
+/* Um desenho só para todo campo de formulário. Antes cada tela montava o seu,
+   e a mesma tela tinha três alturas diferentes e um select nativo sem borda. */
+.adm-campos { display: grid; gap: 14px 18px; margin-bottom: 14px; }
+.adm-campos--1 { grid-template-columns: 1fr; }
+.adm-campos--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.adm-campos--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 860px) {
+  .adm-campos--2, .adm-campos--3 { grid-template-columns: 1fr; }
+}
+
+.adm-campo { display: grid; gap: 5px; min-width: 0; }
+.adm-campo__rotulo {
+  font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--text-soft); font-weight: 600;
+}
+/* min-width: 0 e width: 100% juntos: o .adm-input traz min-width 240px, que
+   dentro do grid estoura a coluna em vez de encolher. */
+.adm-campo__controle { width: 100%; min-width: 0; }
+.adm-campo__dica { font-size: 11px; color: var(--text-soft); line-height: 1.5; }
+
+.adm-campo__selecao { display: block; }
+
+.adm-campo--marcar {
+  grid-auto-flow: column; grid-template-columns: auto 1fr;
+  align-items: center; gap: 8px; cursor: pointer;
+  font-size: 12.5px; color: var(--text);
+}
+
+.adm-campos__acoes {
+  display: flex; align-items: center; gap: 10px;
+  justify-content: flex-end; margin: 4px 0 14px;
+}
+
+/* O select nativo desenha a própria seta, com a fonte e a cor do sistema — é o
+   que fazia o campo destoar do resto da tela. A regra é por elemento, e não por
+   uma classe nova, porque são mais de dez selects espalhados pelo app: corrigir
+   arquivo por arquivo deixaria o próximo nascer errado de novo. */
+select.adm-input {
+  appearance: none; -webkit-appearance: none;
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%23808a99' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  background-size: 10px 6px;
+}
+/* O status do cabeçalho tem seta própria, desenhada ao lado do chip. */
+select.adm-status__select { background-image: none; padding-right: 8px; }

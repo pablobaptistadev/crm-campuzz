@@ -3,6 +3,13 @@ import { useEffect, useState } from 'react';
 import { api } from 'src/api/client';
 import { type Bu } from 'src/ui/Bus';
 import { dataCurta, dinheiroCurto } from 'src/ui/format';
+import {
+  AcoesDoFormulario,
+  CampoMarcar,
+  CampoSelecao,
+  Campos,
+  CampoTexto,
+} from 'src/ui/campos';
 import { Campo, Chip, Grid, rotuloDe, Secao } from 'src/ui/primitives';
 
 type Moeda = { amountMicros: number | null; currencyCode: string | null } | null;
@@ -134,48 +141,37 @@ export const AdicionarContrato = ({
         <div className="adm-card__body">
           {erro !== null && <div className="adm-error">{erro}</div>}
 
-          <div className="adm-grid adm-grid--2">
-            <div>
-              <div className="adm-fieldlabel">Número do contrato ou da transação</div>
-              <input
-                className="adm-input"
-                value={identificador}
-                autoFocus
-                onChange={(evento) => setIdentificador(evento.target.value)}
-                onKeyDown={(evento) => {
-                  if (evento.key === 'Enter') {
-                    void buscar();
-                  }
-                }}
-                placeholder="Como aparece no painel da Routerfy"
-              />
-            </div>
-            <div>
-              <div className="adm-fieldlabel">Procurar em qual BU</div>
-              <select
-                className="adm-input"
-                value={businessUnitId}
-                onChange={(evento) => setBusinessUnitId(evento.target.value)}
-              >
-                {bus.map((bu) => (
-                  <option key={bu.id} value={bu.id}>
-                    {bu.name}
-                    {bu.isDefault ? ' (padrão)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+          <Campos colunas={2}>
+            <CampoTexto
+              rotulo="Número do contrato ou da transação"
+              valor={identificador}
+              onMudou={setIdentificador}
+              onEnter={() => void buscar()}
+              placeholder="Como aparece no painel da Routerfy"
+              autoFoco
+            />
+            <CampoSelecao
+              rotulo="Procurar em qual BU"
+              valor={businessUnitId}
+              onMudou={setBusinessUnitId}
+              opcoes={bus.map((bu) => ({
+                valor: bu.id,
+                rotulo: bu.isDefault ? `${bu.name} (padrão)` : bu.name,
+              }))}
+            />
+          </Campos>
 
 
-          <button
-            type="button"
-            className="adm-btn"
-            disabled={ocupado}
-            onClick={() => void buscar()}
-          >
-            {ocupado && previa === null ? 'Procurando…' : 'Procurar contrato'}
-          </button>
+          <AcoesDoFormulario>
+            <button
+              type="button"
+              className="adm-btn adm-btn--primary"
+              disabled={ocupado}
+              onClick={() => void buscar()}
+            >
+              {ocupado && previa === null ? 'Procurando…' : 'Procurar contrato'}
+            </button>
+          </AcoesDoFormulario>
 
           {contrato !== undefined && previa !== null && (
             <>
@@ -262,19 +258,15 @@ export const AdicionarContrato = ({
                   este registro é {previa.holderEmail}. Vincular assim amarra a
                   cobrança de alguém na ficha errada — só siga se souber que é
                   esse mesmo (a empresa que paga pelo membro, o cônjuge, o sócio).
-                  <label className="adm-fieldlabel">
-                    <input
-                      type="checkbox"
-                      checked={confirmaTitular}
-                      onChange={(evento) =>
-                        setConfirmaTitular(evento.target.checked)
-                      }
-                    />{' '}
-                    Sei que o titular é diferente e quero vincular mesmo assim
-                  </label>
+                  <CampoMarcar
+                    rotulo="Sei que o titular é diferente e quero vincular mesmo assim"
+                    marcado={confirmaTitular}
+                    onMudou={setConfirmaTitular}
+                  />
                 </div>
               )}
 
+              <AcoesDoFormulario>
               <button
                 type="button"
                 className="adm-btn adm-btn--primary"
@@ -283,6 +275,7 @@ export const AdicionarContrato = ({
               >
                 {ocupado ? 'Vinculando…' : 'Vincular este contrato'}
               </button>
+              </AcoesDoFormulario>
             </>
           )}
         </div>

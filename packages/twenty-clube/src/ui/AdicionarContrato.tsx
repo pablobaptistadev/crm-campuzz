@@ -118,9 +118,10 @@ export const AdicionarContrato = ({
   };
 
   const contrato = previa?.contract;
-  const CANCELADAS = new Set(['canceled', 'cancelled']);
+  // Cancelada não é dívida: some do total e da contagem, como no painel da
+  // Routerfy. A prévia já chega no vocabulário do domínio, traduzido no gateway.
   const validas = (contrato?.invoices ?? []).filter(
-    (fatura) => !CANCELADAS.has(fatura.status),
+    (fatura) => fatura.status !== 'CANCELED',
   );
   const canceladas = (contrato?.invoices.length ?? 0) - validas.length;
   const totalEmMicros = validas.reduce(

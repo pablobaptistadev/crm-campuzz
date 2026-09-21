@@ -15,7 +15,9 @@ import {
 } from 'src/financeiro/infra/tabela';
 import { type WorkspaceMetadata } from 'src/metadata/types';
 
-const PAGAS = ['PAGA', 'PAID'];
+// A fatura automatica so tem o vocabulario do dominio; 'PAGA' e do SELECT que
+// o time preenche a mao, noutra tabela.
+const PAGAS = ['PAID'];
 
 export const repositorioDeFaturaEmPostgres = ({
   client,

@@ -40,7 +40,7 @@ const buildDependencies = (existing: boolean, holderEmail = 'contato@exemplo.com
     contract: buildGatewayContract({
       invoices: [
         buildGatewayInvoice({ externalInvoiceId: 'inv-1' }),
-        buildGatewayInvoice({ externalInvoiceId: 'inv-2', status: 'paid' }),
+        buildGatewayInvoice({ externalInvoiceId: 'inv-2', status: 'PAID' }),
       ],
     }),
   }),

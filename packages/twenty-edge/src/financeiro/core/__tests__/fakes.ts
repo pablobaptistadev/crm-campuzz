@@ -66,7 +66,7 @@ export const buildGatewayInvoice = (
 ): GatewayInvoice => ({
   externalInvoiceId: 'inv-1',
   code: '2026051000000100-1',
-  status: 'pending',
+  status: 'PENDING',
   amount: moneyFromUnits(100),
   dueAt: '2026-02-10T00:00:00.000Z',
   paidAt: null,

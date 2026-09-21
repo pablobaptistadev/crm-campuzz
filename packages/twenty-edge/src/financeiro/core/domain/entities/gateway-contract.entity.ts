@@ -12,6 +12,24 @@ export type ContractKind = 'SUBSCRIPTION' | 'TRANSACTION';
 
 export type ContractFrequency = 'day' | 'week' | 'month' | 'year';
 
+/**
+ * A situacao de uma fatura, no vocabulario do dominio.
+ *
+ * Nao e o que o gateway diz: a Routerfy responde `paid`, `scheduled`,
+ * `refused` em minusculas, e a coluna `invoiceStatus` e um SELECT que so
+ * aceita estes seis valores. Gravar o texto cru do gateway derrubava a
+ * vinculacao inteira com `invalid input value for enum ... "paid"` — nenhum
+ * contrato chegou a ser gravado ate isto existir. Quem le o gateway traduz
+ * para ca; daqui para dentro ha um vocabulario so.
+ */
+export type InvoiceStatus =
+  | 'PAID'
+  | 'PENDING'
+  | 'WAITING_PAYMENT'
+  | 'OVERDUE'
+  | 'EXPIRED'
+  | 'CANCELED';
+
 export type GatewayCustomer = {
   name: string | null;
   email: string | null;
@@ -22,7 +40,7 @@ export type GatewayCustomer = {
 export type GatewayInvoice = {
   externalInvoiceId: string;
   code: string | null;
-  status: string;
+  status: InvoiceStatus;
   amount: Money;
   dueAt: string | null;
   paidAt: string | null;

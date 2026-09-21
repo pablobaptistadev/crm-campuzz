@@ -7,6 +7,7 @@ import {
   moneyFromCents,
   sumMoney,
 } from 'src/financeiro/core/domain/value-objects/money.value-object';
+import { situacaoDaFatura } from 'src/financeiro/gateways/routerfy/routerfy-invoice-status';
 import {
   type RouterfyInvoicePayload,
   type RouterfySubscriptionPayload,
@@ -67,7 +68,7 @@ const mapInvoice = (
   externalInvoiceId:
     text(payload.id) ?? text(payload.code) ?? `sem-id-${index}`,
   code: text(payload.code),
-  status: text(payload.status) ?? 'pending',
+  status: situacaoDaFatura(payload.status),
   amount: moneyFromCents(payload.amount ?? 0),
   dueAt: text(payload.dueAt),
   paidAt: text(payload.paidAt),
@@ -78,11 +79,8 @@ const mapInvoice = (
 // Somar as duas canceladas deste contrato dava R$ 8.205 num contrato de
 // R$ 7.111, e apontava como proxima cobranca um vencimento que ninguem vai
 // pagar. Conferido contra o painel da assinatura 2026071000000304.
-const CANCELADAS = new Set(['canceled', 'cancelled', 'CANCELED', 'CANCELLED']);
-const PAGAS_NO_GATEWAY = new Set(['paid', 'PAID']);
-
 export const contaParaOTotal = (invoice: GatewayInvoice): boolean =>
-  !CANCELADAS.has(invoice.status);
+  invoice.status !== 'CANCELED';
 
 // A Routerfy nao manda a data da proxima cobranca na assinatura. O vencimento em
 // aberto mais proximo e a mesma informacao, e deixar em branco esconderia do
@@ -92,7 +90,7 @@ const proximaCobranca = (invoices: readonly GatewayInvoice[]): string | null => 
     .filter(
       (invoice) =>
         contaParaOTotal(invoice) &&
-        !PAGAS_NO_GATEWAY.has(invoice.status) &&
+        invoice.status !== 'PAID' &&
         invoice.dueAt !== null,
     )
     .map((invoice) => invoice.dueAt as string)
@@ -166,7 +164,7 @@ export const mapTransaction = (
       {
         externalInvoiceId: text(payload.id) ?? 'transacao-sem-id',
         code: text(payload.code),
-        status: text(payload.status) ?? 'pending',
+        status: situacaoDaFatura(payload.status),
         amount,
         dueAt: text(payload.createdAt),
         paidAt: text(payload.paidAt),

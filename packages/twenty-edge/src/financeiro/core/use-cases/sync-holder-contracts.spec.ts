@@ -36,24 +36,24 @@ const buildDependencies = (contratos = [contratoDe('1', clube)]) => ({
       invoices: [
         buildGatewayInvoice({
           externalInvoiceId: 'inv-1',
-          status: 'paid',
+          status: 'PAID',
           amount: moneyFromUnits(100),
         }),
         buildGatewayInvoice({
           externalInvoiceId: 'inv-2',
-          status: 'pending',
+          status: 'PENDING',
           amount: moneyFromUnits(150),
           dueAt: '2026-05-10T00:00:00.000Z',
         }),
         buildGatewayInvoice({
           externalInvoiceId: 'inv-3',
-          status: 'overdue',
+          status: 'OVERDUE',
           amount: moneyFromUnits(50),
           dueAt: '2026-03-10T00:00:00.000Z',
         }),
         buildGatewayInvoice({
           externalInvoiceId: 'inv-4',
-          status: 'canceled',
+          status: 'CANCELED',
           amount: moneyFromUnits(999),
         }),
       ],

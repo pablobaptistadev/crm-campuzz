@@ -65,28 +65,30 @@ const TONS = {
   ACTIVE: 'green',
   INVALID: 'rose',
   PENDING: 'slate',
-  // Situação que a Routerfy devolve nas faturas, em minúsculas e em inglês.
-  // Sem estas entradas a tabela do financeiro automático mostra "scheduled"
-  // cru, no meio de uma tela em português.
-  paid: 'green',
-  scheduled: 'blue',
-  pending: 'slate',
-  waiting_payment: 'gold',
-  overdue: 'rose',
-  expired: 'slate',
-  canceled: 'slate',
-  cancelled: 'slate',
+  // Situação da fatura do financeiro automático. PENDING já está acima, vindo
+  // da conexão com o gateway — mesmo valor, mesmo sentido.
+  PAID: 'green',
+  WAITING_PAYMENT: 'gold',
+  OVERDUE: 'rose',
+  EXPIRED: 'slate',
+  CANCELED: 'slate',
 } as const;
 
 const ROTULOS: Record<string, string> = {
-  paid: 'Paga',
-  scheduled: 'Agendada',
+  // Situação do contrato: fica como a Routerfy manda, em coluna de texto livre,
+  // e só é traduzida aqui — na tela, que é em português.
+  finished: 'Encerrado',
+  active: 'Ativo',
+  paid: 'Pago',
   pending: 'Pendente',
-  waiting_payment: 'Aguardando pagamento',
-  overdue: 'Vencida',
-  expired: 'Expirada',
-  canceled: 'Cancelada',
-  cancelled: 'Cancelada',
+  canceled: 'Cancelado',
+  cancelled: 'Cancelado',
+  unknown: 'Não informada',
+  PAID: 'Paga',
+  WAITING_PAYMENT: 'Aguardando pagamento',
+  OVERDUE: 'Vencida',
+  EXPIRED: 'Expirada',
+  CANCELED: 'Cancelada',
   ACTIVE: 'Ativa',
   INVALID: 'Chaves inválidas',
   PENDING: 'Pendente',

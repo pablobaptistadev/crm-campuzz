@@ -46,7 +46,7 @@ describe('applyGatewayEvent', () => {
   it('grava o que a API respondeu, nunca o que o corpo do webhook disse', async () => {
     const verdadeDaApi = buildGatewayContract({
       invoices: [
-        buildGatewayInvoice({ status: 'paid', amount: moneyFromUnits(250) }),
+        buildGatewayInvoice({ status: 'PAID', amount: moneyFromUnits(250) }),
       ],
     });
     const dependencies = buildDependencies(verdadeDaApi);

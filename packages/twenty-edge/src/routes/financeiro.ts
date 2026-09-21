@@ -166,7 +166,20 @@ const comSessao = async <T>(
         return context.json({ error: erro.code, message: erro.message }, 400);
       }
 
-      throw erro;
+      // Deixar subir devolvia o `Internal Server Error` em texto puro do
+      // Workers, e a tela mostrava `Unexpected token 'I'` — o erro do
+      // JSON.parse, nunca o erro de verdade. O motivo vai para o log, onde o
+      // `wrangler tail` alcanca, e a tela recebe JSON como em todo o resto.
+      console.error('financeiro', context.req.path, erro);
+
+      return context.json(
+        {
+          error: 'UNEXPECTED',
+          message:
+            'Não conseguimos concluir essa ação por uma falha nossa. Já registramos o problema.',
+        },
+        500,
+      );
     }
   });
 

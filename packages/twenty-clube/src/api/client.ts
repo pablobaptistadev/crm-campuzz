@@ -57,6 +57,16 @@ export const gql = <TData>(query: string, variables?: Record<string, unknown>) =
 export const meta = <TData>(query: string, variables?: Record<string, unknown>) =>
   request<TData>('/metadata', query, variables);
 
+const analisar = <TData>(
+  cru: string,
+): (TData & { message?: string }) | null => {
+  try {
+    return JSON.parse(cru) as TData & { message?: string };
+  } catch {
+    return null;
+  }
+};
+
 // O financeiro de gateway não passa por GraphQL: a chave da BU não pode virar
 // campo de registro, então o cadastro dela é uma rota própria que grava no cofre
 // e nunca devolve a chave. Aqui o status importa, e o corpo de erro traz a
@@ -76,10 +86,21 @@ export const api = async <TData>(
     throw new ApiError('Sua sessão expirou.', true);
   }
 
-  const body = (await response.json()) as TData & { message?: string };
+  // Nem toda resposta e nossa: um 500 do proprio Workers, um 502 da borda ou uma
+  // pagina de erro do Cloudflare chegam aqui em texto puro. Chamar response.json()
+  // direto trocava o erro de verdade por `Unexpected token 'I', "Internal S"...`,
+  // que e o que a pessoa acabava lendo na tela.
+  const cru = await response.text();
+  const body = analisar<TData>(cru);
 
   if (!response.ok) {
-    throw new ApiError(body.message ?? 'Não conseguimos concluir essa ação.');
+    throw new ApiError(
+      body?.message ?? 'Não conseguimos concluir essa ação. Tente de novo.',
+    );
+  }
+
+  if (body === null) {
+    throw new ApiError('A resposta veio num formato que não entendemos.');
   }
 
   return body;

@@ -137,6 +137,19 @@ describe('faturas canceladas', () => {
   it('nao aponta uma cancelada como proxima cobranca', () => {
     expect(contrato.nextChargeAt).toBe('2026-10-05T00:00:00.000Z');
   });
+
+  // A coluna e um SELECT: o `paid` cru da Routerfy derrubava a vinculacao com
+  // `invalid input value for enum`, e por isso nenhum contrato chegou a ser
+  // gravado. Quem sai daqui ja tem de estar no vocabulario do dominio.
+  it('entrega as faturas ja traduzidas para o dominio', () => {
+    expect(contrato.invoices.map((fatura) => fatura.status)).toEqual([
+      'PAID',
+      'CANCELED',
+      'CANCELED',
+      'PAID',
+      'PENDING',
+    ]);
+  });
 });
 
 describe('totalValueOf', () => {

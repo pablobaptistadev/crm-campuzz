@@ -18,6 +18,7 @@ import { type WorkspaceMetadata } from 'src/metadata/types';
 // Campo EMAILS vira várias colunas; a primária é a que vale para a conferência.
 const COLUNA_DO_EMAIL_DO_MEMBRO = 'emailsPrimaryEmail';
 const CAMPO_DO_EMAIL_DO_CLUBE = 'emailCobranca';
+const COLUNA_DO_EMAIL_FINANCEIRO = 'emailFinanceiro';
 
 // Clube não tinha e-mail nenhum — nem para lembrete de parcela, nem para conferir
 // o titular no gateway. Enquanto o campo não existir, respondemos sem e-mail em
@@ -48,11 +49,21 @@ export const diretorioDoCrmEmPostgres = ({
     holder: ContractHolder,
   ): Promise<HolderContact | null> => {
     if (holder.type === 'PERSON') {
+      // O campo financeiro pode não existir num workspace que ainda não recebeu
+      // a migração; sem a guarda a consulta inteira estoura por uma coluna
+      // opcional.
+      const temFinanceiro = formaDaTabela(
+        metadata,
+        OBJETO_DO_MEMBRO,
+      ).columnShapeByColumnName.has(COLUNA_DO_EMAIL_FINANCEIRO);
+
       const { rows } = await client.query<{
         email: string | null;
+        financeEmail: string | null;
         name: string | null;
       }>(
         `SELECT ${escapeIdentifier(COLUNA_DO_EMAIL_DO_MEMBRO)} AS "email",
+                ${temFinanceiro ? escapeIdentifier(COLUNA_DO_EMAIL_FINANCEIRO) : 'NULL::text'} AS "financeEmail",
                 "name"
          FROM ${tabelaDe(metadata, OBJETO_DO_MEMBRO)}
          WHERE "id" = $1 AND "deletedAt" IS NULL`,
@@ -65,6 +76,8 @@ export const diretorioDoCrmEmPostgres = ({
         ? null
         : {
             email: linha.email === '' ? null : linha.email,
+            financeEmail:
+              linha.financeEmail === '' ? null : linha.financeEmail,
             displayName: linha.name,
           };
     }
@@ -88,6 +101,8 @@ export const diretorioDoCrmEmPostgres = ({
       ? null
       : {
           email: linha.email === '' ? null : linha.email,
+          // Clube confere pelo financeiro da BU, não por um campo do registro.
+          financeEmail: null,
           displayName: linha.name,
         };
   },

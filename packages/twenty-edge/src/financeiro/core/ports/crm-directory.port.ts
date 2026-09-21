@@ -2,6 +2,14 @@ import { type ContractHolder } from 'src/financeiro/core/domain/entities/gateway
 
 export type HolderContact = {
   email: string | null;
+  /**
+   * O e-mail financeiro do membro, quando ele tem um.
+   *
+   * Existe porque o principal muda — aluno troca de e-mail e o contrato no
+   * gateway continua no antigo. Quem escolhe entre os dois e o caso de uso; o
+   * diretorio so conta o que o registro tem.
+   */
+  financeEmail: string | null;
   displayName: string | null;
 };
 

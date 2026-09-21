@@ -51,8 +51,10 @@ const GRUPOS_DO_MEMBRO: GrupoDeCampos[] = [
     campos: ['rg', 'cnpj', 'nascimento', 'sexo', 'estadoCivil', 'nacionalidade', 'naturalidade', 'profissao', 'conjuge'],
   },
   {
+    // O financeiro mora junto do contato, não do contrato: é um jeito de falar
+    // com a pessoa, e é onde quem atualiza cadastro vai procurar.
     titulo: 'Contato',
-    campos: ['telefones', 'telefoneFixo', 'endereco', 'instagram', 'linkedin', 'site'],
+    campos: ['emailFinanceiro', 'telefones', 'telefoneFixo', 'endereco', 'instagram', 'linkedin', 'site'],
   },
   {
     titulo: 'No clube',

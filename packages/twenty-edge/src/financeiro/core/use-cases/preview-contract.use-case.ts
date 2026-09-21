@@ -89,10 +89,13 @@ export const previewContract = async (
   // do clube: conferir contrato a contrato, como se faz com membro, daria
   // divergencia em todos. Membro e o contrario — cada um paga com o e-mail
   // dele, e a conferencia so faz sentido por contrato.
+  // No membro, o financeiro tem precedencia sobre o principal: o aluno troca de
+  // e-mail e o contrato no gateway continua no antigo, entao amarrar a
+  // conferencia ao principal quebraria o vinculo por uma mudanca de cadastro.
   const emailDeReferencia =
     input.holder.type === 'COMPANY'
       ? businessUnit.financeEmail
-      : (contact?.email ?? null);
+      : (contact?.financeEmail ?? contact?.email ?? null);
 
   if (emailDeReferencia === null || emailDeReferencia === '') {
     throw invalidInput(

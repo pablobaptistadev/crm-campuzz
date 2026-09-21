@@ -18,6 +18,7 @@ const buildDependencies = (options: {
   contract?: ReturnType<typeof buildGatewayContract> | null;
   holderEmail?: string | null;
   financeEmail?: string | null;
+  membroFinanceEmail?: string | null;
   existingContract?: boolean;
 }) => {
   const businessUnits = new FakeBusinessUnitRepository([
@@ -47,6 +48,7 @@ const buildDependencies = (options: {
     contracts,
     directory: new FakeCrmDirectory({
       'pessoa-1': {
+        financeEmail: options.membroFinanceEmail ?? null,
         email:
           options.holderEmail === undefined
             ? 'contato@exemplo.com.br'
@@ -104,6 +106,32 @@ describe('de quem e o e-mail que vale', () => {
     const dependencies = buildDependencies({
       financeEmail: 'outro@exemplo.com.br',
       holderEmail: 'contato@exemplo.com.br',
+    });
+
+    await expect(previewContract(dependencies, input)).resolves.toMatchObject({
+      emailConfere: true,
+      holderEmail: 'contato@exemplo.com.br',
+    });
+  });
+
+  // O aluno troca de e-mail e o contrato no gateway continua no antigo. Amarrar
+  // a conferencia ao principal quebraria o vinculo por uma mudanca de cadastro.
+  it('no membro, o financeiro tem precedencia sobre o principal', async () => {
+    const dependencies = buildDependencies({
+      holderEmail: 'novo-email-do-aluno@exemplo.com.br',
+      membroFinanceEmail: 'contato@exemplo.com.br',
+    });
+
+    await expect(previewContract(dependencies, input)).resolves.toMatchObject({
+      emailConfere: true,
+      holderEmail: 'contato@exemplo.com.br',
+    });
+  });
+
+  it('sem financeiro no membro, cai no e-mail principal', async () => {
+    const dependencies = buildDependencies({
+      holderEmail: 'contato@exemplo.com.br',
+      membroFinanceEmail: null,
     });
 
     await expect(previewContract(dependencies, input)).resolves.toMatchObject({

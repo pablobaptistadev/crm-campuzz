@@ -34,7 +34,7 @@ const buildDependencies = (existing: boolean, holderEmail = 'contato@exemplo.com
   ),
   invoices: new FakeInvoiceRepository(),
   directory: new FakeCrmDirectory({
-    'clube-1': { email: holderEmail, displayName: 'Clube Alpha' },
+    'clube-1': { email: holderEmail, financeEmail: null, displayName: 'Clube Alpha' },
   }),
   gateway: new FakeGateway({
     contract: buildGatewayContract({

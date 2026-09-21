@@ -4,7 +4,7 @@ import {
   type GatewayInvoice,
 } from 'src/financeiro/core/domain/entities/gateway-contract.entity';
 import {
-  moneyFromUnits,
+  moneyFromCents,
   sumMoney,
 } from 'src/financeiro/core/domain/value-objects/money.value-object';
 import {
@@ -68,16 +68,50 @@ const mapInvoice = (
     text(payload.id) ?? text(payload.code) ?? `sem-id-${index}`,
   code: text(payload.code),
   status: text(payload.status) ?? 'pending',
-  amount: moneyFromUnits(payload.amount ?? 0),
+  amount: moneyFromCents(payload.amount ?? 0),
   dueAt: text(payload.dueAt),
   paidAt: text(payload.paidAt),
   paymentUrl: text(payload.paymentUrl),
 });
 
+// Fatura cancelada continua na lista da Routerfy, com valor, e nao e divida.
+// Somar as duas canceladas deste contrato dava R$ 8.205 num contrato de
+// R$ 7.111, e apontava como proxima cobranca um vencimento que ninguem vai
+// pagar. Conferido contra o painel da assinatura 2026071000000304.
+const CANCELADAS = new Set(['canceled', 'cancelled', 'CANCELED', 'CANCELLED']);
+const PAGAS_NO_GATEWAY = new Set(['paid', 'PAID']);
+
+export const contaParaOTotal = (invoice: GatewayInvoice): boolean =>
+  !CANCELADAS.has(invoice.status);
+
+// A Routerfy nao manda a data da proxima cobranca na assinatura. O vencimento em
+// aberto mais proximo e a mesma informacao, e deixar em branco esconderia do
+// painel a data que todo mundo procura primeiro.
+const proximaCobranca = (invoices: readonly GatewayInvoice[]): string | null => {
+  const abertas = invoices
+    .filter(
+      (invoice) =>
+        contaParaOTotal(invoice) &&
+        !PAGAS_NO_GATEWAY.has(invoice.status) &&
+        invoice.dueAt !== null,
+    )
+    .map((invoice) => invoice.dueAt as string)
+    .sort();
+
+  return abertas[0] ?? null;
+};
+
 export const mapSubscription = (
   payload: RouterfySubscriptionPayload,
 ): GatewayContract => {
   const invoices = (payload.invoices ?? []).map(mapInvoice);
+
+  // A assinatura nao traz `amount` no topo: o valor da cobranca e a soma dos
+  // itens. Ler o campo que nao existe dava R$ 0 num contrato de R$ 547 por mes.
+  const valorDaCobranca = (payload.items ?? []).reduce(
+    (total, item) => total + (item.amount ?? 0),
+    0,
+  );
 
   return {
     kind: 'SUBSCRIPTION',
@@ -85,12 +119,12 @@ export const mapSubscription = (
     transactionId: null,
     code: text(payload.code),
     status: text(payload.status) ?? 'unknown',
-    amount: moneyFromUnits(payload.amount ?? 0),
+    amount: moneyFromCents(payload.amount ?? valorDaCobranca),
     frequency: frequencyFrom(payload.frequency),
     frequencyInterval: payload.interval ?? null,
     startsAt: text(payload.startsAt),
     endsAt: text(payload.endsAt),
-    nextChargeAt: text(payload.nextAt),
+    nextChargeAt: text(payload.nextAt) ?? proximaCobranca(invoices),
     paymentMethod: paymentMethodLabel(payload.paymentMethods?.[0]?.paymentMethod),
     customer: {
       name: text(payload.customer?.name),
@@ -105,7 +139,7 @@ export const mapSubscription = (
 export const mapTransaction = (
   payload: RouterfyTransactionPayload,
 ): GatewayContract => {
-  const amount = moneyFromUnits(payload.total ?? payload.amount ?? 0);
+  const amount = moneyFromCents(payload.total ?? payload.amount ?? 0);
 
   return {
     kind: 'TRANSACTION',
@@ -149,7 +183,10 @@ export const mapTransaction = (
  * aparecem na fatura. Sem faturas, cai no valor do contrato. Mesma regra do
  * `summarize` em api/src/signature/contractFinance.ts.
  */
-export const totalValueOf = (contract: GatewayContract) =>
-  contract.invoices.length > 0
-    ? sumMoney(contract.invoices.map((invoice) => invoice.amount))
+export const totalValueOf = (contract: GatewayContract) => {
+  const contam = contract.invoices.filter(contaParaOTotal);
+
+  return contam.length > 0
+    ? sumMoney(contam.map((invoice) => invoice.amount))
     : contract.amount;
+};

@@ -41,6 +41,8 @@ export type PreviewContractOutput = {
   businessUnit: BusinessUnit;
   contract: GatewayContract;
   holderEmail: string;
+  /** O e-mail do cliente no gateway é o mesmo do registro aberto? */
+  emailConfere: boolean;
   /** Ja existe contrato com este id externo? Qual registro o tem. */
   alreadyLinkedContractId: string | null;
 };
@@ -108,15 +110,16 @@ export const previewContract = async (
 
   const customerEmail = contract.customer.email;
 
-  if (
-    customerEmail === null ||
-    !emailAddressEquals(
+  // Divergência de e-mail deixou de recusar aqui: quem vincula precisa VER o
+  // contrato para decidir, e há caso legítimo — a empresa que paga pelo membro,
+  // o cônjuge, o sócio. Continua sendo recusa, mas na hora de gravar e só sem
+  // confirmação explícita, com a diferença na tela.
+  const emailConfere =
+    customerEmail !== null &&
+    emailAddressEquals(
       emailAddressFrom(customerEmail),
       emailAddressFrom(contact.email),
-    )
-  ) {
-    throw emailMismatch();
-  }
+    );
 
   const existing = await contracts.findByExternalIds({
     subscriptionId: contract.subscriptionId,
@@ -127,6 +130,7 @@ export const previewContract = async (
     businessUnit,
     contract,
     holderEmail: contact.email,
+    emailConfere,
     alreadyLinkedContractId: existing?.id ?? null,
   };
 };

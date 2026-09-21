@@ -271,6 +271,7 @@ export const financeiroRoute = new Hono<AppEnv>()
         membroId?: string;
         businessUnitId?: string;
         identifier?: string;
+        permitirEmailDiferente?: boolean;
       }>();
 
       const holder = donoDoCorpo(corpo);
@@ -293,7 +294,12 @@ export const financeiroRoute = new Hono<AppEnv>()
       try {
         const resultado = await attachContract(
           { ...dependencias, gateway: new RouterfyGateway() },
-          { holder, businessUnitId, identifier: corpo.identifier ?? '' },
+          {
+            holder,
+            businessUnitId,
+            identifier: corpo.identifier ?? '',
+            permitirEmailDiferente: corpo.permitirEmailDiferente === true,
+          },
         );
 
         await sessao.client.query('COMMIT');

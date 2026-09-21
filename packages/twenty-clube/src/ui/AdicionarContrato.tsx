@@ -10,6 +10,7 @@ type Moeda = { amountMicros: number | null; currencyCode: string | null } | null
 type Previa = {
   businessUnit: { id: string; name: string };
   holderEmail: string;
+  emailConfere: boolean;
   alreadyLinkedContractId: string | null;
   contract: {
     kind: 'SUBSCRIPTION' | 'TRANSACTION';
@@ -39,6 +40,7 @@ export const AdicionarContrato = ({
   const [bus, setBus] = useState<Bu[]>([]);
   const [businessUnitId, setBusinessUnitId] = useState('');
   const [previa, setPrevia] = useState<Previa | null>(null);
+  const [confirmaTitular, setConfirmaTitular] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -82,6 +84,7 @@ export const AdicionarContrato = ({
     setPrevia(null);
 
     try {
+      setConfirmaTitular(false);
       setPrevia(await api<Previa>('/contrato/preview', corpo()));
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : 'Erro inesperado.');
@@ -95,7 +98,10 @@ export const AdicionarContrato = ({
     setErro(null);
 
     try {
-      await api('/contrato/vincular', corpo());
+      await api('/contrato/vincular', {
+        ...corpo(),
+        permitirEmailDiferente: confirmaTitular,
+      });
       onVinculado();
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : 'Erro inesperado.');
@@ -216,15 +222,35 @@ export const AdicionarContrato = ({
                 </table>
               )}
 
-              <p className="adm-painel__ajuda">
-                Conferimos o e-mail do contrato contra {previa.holderEmail} antes
-                de deixar vincular.
-              </p>
+              {previa.emailConfere ? (
+                <p className="adm-painel__ajuda">
+                  O e-mail do contrato bate com o deste registro (
+                  {previa.holderEmail}).
+                </p>
+              ) : (
+                <div className="adm-error">
+                  <strong>O titular no gateway é outra pessoa.</strong> O contrato
+                  está em {contrato.customer.email ?? 'um e-mail não informado'} e
+                  este registro é {previa.holderEmail}. Vincular assim amarra a
+                  cobrança de alguém na ficha errada — só siga se souber que é
+                  esse mesmo (a empresa que paga pelo membro, o cônjuge, o sócio).
+                  <label className="adm-fieldlabel">
+                    <input
+                      type="checkbox"
+                      checked={confirmaTitular}
+                      onChange={(evento) =>
+                        setConfirmaTitular(evento.target.checked)
+                      }
+                    />{' '}
+                    Sei que o titular é diferente e quero vincular mesmo assim
+                  </label>
+                </div>
+              )}
 
               <button
                 type="button"
                 className="adm-btn adm-btn--primary"
-                disabled={ocupado}
+                disabled={ocupado || (!previa.emailConfere && !confirmaTitular)}
                 onClick={() => void vincular()}
               >
                 {ocupado ? 'Vinculando…' : 'Vincular este contrato'}

@@ -14,7 +14,7 @@ import {
   FakeInvoiceRepository,
 } from 'src/financeiro/core/__tests__/fakes';
 
-const buildDependencies = (existing: boolean) => ({
+const buildDependencies = (existing: boolean, holderEmail = 'contato@exemplo.com.br') => ({
   businessUnits: new FakeBusinessUnitRepository([buildBusinessUnit()]),
   contracts: new FakeContractRepository(
     existing
@@ -31,7 +31,7 @@ const buildDependencies = (existing: boolean) => ({
   ),
   invoices: new FakeInvoiceRepository(),
   directory: new FakeCrmDirectory({
-    'clube-1': { email: 'contato@exemplo.com.br', displayName: 'Clube Alpha' },
+    'clube-1': { email: holderEmail, displayName: 'Clube Alpha' },
   }),
   gateway: new FakeGateway({
     contract: buildGatewayContract({
@@ -82,5 +82,54 @@ describe('attachContract', () => {
 
     expect(code).toBe('DUPLICATE_CONTRACT');
     expect(dependencies.invoices.upserts).toHaveLength(0);
+  });
+
+  // A trava de titular vive aqui, e nao mais na previa: a pessoa precisa ver o
+  // contrato para decidir. Por omissao continua recusando, porque um numero
+  // digitado errado amarra a cobranca na ficha errada sem ninguem notar.
+  it('recusa por omissao quando o titular no gateway e outra pessoa', async () => {
+    const dependencies = buildDependencies(false, 'outro@exemplo.com.br');
+
+    let code: FinanceiroErrorCode | null = null;
+
+    try {
+      await attachContract(dependencies, input);
+    } catch (error) {
+      code = (error as { code: FinanceiroErrorCode }).code;
+    }
+
+    expect(code).toBe('EMAIL_MISMATCH');
+    expect(dependencies.invoices.upserts).toHaveLength(0);
+  });
+
+  it('vincula com titular diferente quando alguem confirma explicitamente', async () => {
+    const dependencies = buildDependencies(false, 'outro@exemplo.com.br');
+
+    const result = await attachContract(dependencies, {
+      ...input,
+      permitirEmailDiferente: true,
+    });
+
+    expect(result.invoiceCount).toBe(2);
+    expect(dependencies.invoices.upserts).toHaveLength(1);
+  });
+
+  // Confirmar titular diferente nao pode destravar a duplicata: sao travas
+  // distintas, e o mesmo contrato em dois registros duplica a cobranca.
+  it('nao deixa a confirmacao de titular passar por cima da duplicata', async () => {
+    const dependencies = buildDependencies(true, 'outro@exemplo.com.br');
+
+    let code: FinanceiroErrorCode | null = null;
+
+    try {
+      await attachContract(dependencies, {
+        ...input,
+        permitirEmailDiferente: true,
+      });
+    } catch (error) {
+      code = (error as { code: FinanceiroErrorCode }).code;
+    }
+
+    expect(code).toBe('DUPLICATE_CONTRACT');
   });
 });

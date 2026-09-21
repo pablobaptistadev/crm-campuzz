@@ -88,14 +88,23 @@ describe('previewContract', () => {
     });
   });
 
-  it('recusa quando o cliente do gateway e outra pessoa', async () => {
+  // A previa nao recusa mais por e-mail: quem vincula precisa VER o contrato
+  // para decidir, e ha caso legitimo — a empresa que paga pelo membro, o
+  // conjuge, o socio. A recusa mora no attach, sem confirmacao explicita.
+  it('avisa, sem recusar, quando o cliente do gateway e outra pessoa', async () => {
     const dependencies = buildDependencies({
       holderEmail: 'outro@exemplo.com.br',
     });
 
-    expect(await codeOf(previewContract(dependencies, input))).toBe(
-      'EMAIL_MISMATCH',
-    );
+    await expect(previewContract(dependencies, input)).resolves.toMatchObject({
+      emailConfere: false,
+    });
+  });
+
+  it('marca que o e-mail confere quando e a mesma pessoa', async () => {
+    await expect(
+      previewContract(buildDependencies({}), input),
+    ).resolves.toMatchObject({ emailConfere: true });
   });
 
   it('recusa quando o registro nao tem e-mail para conferir', async () => {

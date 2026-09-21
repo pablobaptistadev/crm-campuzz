@@ -40,6 +40,11 @@ export type RouterfySubscriptionPayload = {
   endsAt?: string;
   nextAt?: string;
   paidInvoices?: number;
+  // O nome que a Routerfy usa de verdade; paidInvoices nunca veio preenchido.
+  paidChargesQuantity?: number;
+  totalChargesQuantity?: number;
+  // O valor da cobranca mora aqui, nao no topo da assinatura.
+  items?: { amount?: number; name?: string; code?: string }[];
   customer?: RouterfyCustomerPayload;
   paymentMethods?: RouterfyPaymentMethodPayload[];
   invoices?: RouterfyInvoicePayload[];

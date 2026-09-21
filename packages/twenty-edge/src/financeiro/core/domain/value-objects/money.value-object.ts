@@ -22,6 +22,19 @@ export const moneyFromUnits = (
   currencyCode,
 });
 
+const MICROS_PER_CENT = 10_000;
+
+// A Routerfy manda dinheiro em centavos inteiros: 54700 e R$ 547,00. Tratar
+// isso como reais multiplicava por cem — uma parcela de 547 virava 54.700 na
+// tela, e o total do contrato junto.
+export const moneyFromCents = (
+  amountInCents: number,
+  currencyCode: string = DEFAULT_CURRENCY_CODE,
+): Money => ({
+  amountMicros: Math.round(amountInCents * MICROS_PER_CENT),
+  currencyCode,
+});
+
 export const moneyToUnits = (money: Money): number =>
   money.amountMicros / MICROS_PER_UNIT;
 

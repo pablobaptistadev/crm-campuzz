@@ -1,5 +1,8 @@
 import { type StoredContract } from 'src/financeiro/core/domain/entities/gateway-contract.entity';
-import { duplicateContract } from 'src/financeiro/core/domain/errors/financeiro.error';
+import {
+  duplicateContract,
+  emailMismatch,
+} from 'src/financeiro/core/domain/errors/financeiro.error';
 import { type ContractRepositoryPort } from 'src/financeiro/core/ports/contract-repository.port';
 import { type InvoiceRepositoryPort } from 'src/financeiro/core/ports/invoice-repository.port';
 import {
@@ -13,7 +16,10 @@ export type AttachContractDependencies = PreviewContractDependencies & {
   invoices: InvoiceRepositoryPort;
 };
 
-export type AttachContractInput = PreviewContractInput;
+export type AttachContractInput = PreviewContractInput & {
+  /** Vincular mesmo com o e-mail diferente. Escolha de quem está vinculando. */
+  permitirEmailDiferente?: boolean;
+};
 
 export type AttachContractOutput = {
   contract: StoredContract;
@@ -36,6 +42,13 @@ export const attachContract = async (
 
   if (preview.alreadyLinkedContractId !== null) {
     throw duplicateContract();
+  }
+
+  // A trava vive aqui, no momento de gravar. Vale por omissão: sem alguém dizer
+  // "é esse mesmo", um número digitado errado amarra a cobrança na ficha errada
+  // e ninguém descobre até a fatura aparecer no lugar errado.
+  if (!preview.emailConfere && input.permitirEmailDiferente !== true) {
+    throw emailMismatch();
   }
 
   const stored = await dependencies.contracts.create({

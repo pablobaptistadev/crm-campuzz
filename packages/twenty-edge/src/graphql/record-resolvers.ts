@@ -59,6 +59,7 @@ import {
   recordTimelineActivity,
   type TimelineAction,
 } from 'src/services/timeline';
+import { autorDaSessao, carimbarAutoria } from 'src/services/autoria';
 import { UserFacingError } from 'src/graphql/user-facing-error';
 
 // Several mutations are more than one statement — a bulk create is one INSERT
@@ -817,12 +818,24 @@ export const buildRecordResolvers = (
     ) => {
       assertAllowed(context, 'update');
 
+      const autor = await autorDaSessao({
+        client: context.client,
+        workspaceId: context.metadata.workspaceId,
+        userId: context.userId,
+      });
+
       // An upsert may land on an existing row, so an absent position is left
       // absent rather than backfilled over whatever that row already holds.
       const input = await resolveRecordPosition({
         client: context.client,
         shape,
-        input: data,
+        input: carimbarAutoria({
+          shape,
+          nomeDoObjeto: object.nameSingular,
+          dados: data,
+          autor,
+          origem: upsert ? 'IMPORT' : 'MANUAL',
+        }),
         backfillUndefined: !upsert,
       });
 

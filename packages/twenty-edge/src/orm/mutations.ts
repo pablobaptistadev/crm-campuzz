@@ -64,6 +64,17 @@ export const flattenRecordInput = ({
   return columns;
 };
 
+// Who created a row never changes. A re-import upserts onto rows that already
+// exist, and without this the original creator would be replaced by whoever
+// imported the file again.
+const IMMUTABLE_ON_UPSERT = new Set([
+  'createdBySource',
+  'createdByWorkspaceMemberId',
+  'createdByName',
+  'createdByContext',
+  'createdAt',
+]);
+
 // The pre-update row travels back on the same statement under this column.
 export const BEFORE_SNAPSHOT_COLUMN = '__before';
 // True when an upsert inserted rather than updated.
@@ -136,7 +147,10 @@ export const buildUpsertQuery = ({
   }
 
   const assignments = columnNames
-    .filter((columnName) => columnName !== 'id')
+    .filter(
+      (columnName) =>
+        columnName !== 'id' && !IMMUTABLE_ON_UPSERT.has(columnName),
+    )
     .map(
       (columnName) =>
         `${escapeIdentifier(columnName)} = EXCLUDED.${escapeIdentifier(columnName)}`,

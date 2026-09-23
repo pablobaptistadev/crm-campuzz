@@ -76,11 +76,15 @@ export const FiltrosDeMembro = ({
   onMudou,
   opcoesDeStatus,
   opcoesDeContrato,
+  financeiroPronto = true,
 }: {
   valor: FiltroDeMembro;
   onMudou: (filtro: FiltroDeMembro) => void;
   opcoesDeStatus: CampoMeta['options'];
   opcoesDeContrato: CampoMeta['options'];
+  // Enquanto parcelas e faturas não chegam, "Em atraso" responderia zero —
+  // e um zero errado é pior que um seletor que diz que ainda está carregando.
+  financeiroPronto?: boolean;
 }) => (
   <div className="adm-filtros">
     <input
@@ -123,6 +127,8 @@ export const FiltrosDeMembro = ({
     <select
       className="adm-input"
       value={valor.financeiro}
+      disabled={!financeiroPronto}
+      title={financeiroPronto ? undefined : 'Carregando parcelas e faturas…'}
       aria-label="Situação financeira"
       onChange={(evento) =>
         onMudou({
@@ -131,7 +137,7 @@ export const FiltrosDeMembro = ({
         })
       }
     >
-      <option value="">Financeiro: todos</option>
+      <option value="">{financeiroPronto ? 'Financeiro: todos' : 'Financeiro: carregando…'}</option>
       <option value="EM_ATRASO">Em atraso</option>
       <option value="EM_DIA">Em dia</option>
     </select>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { meta } from 'src/api/client';
 import { TrocarFoto } from 'src/modules/perfil/ui/TrocarFoto';
+import { esquecerAutores } from 'src/ui/autores';
 import { AcoesDoFormulario, Campos, CampoTexto } from 'src/ui/campos';
 import { Card } from 'src/ui/primitives';
 
@@ -51,6 +52,7 @@ export const MeuPerfil = ({
 
     try {
       await meta(ATUALIZAR_NOME, { firstName: nome, lastName: sobrenome });
+      esquecerAutores();
       onMudou({ firstName: nome.trim(), lastName: sobrenome.trim() });
       setAvisoDoNome({ ok: true, texto: 'Nome atualizado. Ele já aparece no topo e no histórico.' });
     } catch (falha) {
@@ -109,14 +111,15 @@ export const MeuPerfil = ({
             fotoUrl={usuario.workspaceMember.avatarUrl}
             tamanho="titulo"
             vazio="iniciais"
-            onTrocada={(url) =>
+            onTrocada={(url) => {
+              esquecerAutores();
               onMudou({
                 workspaceMember:
                   usuario.workspaceMember === null
                     ? null
                     : { ...usuario.workspaceMember, avatarUrl: url },
-              })
-            }
+              });
+            }}
           />
         )}
         <div>

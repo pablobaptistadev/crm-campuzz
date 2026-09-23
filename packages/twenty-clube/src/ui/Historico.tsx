@@ -3,21 +3,16 @@ import { useState } from 'react';
 import { gql } from 'src/api/client';
 import { LINHA_DO_TEMPO } from 'src/api/queries';
 import { AvatarDoMembro } from 'src/modules/perfil/ui/AvatarDoMembro';
+import { type Autor, useAutores } from './autores';
 import { dataHora, dinheiroCurto, enderecoLinha, telefone } from './format';
 import { Vazio, rotuloDe } from './primitives';
-
-type Autor = {
-  id: string;
-  avatarUrl: string | null;
-  name: { firstName: string | null; lastName: string | null } | null;
-} | null;
 
 type Linha = {
   id: string;
   name: string;
   happensAt: string | null;
   createdAt: string | null;
-  workspaceMember?: Autor;
+  workspaceMemberId?: string | null;
   properties: {
     diff?: Record<string, { before: unknown; after: unknown }>;
     texto?: string;
@@ -35,7 +30,7 @@ const CRIAR_NOTA = `
   }
 `;
 
-const nomeDoAutor = (autor: Autor | undefined): string | null => {
+const nomeDoAutor = (autor: Autor | null | undefined): string | null => {
   if (autor === null || autor === undefined) {
     return null;
   }
@@ -132,6 +127,11 @@ export const Historico = ({
   alvoId?: string;
   onMudou?: (proximas: Linha[]) => void;
 }) => {
+  const autores = useAutores();
+  const autorDe = (linha: Linha): Autor | null =>
+    linha.workspaceMemberId === null || linha.workspaceMemberId === undefined
+      ? null
+      : (autores?.get(linha.workspaceMemberId) ?? null);
   const [texto, setTexto] = useState('');
   const [quandoAconteceu, setQuandoAconteceu] = useState('');
   const [ocupado, setOcupado] = useState(false);
@@ -261,7 +261,13 @@ export const Historico = ({
                 )}
               </span>
               <span className="adm-step__autor">
-                {nomeDoAutor(linha.workspaceMember) === null ? (
+                {linha.workspaceMemberId !== null &&
+                linha.workspaceMemberId !== undefined &&
+                autores === null ? (
+                  // Autor conhecido, lista de autores ainda a caminho: dizer
+                  // "não registrado" nesse meio-tempo seria afirmar algo falso.
+                  <span className="adm-step__quem adm-step__quem--sem">…</span>
+                ) : nomeDoAutor(autorDe(linha)) === null ? (
                   // Linhas de antes do carimbo de autoria: dizer que não se sabe
                   // é honesto; deixar em branco parece que foi o sistema.
                   <span className="adm-step__quem adm-step__quem--sem">
@@ -270,13 +276,13 @@ export const Historico = ({
                 ) : (
                   <>
                     <AvatarDoMembro
-                      nome={nomeDoAutor(linha.workspaceMember) ?? ''}
-                      fotoUrl={linha.workspaceMember?.avatarUrl ?? null}
+                      nome={nomeDoAutor(autorDe(linha)) ?? ''}
+                      fotoUrl={autorDe(linha)?.avatarUrl ?? null}
                       tamanho="linha"
                       vazio="iniciais"
                     />
                     <span className="adm-step__quem">
-                      {nomeDoAutor(linha.workspaceMember)}
+                      {nomeDoAutor(autorDe(linha))}
                     </span>
                   </>
                 )}

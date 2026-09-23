@@ -24,6 +24,7 @@ import {
   temFiltroAtivo,
 } from 'src/ui/FiltrosDeMembro';
 import { paginar } from 'src/ui/paginar';
+import { carregarFinanceiroDosMembros } from 'src/ui/financeiroDosMembros';
 import { StatusEditavel } from 'src/ui/StatusEditavel';
 import { Arquivar } from 'src/ui/Arquivar';
 import { AlternarVisao, Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe, useModoVisao } from 'src/ui/primitives';
@@ -131,6 +132,7 @@ export const ClubeDetalhe = () => {
   const [modoMembros, setModoMembros] = useModoVisao('membros', 'lista');
   const [membros, setMembros] = useState<any[] | null>(null);
   const [filtro, setFiltro] = useState<FiltroDeMembro>(FILTRO_DE_MEMBRO_VAZIO);
+  const [financeiroPronto, setFinanceiroPronto] = useState(false);
 
   // Uma alteração salva já vale na tela; recarregar o clube inteiro para
   // repintar um campo custaria uma volta ao banco por edição.
@@ -225,6 +227,29 @@ export const ClubeDetalhe = () => {
         if (!cancelado) {
           setClube(dados.clube);
           setMembros(doClubeMembros);
+
+          // Depois de a tela abrir, não antes: só o filtro de situação
+          // financeira depende disto, e segurar a página inteira esperando
+          // parcelas e faturas é o que a deixava 24 s em branco.
+          void carregarFinanceiroDosMembros(
+            doClubeMembros.map((membro: { id: string }) => membro.id),
+          )
+            .then((porMembro) => {
+              if (cancelado) {
+                return;
+              }
+
+              setMembros((atual) =>
+                atual === null
+                  ? atual
+                  : atual.map((membro) => ({ ...membro, ...porMembro.get(membro.id) })),
+              );
+              setFinanceiroPronto(true);
+            })
+            .catch(() => {
+              // Sem o financeiro a lista continua útil; só o filtro de atraso
+              // fica indisponível, e ele avisa isso no próprio seletor.
+            });
           setMetaClube(doClube);
           setMetaSocio(metadata.get('socio') ?? null);
           setMetaMembro(metadata.get('membro') ?? null);
@@ -591,6 +616,7 @@ export const ClubeDetalhe = () => {
             <FiltrosDeMembro
               valor={filtro}
               onMudou={setFiltro}
+              financeiroPronto={financeiroPronto}
               opcoesDeStatus={metaMembro.campoPorNome.get('situacao')?.options ?? []}
               opcoesDeContrato={
                 metaMembro.campoPorNome.get('contratoSituacao')?.options ?? []

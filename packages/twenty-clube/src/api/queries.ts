@@ -13,10 +13,11 @@ const ENDERECO = `{ addressStreet1 addressStreet2 addressCity addressState addre
 
 // Toda linha do histórico sai com quem a fez. Pedir o autor aqui, e não em
 // cada tela, é o que garante que um histórico novo já nasça mostrando foto e
-// nome — o esquecido seria justamente o próximo.
+// nome — o esquecido seria justamente o próximo. Só o id: a foto e o nome vêm
+// de src/ui/autores, uma vez por página, porque a relação pedida aqui custava
+// uma ida ao banco por linha.
 export const LINHA_DO_TEMPO = `
-  id name happensAt createdAt properties
-  workspaceMember { id avatarUrl name { firstName lastName } }
+  id name happensAt createdAt properties workspaceMemberId
 `;
 
 // O painel usa três consultas achatadas em vez de uma aninhada: uma relação
@@ -93,6 +94,11 @@ export const montarClubeQuery = (objeto: ObjetoMeta): string => `
 // aninhada nao aceita `first:` e devolve uma pagina fixa de 60. Num clube de 78
 // a aba mostrava 78 e a lista 60, e os 18 que faltavam nao apareciam em busca
 // nem em filtro — o pior tipo de ausencia, a que ninguem ve.
+//
+// Sem parcelas nem contratos aninhados: o edge resolve relacao linha a linha,
+// e cada uma custava uma ida ao banco por membro. Medido em producao: 1,3 s so
+// com os membros, 24 s com parcelas e contratos juntos. O financeiro vem nas
+// listas achatadas abaixo, que custam o mesmo com 10 ou 1.000 membros.
 export const MEMBROS_DO_CLUBE_QUERY = `
   query MembrosDoClube($id: UUID!, $after: String) {
     membros(first: 200, after: $after, filter: { clubeId: { eq: $id } }) {
@@ -101,9 +107,34 @@ export const MEMBROS_DO_CLUBE_QUERY = `
       edges { node {
         id name situacao papel contratoSituacao fotoUrl
         emails ${EMAIL} emailFinanceiro telefones ${FONE} valorTotal ${MOEDA}
-        parcelas { edges { node { situacao vencimento pagaEm } } }
-        contratos { edges { node { faturas { edges { node { invoiceStatus dueAt paidAt } } } } } }
       } }
+    }
+  }
+`;
+
+export const PARCELAS_DOS_MEMBROS_QUERY = `
+  query ParcelasDosMembros($ids: [UUID!], $after: String) {
+    parcelas(first: 200, after: $after, filter: { membroId: { in: $ids } }) {
+      pageInfo { hasNextPage endCursor }
+      edges { node { membroId situacao vencimento pagaEm } }
+    }
+  }
+`;
+
+export const CONTRATOS_DOS_MEMBROS_QUERY = `
+  query ContratosDosMembros($ids: [UUID!], $after: String) {
+    gatewayContracts(first: 200, after: $after, filter: { membroId: { in: $ids } }) {
+      pageInfo { hasNextPage endCursor }
+      edges { node { id membroId } }
+    }
+  }
+`;
+
+export const FATURAS_DOS_CONTRATOS_QUERY = `
+  query FaturasDosContratos($ids: [UUID!], $after: String) {
+    gatewayInvoices(first: 200, after: $after, filter: { contratoId: { in: $ids } }) {
+      pageInfo { hasNextPage endCursor }
+      edges { node { contratoId invoiceStatus dueAt paidAt } }
     }
   }
 `;

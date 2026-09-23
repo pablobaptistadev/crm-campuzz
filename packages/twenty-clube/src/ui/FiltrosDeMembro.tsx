@@ -4,6 +4,7 @@ import {
   cobrancasDe,
   situacaoDeCobranca,
 } from 'src/ui/atraso';
+import { casaComABusca } from 'src/ui/busca';
 
 export type MembroFiltravel = {
   name: string | null;
@@ -35,28 +36,8 @@ export const temFiltroAtivo = (filtro: FiltroDeMembro): boolean =>
   filtro.contrato !== '' ||
   filtro.financeiro !== '';
 
-// Sem acento e sem caixa: quem procura "sergio" tem de achar "Sérgio", senão o
-// campo só serve para quem já sabe escrever o nome do jeito que foi cadastrado.
-const comparavel = (valor: string): string =>
-  valor
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .trim();
-
-const casaABusca = (membro: MembroFiltravel, busca: string): boolean => {
-  const alvo = comparavel(busca);
-
-  if (alvo === '') {
-    return true;
-  }
-
-  return [
-    membro.name,
-    membro.emails?.primaryEmail,
-    membro.emailFinanceiro,
-  ].some((campo) => campo != null && comparavel(campo).includes(alvo));
-};
+const casaABusca = (membro: MembroFiltravel, busca: string): boolean =>
+  casaComABusca(busca, [membro.name, membro.emails?.primaryEmail, membro.emailFinanceiro]);
 
 export const estaEmAtraso = (membro: MembroFiltravel): boolean =>
   situacaoDeCobranca(

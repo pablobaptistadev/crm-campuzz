@@ -1,54 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { gql } from 'src/api/client';
 import { carregarMetadata, type ObjetoMeta } from 'src/api/metadata';
 import { CLUBES_QUERY, MEMBROS_RESUMO_QUERY, PIPELINE_QUERY } from 'src/api/queries';
 import { type ClubeResumo } from 'src/api/types';
 import { AlternarVisao, Chip, Pipeline, Vazio, useModoVisao } from 'src/ui/primitives';
 import { StatusEditavel } from 'src/ui/StatusEditavel';
 import { TRACO, dataCurta, dinheiroCurto } from 'src/ui/format';
-
-type Pagina<TNo> = {
-  pageInfo: { hasNextPage: boolean; endCursor: string | null };
-  edges: { node: TNo }[];
-};
+import { AvatarDoMembro } from 'src/modules/perfil/ui/AvatarDoMembro';
+import { buscarNoPainel } from 'src/ui/busca';
+import { type AlunoDoPainel, BuscaGlobal } from 'src/ui/BuscaGlobal';
+import { paginar } from 'src/ui/paginar';
 
 type Clube = Omit<ClubeResumo, 'membros' | 'jornada'>;
-type MembroResumo = { id: string; situacao: string | null; clubeId: string | null };
+type MembroResumo = AlunoDoPainel & { situacao: string | null; clubeId: string | null };
 type EtapaResumo = { id: string; clubeId: string | null; ordem: number | null; situacao: string | null };
-
-// Uma relação to-many por clube vira 76 idas ao banco; três listas achatadas
-// custam três.
-const paginar = async <TNo,>(
-  query: string,
-  campo: string,
-): Promise<TNo[]> => {
-  const acumulado: TNo[] = [];
-  let cursor: string | null = null;
-
-  for (;;) {
-    const resposta: Record<string, Pagina<TNo>> = await gql<Record<string, Pagina<TNo>>>(
-      query,
-      { after: cursor },
-    );
-    const pagina: Pagina<TNo> | undefined = resposta[campo];
-
-    if (pagina === undefined) {
-      break;
-    }
-
-    acumulado.push(...pagina.edges.map((aresta) => aresta.node));
-
-    if (!pagina.pageInfo.hasNextPage) {
-      break;
-    }
-
-    cursor = pagina.pageInfo.endCursor;
-  }
-
-  return acumulado;
-};
 
 const diasAte = (data: string | null): number | null => {
   if (data === null || data === '') {
@@ -131,19 +97,17 @@ export const Dashboard = () => {
     };
   }, [clubes, membros]);
 
-  const filtrados = useMemo(() => {
-    const termo = busca.trim().toLowerCase();
+  const encontrados = useMemo(
+    () => buscarNoPainel(busca, membros, clubes ?? []),
+    [busca, membros, clubes],
+  );
+  const filtrados = encontrados.clubes;
+  const buscando = busca.trim() !== '';
 
-    if (termo === '') {
-      return clubes ?? [];
-    }
-
-    return (clubes ?? []).filter(
-      (clube) =>
-        clube.name.toLowerCase().includes(termo) ||
-        (clube.mentor ?? '').toLowerCase().includes(termo),
-    );
-  }, [clubes, busca]);
+  const nomeDoClube = useMemo(
+    () => new Map((clubes ?? []).map((clube) => [clube.id, clube.name])),
+    [clubes],
+  );
 
   if (erro !== null) {
     return <div className="adm-error">{erro}</div>;
@@ -185,14 +149,13 @@ export const Dashboard = () => {
       </div>
 
       <div className="adm-toolbar">
-        <span className="adm-toolbar__title">Clubes</span>
+        <span className="adm-toolbar__title">{buscando ? 'Busca' : 'Clubes'}</span>
         <span className="adm-toolbar__spacer" />
-        <input
-          className="adm-input"
-          type="search"
-          placeholder="Buscar clube ou mentor…"
-          value={busca}
-          onChange={(evento) => setBusca(evento.target.value)}
+        <BuscaGlobal
+          valor={busca}
+          onMudou={setBusca}
+          alunos={encontrados.alunos}
+          clubes={encontrados.clubes}
         />
         <AlternarVisao modo={modo} onChange={setModo} />
         <Link className="adm-btn adm-btn--primary" to="/clubes/novo">
@@ -200,7 +163,45 @@ export const Dashboard = () => {
         </Link>
       </div>
 
-      {modo === 'cards' ? (
+      {buscando && (
+        <section className="adm-resultados" aria-label="Alunos encontrados">
+          <div className="adm-resultados__titulo">
+            Alunos <span>{encontrados.alunos.length}</span>
+          </div>
+          {encontrados.alunos.length === 0 ? (
+            <Vazio>Nenhum aluno com “{busca.trim()}” no nome ou no e-mail.</Vazio>
+          ) : (
+            <div className="adm-alunos">
+              {encontrados.alunos.map((aluno) => (
+                <Link className="adm-aluno" to={`/membros/${aluno.id}`} key={aluno.id}>
+                  <AvatarDoMembro nome={aluno.name ?? ''} fotoUrl={aluno.fotoUrl ?? null} tamanho="card" />
+                  <span className="adm-aluno__texto">
+                    <span className="adm-aluno__nome">{aluno.name ?? TRACO}</span>
+                    <span className="adm-aluno__email">
+                      {aluno.emails?.primaryEmail ?? aluno.emailFinanceiro ?? TRACO}
+                    </span>
+                    <span className="adm-aluno__clube">
+                      {aluno.clubeId === null ? 'Sem clube' : (nomeDoClube.get(aluno.clubeId) ?? TRACO)}
+                    </span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {buscando && (
+        <div className="adm-resultados__titulo">
+          Clubes <span>{filtrados.length}</span>
+        </div>
+      )}
+
+      {buscando && filtrados.length === 0 ? (
+        // Tabela com cabeçalho e corpo vazio, só para dizer que não há nada, é
+        // peso na tela no meio de uma busca.
+        <Vazio>Nenhum clube com “{busca.trim()}” no nome ou no mentor.</Vazio>
+      ) : modo === 'cards' ? (
         filtrados.length === 0 ? (
           <Vazio>Nenhum clube encontrado.</Vazio>
         ) : (

@@ -925,3 +925,88 @@ select.adm-status__select { background-image: none; padding-right: 8px; }
 .adm-step__quem--sem { font-weight: 500; font-style: italic; color: var(--text-muted); }
 .adm-step__autor .adm-avatar--linha { width: 24px; height: 24px; }
 .adm-step__autor .adm-step__state { margin-left: 4px; }
+
+/* ── Busca do painel ─────────────────────────────────────── */
+/* Alarga ao focar: o painel abaixo mostra foto, nome e e-mail, e um campo
+   estreito cortaria o próprio texto que a pessoa está digitando. */
+.adm-busca { position: relative; width: 280px; transition: width 0.18s ease; }
+.adm-busca--aberta { width: 420px; }
+@media (max-width: 860px) {
+  .adm-busca, .adm-busca--aberta { width: 100%; }
+}
+.adm-busca__campo { width: 100%; }
+.adm-busca__painel {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 40;
+  max-height: 440px; overflow-y: auto;
+  background: var(--bg-elev-1); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--sombra-3); padding: 6px;
+}
+.adm-busca__grupo {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 10px 4px; font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);
+}
+.adm-busca__grupo span {
+  font-weight: 600; letter-spacing: 0; padding: 0 6px; border-radius: 999px;
+  background: var(--gold-soft); color: var(--gold-deep);
+}
+.adm-busca__lista { list-style: none; margin: 0; padding: 0; }
+.adm-busca__opcao {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px; border-radius: 10px; cursor: pointer;
+}
+.adm-busca__opcao--ativa { background: rgba(197, 165, 102, 0.12); }
+.adm-busca__texto { display: grid; min-width: 0; flex: 1; }
+.adm-busca__nome {
+  font-size: 13.5px; font-weight: 600; color: var(--text-strong);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.adm-busca__sub {
+  font-size: 12px; color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.adm-busca__tipo {
+  font-size: 10.5px; font-weight: 600; color: var(--text-muted);
+  border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px;
+}
+.adm-busca__vazio, .adm-busca__rodape {
+  padding: 12px 10px; font-size: 12.5px; color: var(--text-muted); text-align: center;
+}
+.adm-busca__rodape { border-top: 1px solid var(--border-soft); margin-top: 4px; }
+
+/* ── Grade de resultados da busca ────────────────────────── */
+.adm-resultados { margin-bottom: 26px; }
+.adm-resultados__titulo {
+  display: flex; align-items: center; gap: 8px; margin: 4px 0 12px;
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.adm-resultados__titulo span {
+  font-weight: 600; letter-spacing: 0; padding: 0 7px; border-radius: 999px;
+  background: var(--gold-soft); color: var(--gold-deep);
+}
+.adm-alunos {
+  display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+}
+.adm-aluno {
+  display: flex; align-items: center; gap: 12px; min-width: 0;
+  padding: 14px; border-radius: var(--radius);
+  background: var(--bg-elev-1); border: 1px solid var(--border);
+  box-shadow: var(--sombra-1); color: inherit; text-decoration: none;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+}
+.adm-aluno:hover, .adm-aluno:focus-visible {
+  transform: translateY(-1px); box-shadow: var(--sombra-2); border-color: var(--gold);
+}
+.adm-aluno__texto { display: grid; gap: 2px; min-width: 0; }
+.adm-aluno__nome {
+  font-size: 14px; font-weight: 600; color: var(--text-strong);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.adm-aluno__email, .adm-aluno__clube {
+  font-size: 12px; color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.adm-aluno__clube { color: var(--gold-deep); font-weight: 600; }

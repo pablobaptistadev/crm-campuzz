@@ -28,7 +28,7 @@ export const CLUBES_QUERY = `
       pageInfo { hasNextPage endCursor }
       edges {
         node {
-          id name mentor situacao inicio responsavel modeloFinanceiro
+          id name mentor situacao inicio responsavel modeloFinanceiro fotoUrl
           capitalNegociado ${MOEDA}
           mouSituacao mouValidade
         }
@@ -41,7 +41,10 @@ export const MEMBROS_RESUMO_QUERY = `
   query MembrosResumo($after: String) {
     membros(first: 200, after: $after) {
       pageInfo { hasNextPage endCursor }
-      edges { node { id situacao clubeId } }
+      edges { node {
+        id situacao clubeId name fotoUrl emailFinanceiro
+        emails { primaryEmail }
+      } }
     }
   }
 `;

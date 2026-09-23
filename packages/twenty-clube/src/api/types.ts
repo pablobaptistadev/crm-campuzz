@@ -67,6 +67,7 @@ export type ClubeResumo = {
   mouSituacao: string | null;
   mouValidade: string | null;
   responsavel: string | null;
+  fotoUrl?: string | null;
   membros: { totalCount: number; edges: { node: { id: string; situacao: string | null } }[] };
   jornada: { edges: { node: { id: string; escopo: string | null; ordem: number | null; situacao: string | null } }[] };
 };

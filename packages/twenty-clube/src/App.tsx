@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
+import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router-dom';
 
 import { ApiError, meta } from 'src/api/client';
 import { CURRENT_USER_QUERY, OBJETOS_QUERY, SAIR_MUTATION } from 'src/api/queries';
@@ -11,6 +11,7 @@ import { NovoClube } from 'src/pages/NovoClube';
 import { Radar } from 'src/pages/Radar';
 import { Login } from 'src/pages/Login';
 import { MembroDetalhe } from 'src/pages/MembroDetalhe';
+import { MeuPerfil } from 'src/pages/MeuPerfil';
 import { TrocarFoto } from 'src/modules/perfil/ui/TrocarFoto';
 import { iniciais } from 'src/ui/format';
 
@@ -25,6 +26,7 @@ type Usuario = {
 
 export const App = () => {
   const [usuario, setUsuario] = useState<Usuario | null | undefined>(undefined);
+  const navegar = useNavigate();
   const [temClubes, setTemClubes] = useState<boolean | undefined>(undefined);
 
   const sair = useCallback(async () => {
@@ -128,6 +130,9 @@ export const App = () => {
             nome={nome}
             fotoUrl={usuario.workspaceMember.avatarUrl}
             tamanho="linha"
+            mostrarRemover={false}
+            mostrarCapa={false}
+            aoClicar={() => navegar('/perfil')}
             onTrocada={(url: string | null) =>
               setUsuario((atual) =>
                 atual === null || atual === undefined || atual.workspaceMember === null
@@ -182,6 +187,19 @@ export const App = () => {
           <Route path="/clubes/novo" element={<NovoClube />} />
           <Route path="/clubes/:id" element={<ClubeDetalhe />} />
           <Route path="/membros/:id" element={<MembroDetalhe />} />
+          <Route
+            path="/perfil"
+            element={
+              <MeuPerfil
+                usuario={usuario}
+                onMudou={(mudancas) =>
+                  setUsuario((atual) =>
+                    atual === null || atual === undefined ? atual : { ...atual, ...mudancas },
+                  )
+                }
+              />
+            }
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

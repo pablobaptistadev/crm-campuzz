@@ -66,6 +66,7 @@ import {
   type FlatObjectMetadata,
 } from 'src/metadata/types';
 import { hashPassword, verifyPassword } from 'src/auth/password';
+import { ErroDoPerfil, atualizarMeuNome, trocarMinhaSenha } from 'src/services/meu-perfil';
 import { issueLoginToken, verifyLoginToken } from 'src/auth/login-token';
 import { issueUploadToken } from 'src/auth/upload-token';
 import { insertFile, markFileUploaded } from 'src/db/core/file-repository';
@@ -1118,6 +1119,10 @@ type Mutation {
   signUp(email: String!, password: String!, captchaToken: String, locale: String, verifyEmailRedirectPath: String, firstName: String, lastName: String, workspaceName: String): SignInUpOutput!
   signUpInWorkspace(email: String!, password: String!, workspaceInviteHash: String, workspacePersonalInviteToken: String, captchaToken: String, workspaceId: UUID, locale: String, verifyEmailRedirectPath: String): SignUpInWorkspaceOutput!
   signOut(refreshToken: String): Boolean!
+  # Só quem está logado, sobre si mesmo: nenhum dos dois recebe id, então não
+  # há como apontar para a conta de outra pessoa.
+  updateMyProfile(firstName: String!, lastName: String!): Boolean!
+  changeMyPassword(currentPassword: String!, newPassword: String!): Boolean!
   trackAnalytics(type: AnalyticsType!, event: String, name: String, properties: JSON): Analytics!
   createFileUpload(filename: String!, size: Float!, fileFolder: FileFolder!, fieldMetadataId: String): FileUploadTarget!
   completeFileUpload(fileId: String!): FileWithSignedUrl!
@@ -3699,6 +3704,67 @@ export const METADATA_RESOLVERS = {
 
     signOut: async (_parent: unknown, _args: unknown, context: MetadataContext) => {
       await context.clearSession();
+
+      return true;
+    },
+
+    updateMyProfile: async (
+      _parent: unknown,
+      args: { firstName: string; lastName: string },
+      context: MetadataContext,
+    ) => {
+      const user = requireAuthenticatedUser(context);
+
+      try {
+        await atualizarMeuNome({
+          client: context.client,
+          userId: user.id,
+          workspaceId: context.sessionContext?.membership?.workspace.id ?? null,
+          primeiroNome: args.firstName,
+          sobrenome: args.lastName,
+        });
+      } catch (causa) {
+        throw causa instanceof ErroDoPerfil ? new UserFacingError(causa.message) : causa;
+      }
+
+      return true;
+    },
+
+    changeMyPassword: async (
+      _parent: unknown,
+      args: { currentPassword: string; newPassword: string },
+      context: MetadataContext,
+    ) => {
+      const user = requireAuthenticatedUser(context);
+      const sessao = context.sessionContext?.session ?? null;
+
+      if (sessao === null) {
+        throw new UserFacingError('UNAUTHENTICATED');
+      }
+
+      // O mesmo limite do login: conferir a senha atual é conferir uma senha,
+      // e sem teto isto vira um jeito de adivinhá-la por dentro da sessão.
+      const dentroDoLimite = await context.throttle(
+        `trocar-senha:${user.id}`,
+        LOGIN_ATTEMPT_LIMIT,
+        LOGIN_ATTEMPT_WINDOW_MS,
+      );
+
+      if (!dentroDoLimite) {
+        throw new UserFacingError('Tentativas demais. Espere alguns minutos e tente de novo.');
+      }
+
+      try {
+        await trocarMinhaSenha({
+          client: context.client,
+          userId: user.id,
+          sessaoAtualId: sessao.id,
+          senhaAtual: args.currentPassword,
+          novaSenha: args.newPassword,
+        });
+      } catch (causa) {
+        throw causa instanceof ErroDoPerfil ? new UserFacingError(causa.message) : causa;
+      }
 
       return true;
     },

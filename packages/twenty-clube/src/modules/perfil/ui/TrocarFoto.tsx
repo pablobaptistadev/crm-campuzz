@@ -20,6 +20,9 @@ export const TrocarFoto = ({
   tamanho = 'titulo',
   redondo = true,
   vazio = 'silhueta',
+  mostrarRemover = true,
+  mostrarCapa = true,
+  aoClicar,
   onTrocada,
 }: {
   dono: DonoDaFoto;
@@ -29,6 +32,13 @@ export const TrocarFoto = ({
   tamanho?: TamanhoDoAvatar;
   redondo?: boolean;
   vazio?: 'silhueta' | 'iniciais';
+  // Na barra do topo a foto é um atalho, não um editor: sem "Remover" ao lado,
+  // sem capa no hover, e o clique leva ao perfil, onde a edição mora inteira.
+  // Com ou sem foto — sem foto, quem ainda não subiu uma nunca chegaria à tela
+  // de trocar nome e senha.
+  mostrarRemover?: boolean;
+  mostrarCapa?: boolean;
+  aoClicar?: () => void;
   onTrocada: (url: string | null) => void;
 }) => {
   const [escolhido, setEscolhido] = useState<File | null>(null);
@@ -79,16 +89,20 @@ export const TrocarFoto = ({
         type="button"
         className="adm-trocarfoto__alvo"
         disabled={enviando}
-        title={fotoUrl === null ? 'Subir foto' : 'Trocar foto'}
-        onClick={() => entrada.current?.click()}
+        title={
+          aoClicar !== undefined ? 'Meu perfil' : fotoUrl === null ? 'Subir foto' : 'Trocar foto'
+        }
+        onClick={() => (aoClicar !== undefined ? aoClicar() : entrada.current?.click())}
       >
         <AvatarDoMembro nome={nome} fotoUrl={fotoUrl} tamanho={tamanho} vazio={vazio} />
-        <span className="adm-trocarfoto__capa">
-          {enviando ? '…' : fotoUrl === null ? 'Subir' : 'Trocar'}
-        </span>
+        {(mostrarCapa || enviando) && (
+          <span className="adm-trocarfoto__capa">
+            {enviando ? '…' : fotoUrl === null ? 'Subir' : 'Trocar'}
+          </span>
+        )}
       </button>
 
-      {fotoUrl !== null && !enviando && (
+      {mostrarRemover && fotoUrl !== null && !enviando && (
         <button
           type="button"
           className="adm-trocarfoto__remover"

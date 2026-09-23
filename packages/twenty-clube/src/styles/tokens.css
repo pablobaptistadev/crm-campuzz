@@ -637,8 +637,14 @@ button.adm-kpi { cursor: pointer; text-align: left; font: inherit; }
 .adm-avatar__iniciais {
   display: grid; place-items: center; width: 100%; height: 100%;
   border-radius: inherit; background: var(--gold-soft); color: var(--gold-deep);
-  font-weight: 700; font-size: 0.42em; letter-spacing: 0.04em;
+  font-weight: 700; letter-spacing: 0.02em; line-height: 1;
 }
+/* Tamanho pelo avatar, não pelo texto em volta: em "em" as iniciais herdavam
+   a fonte de quem as continha, e numa linha de 12px viravam um borrão. */
+.adm-avatar--linha .adm-avatar__iniciais { font-size: 11px; }
+.adm-avatar--card .adm-avatar__iniciais { font-size: 14px; }
+.adm-avatar--titulo .adm-avatar__iniciais { font-size: 18px; }
+.adm-step__autor .adm-avatar--linha .adm-avatar__iniciais { font-size: 9.5px; }
 .adm-avatar--card { width: 42px; height: 42px; }
 .adm-avatar--titulo { width: 52px; height: 52px; border-radius: 16px; }
 .adm-avatar__img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -899,3 +905,13 @@ select.adm-status__select { background-image: none; padding-right: 8px; }
   font-size: 12px; color: var(--text-muted); text-decoration: underline;
 }
 .adm-trocarfoto__remover:hover { color: var(--perigo); }
+
+/* ── Autor da linha do histórico ─────────────────────────── */
+.adm-step__autor {
+  display: inline-flex; align-items: center; gap: 8px;
+  flex-shrink: 0; white-space: nowrap;
+}
+.adm-step__quem { font-size: 12.5px; font-weight: 600; color: var(--text-soft); }
+.adm-step__quem--sem { font-weight: 500; font-style: italic; color: var(--text-muted); }
+.adm-step__autor .adm-avatar--linha { width: 24px; height: 24px; }
+.adm-step__autor .adm-step__state { margin-left: 4px; }

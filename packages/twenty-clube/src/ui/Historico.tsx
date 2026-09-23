@@ -1,14 +1,23 @@
 import { useState } from 'react';
 
 import { gql } from 'src/api/client';
+import { LINHA_DO_TEMPO } from 'src/api/queries';
+import { AvatarDoMembro } from 'src/modules/perfil/ui/AvatarDoMembro';
 import { dataHora, dinheiroCurto, enderecoLinha, telefone } from './format';
 import { Vazio, rotuloDe } from './primitives';
+
+type Autor = {
+  id: string;
+  avatarUrl: string | null;
+  name: { firstName: string | null; lastName: string | null } | null;
+} | null;
 
 type Linha = {
   id: string;
   name: string;
   happensAt: string | null;
   createdAt: string | null;
+  workspaceMember?: Autor;
   properties: {
     diff?: Record<string, { before: unknown; after: unknown }>;
     texto?: string;
@@ -22,9 +31,22 @@ const NOTA = 'nota';
 
 const CRIAR_NOTA = `
   mutation CriarNota($data: TimelineActivityCreateInput!) {
-    createTimelineActivity(data: $data) { id name happensAt createdAt properties }
+    createTimelineActivity(data: $data) { ${LINHA_DO_TEMPO} }
   }
 `;
+
+const nomeDoAutor = (autor: Autor | undefined): string | null => {
+  if (autor === null || autor === undefined) {
+    return null;
+  }
+
+  const nome = [autor.name?.firstName, autor.name?.lastName]
+    .filter((parte) => parte !== null && parte !== undefined && parte.trim() !== '')
+    .join(' ')
+    .trim();
+
+  return nome === '' ? 'Usuário sem nome' : nome;
+};
 
 const REMOVER_NOTA = `
   mutation RemoverNota($id: UUID!) {
@@ -238,8 +260,29 @@ export const Historico = ({
                   </span>
                 )}
               </span>
-              <span className="adm-step__state">
-                {dataHora(linha.happensAt ?? linha.createdAt)}
+              <span className="adm-step__autor">
+                {nomeDoAutor(linha.workspaceMember) === null ? (
+                  // Linhas de antes do carimbo de autoria: dizer que não se sabe
+                  // é honesto; deixar em branco parece que foi o sistema.
+                  <span className="adm-step__quem adm-step__quem--sem">
+                    Autor não registrado
+                  </span>
+                ) : (
+                  <>
+                    <AvatarDoMembro
+                      nome={nomeDoAutor(linha.workspaceMember) ?? ''}
+                      fotoUrl={linha.workspaceMember?.avatarUrl ?? null}
+                      tamanho="linha"
+                      vazio="iniciais"
+                    />
+                    <span className="adm-step__quem">
+                      {nomeDoAutor(linha.workspaceMember)}
+                    </span>
+                  </>
+                )}
+                <span className="adm-step__state">
+                  {dataHora(linha.happensAt ?? linha.createdAt)}
+                </span>
               </span>
               {ehNota && podeAnotar && (
                 <button

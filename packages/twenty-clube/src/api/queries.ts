@@ -11,6 +11,14 @@ const EMAIL = `{ primaryEmail }`;
 const FONE = `{ primaryPhoneNumber primaryPhoneCallingCode }`;
 const ENDERECO = `{ addressStreet1 addressStreet2 addressCity addressState addressPostcode addressCountry }`;
 
+// Toda linha do histórico sai com quem a fez. Pedir o autor aqui, e não em
+// cada tela, é o que garante que um histórico novo já nasça mostrando foto e
+// nome — o esquecido seria justamente o próximo.
+export const LINHA_DO_TEMPO = `
+  id name happensAt createdAt properties
+  workspaceMember { id avatarUrl name { firstName lastName } }
+`;
+
 // O painel usa três consultas achatadas em vez de uma aninhada: uma relação
 // to-many dentro de 38 clubes vira 76 idas ao banco e a tela fica em branco.
 export const CLUBES_QUERY = `
@@ -72,7 +80,7 @@ export const montarClubeQuery = (objeto: ObjetoMeta): string => `
         edges { node { id name valor ${MOEDA} vencimento situacao pagaEm } }
       }
       timelineActivities {
-        edges { node { id name happensAt createdAt properties } }
+        edges { node { ${LINHA_DO_TEMPO} } }
       }
     }
   }
@@ -117,7 +125,7 @@ export const montarMembroQuery = (objeto: ObjetoMeta): string => `
         edges { node { id name descricao situacao prazo resolvidaEm } }
       }
       timelineActivities {
-        edges { node { id name happensAt createdAt properties } }
+        edges { node { ${LINHA_DO_TEMPO} } }
       }
     }
   }

@@ -2,7 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "campuzz-e2e-prod",
   "main": "src/index.ts",
-  "account_id": "51eb880ef71493c1e995c9fb5906e367",
+  "account_id": "ddfef995177f50ca821fcfdc4a4deefe",
   "compatibility_date": "2026-09-12",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },

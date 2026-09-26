@@ -2,7 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "campuzz-edge-prod",
   "main": "src/index.ts",
-  "account_id": "51eb880ef71493c1e995c9fb5906e367",
+  "account_id": "ddfef995177f50ca821fcfdc4a4deefe",
   // nodejs_compat gives us node:crypto and the pg driver; Hyperdrive requires it.
   "compatibility_date": "2026-09-12",
   "compatibility_flags": ["nodejs_compat"],
@@ -34,7 +34,7 @@
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
-      "id": "77c37e8831d54d0bbe9a3f7df4239204",
+      "id": "801df9fe01a24905a21f40a58a9bb159",
       "localConnectionString": "postgres://postgres:postgres@localhost:5432/default"
     }
   ],
@@ -43,7 +43,7 @@
 
   // Metadata cache, versioned by workspace.metadataVersion.
   "kv_namespaces": [
-    { "binding": "METADATA_CACHE", "id": "15eadf8700d649ce82ed0992471d5502" }
+    { "binding": "METADATA_CACHE", "id": "3bba0bdf845140c9978fd77c0a6f37bc" }
   ],
 
   "vars": {

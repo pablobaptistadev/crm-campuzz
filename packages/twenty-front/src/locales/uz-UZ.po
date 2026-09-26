@@ -1562,35 +1562,35 @@ msgstr "SSO identifikatsiya provayderini qo‘shish"
 msgid "Add test input for evaluation (e.g., \"Find all customers in NY\")"
 msgstr "Baholash uchun test kiritmasini qo‘shing (masalan, \"NYdagi barcha mijozlarni toping\")"
 
-#. js-lingui-id: FKGcEL
+#. js-lingui-id: h2UQVK
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty MCP server as a remote context server in Zed."
-msgstr "Twenty MCP serverini Zed ichida masofaviy kontekst serveri sifatida qo‘shing."
+msgid "Add the CRM Campuzz MCP server as a remote context server in Zed."
+msgstr "CRM Campuzz MCP serverini Zed ichida masofaviy kontekst serveri sifatida qo‘shing."
 
-#. js-lingui-id: iA2nHX
+#. js-lingui-id: UklFHd
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty MCP server from Augment Code settings."
-msgstr "Twenty MCP serverini Augment Code sozlamalaridan qo‘shing."
+msgid "Add the CRM Campuzz MCP server from Augment Code settings."
+msgstr "CRM Campuzz MCP serverini Augment Code sozlamalaridan qo‘shing."
 
-#. js-lingui-id: l+NzAk
+#. js-lingui-id: mN1+/F
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty MCP server from Raycast's MCP commands or settings."
-msgstr "Twenty MCP serverini Raycastning MCP buyruqlari yoki sozlamalaridan qo‘shing."
+msgid "Add the CRM Campuzz MCP server from Raycast's MCP commands or settings."
+msgstr "CRM Campuzz MCP serverini Raycastning MCP buyruqlari yoki sozlamalaridan qo‘shing."
 
-#. js-lingui-id: j6G/yI
+#. js-lingui-id: 57Etpp
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty MCP server in Gemini CLI settings."
-msgstr "Twenty MCP serverini Gemini CLI sozlamalarida qo‘shing."
+msgid "Add the CRM Campuzz MCP server in Gemini CLI settings."
+msgstr "CRM Campuzz MCP serverini Gemini CLI sozlamalarida qo‘shing."
 
-#. js-lingui-id: /OyhlM
+#. js-lingui-id: bPre4P
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty MCP server to your LibreChat configuration file."
-msgstr "Twenty MCP serverini LibreChat konfiguratsiya faylingizga qo‘shing."
+msgid "Add the CRM Campuzz MCP server to your LibreChat configuration file."
+msgstr "CRM Campuzz MCP serverini LibreChat konfiguratsiya faylingizga qo‘shing."
 
-#. js-lingui-id: K0DXoj
+#. js-lingui-id: OmUrpX
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty remote server with LM Studio's install link."
-msgstr "Twenty masofaviy serverini LM Studioning o‘rnatish havolasi bilan qo‘shing."
+msgid "Add the CRM Campuzz remote server with LM Studio's install link."
+msgstr "CRM Campuzz masofaviy serverini LM Studioning o‘rnatish havolasi bilan qo‘shing."
 
 #. js-lingui-id: 5+ttxv
 #: src/modules/settings/accounts/components/SettingsAccountsBlocklistInput.tsx
@@ -1607,10 +1607,10 @@ msgstr "Sevimlilarga qo‘shish"
 msgid "Add topic"
 msgstr "Mavzu qo‘shish"
 
-#. js-lingui-id: 4D/zWv
+#. js-lingui-id: EI/noC
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add Twenty as a Streamable HTTP extension in Goose."
-msgstr "Twenty ni Goose ichida Streamable HTTP kengaytmasi sifatida qo‘shing."
+msgid "Add CRM Campuzz as a Streamable HTTP extension in Goose."
+msgstr "CRM Campuzz ni Goose ichida Streamable HTTP kengaytmasi sifatida qo‘shing."
 
 #. js-lingui-id: XnwceV
 #: src/pages/settings/applications/components/SettingsApplicationRegistrationRedirectURIsInput.tsx
@@ -3248,10 +3248,10 @@ msgstr "Hisob-kitob davri"
 msgid "Billing period"
 msgstr "Hisob-kitob davri"
 
-#. js-lingui-id: xF/NXI
+#. js-lingui-id: NjURf2
 #: src/modules/settings/billing/hooks/useBillingPortalSession.ts
-msgid "Billing portal session error. Please retry or contact Twenty team"
-msgstr "Hisob-kitob portali seansi xatosi. Iltimos, qayta urinib ko‘ring yoki Twenty jamoasiga murojaat qiling"
+msgid "Billing portal session error. Please retry or contact CRM Campuzz team"
+msgstr "Hisob-kitob portali seansi xatosi. Iltimos, qayta urinib ko‘ring yoki CRM Campuzz jamoasiga murojaat qiling"
 
 #. js-lingui-id: 8kIU+G
 #: src/modules/advanced-text-editor/constants/AdvancedTextEditorBlockCatalog.ts
@@ -3439,10 +3439,10 @@ msgstr "Tugma"
 msgid "by {author}"
 msgstr "muallif: {author}"
 
-#. js-lingui-id: 8Pfllj
+#. js-lingui-id: dXVowt
 #: src/modules/auth/sign-in-up/components/FooterNote.tsx
-msgid "By using Twenty, you agree to the"
-msgstr "Twentyʼdan foydalanish orqali siz"
+msgid "By using CRM Campuzz, you agree to the"
+msgstr "CRM Campuzzʼdan foydalanish orqali siz"
 
 #. js-lingui-id: Yx41df
 #: src/modules/auth/sign-in-up/components/FooterNote.tsx
@@ -3978,11 +3978,11 @@ msgstr "Elektron pochtangizni tekshiring"
 msgid "Check your inbox to verify your new email address."
 msgstr "Yangi email manzilingizni tasdiqlash uchun pochta qutingizni tekshiring."
 
-#. js-lingui-id: SxwQE8
+#. js-lingui-id: A0AJpe
 #: src/modules/settings/billing/hooks/useHandleCheckoutSession.ts
 #: src/modules/settings/billing/hooks/useHandleCheckoutSession.ts
-msgid "Checkout session error. Please retry or contact Twenty team"
-msgstr "To‘lov seansi xatosi. Iltimos, qayta urinib ko‘ring yoki Twenty jamoasiga murojaat qiling"
+msgid "Checkout session error. Please retry or contact CRM Campuzz team"
+msgstr "To‘lov seansi xatosi. Iltimos, qayta urinib ko‘ring yoki CRM Campuzz jamoasiga murojaat qiling"
 
 #. js-lingui-id: SviKkE
 #: src/localization/hooks/useLocaleOptions.ts
@@ -4645,15 +4645,15 @@ msgstr "Uzoqdagi MCP serverini Warp agenti sozlamalari orqali moslang."
 msgid "Configure the remote server in Amazon Q Developer's MCP settings."
 msgstr "Uzoqdagi serverni Amazon Q Developer MCP sozlamalarida moslang."
 
-#. js-lingui-id: g1/8jH
+#. js-lingui-id: lZiA2W
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Configure the Twenty MCP server manually in Cascade."
-msgstr "Twenty MCP serverini Cascade’da qo‘lda moslang."
+msgid "Configure the CRM Campuzz MCP server manually in Cascade."
+msgstr "CRM Campuzz MCP serverini Cascade’da qo‘lda moslang."
 
-#. js-lingui-id: XiyvRh
+#. js-lingui-id: 0oL9Jq
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Configure the Twenty MCP server manually in Cline."
-msgstr "Twenty MCP serverini Cline’da qo‘lda moslang."
+msgid "Configure the CRM Campuzz MCP server manually in Cline."
+msgstr "CRM Campuzz MCP serverini Cline’da qo‘lda moslang."
 
 #. js-lingui-id: qA9AGQ
 #: src/modules/settings/domains/components/SettingsDomainRecords.tsx
@@ -8192,10 +8192,10 @@ msgstr "Oraliqni o‘zgartirishni bekor qilishda xatolik yuz berdi."
 msgid "Error while cancelling plan switching."
 msgstr "Tarifni o‘zgartirishni bekor qilishda xatolik yuz berdi."
 
-#. js-lingui-id: QmR+2U
+#. js-lingui-id: ft1OT/
 #: src/modules/settings/billing/hooks/useEndSubscriptionTrialPeriod.ts
-msgid "Error while ending trial period. Please contact Twenty team."
-msgstr "Sinov davrini yakunlashda xatolik yuz berdi. Iltimos, Twenty jamoasiga murojaat qiling."
+msgid "Error while ending trial period. Please contact CRM Campuzz team."
+msgstr "Sinov davrini yakunlashda xatolik yuz berdi. Iltimos, CRM Campuzz jamoasiga murojaat qiling."
 
 #. js-lingui-id: 5g78zo
 #: src/pages/settings/members/SettingsWorkspaceMember.tsx
@@ -10037,10 +10037,10 @@ msgstr "Yorliqni yashirish"
 msgid "Hide system indexes"
 msgstr "Tizim indekslarini yashirish"
 
-#. js-lingui-id: 1ETc0T
+#. js-lingui-id: dh2bZ9
 #: src/pages/settings/community/SettingsCommunity.tsx
-msgid "Hire a partner to help you implement and customize Twenty."
-msgstr "Twenty ni joriy qilish va moslashtirishda yordam berishi uchun hamkor yollang."
+msgid "Hire a partner to help you implement and customize CRM Campuzz."
+msgstr "CRM Campuzz ni joriy qilish va moslashtirishda yordam berishi uchun hamkor yollang."
 
 #. js-lingui-id: i0qMbr
 #: src/modules/navigation/components/MainNavigationDrawerModeSwitcher.tsx
@@ -14399,10 +14399,10 @@ msgstr "Onboarding uchun mukofot"
 msgid "One or more filters reference deactivated or deleted fields and will be automatically removed on save."
 msgstr "Bir yoki bir nechta filtr faolsizlantirilgan yoki o‘chirilgan maydonlarga tayanadi va saqlashda avtomatik ravishda olib tashlanadi."
 
-#. js-lingui-id: 2l4SGU
+#. js-lingui-id: q15w7v
 #: src/pages/settings/enterprise/SettingsEnterprise.tsx
-msgid "One subscription provides one enterprise key that powers one production instance and one potential staging or test instance. To run a staging or test environment, install Twenty on a second server, activate it with this same enterprise key, then register that server as a development instance. Development instances unlock enterprise features without extra billing and do not count toward your production seats."
-msgstr "Bitta obuna bitta korporativ kalitni taqdim etadi, u bitta ishlab chiqarish instansiyasini va bitta ehtimoliy steyjing yoki test instansiyasini ishga tushiradi. Steyjing yoki test muhitini ishga tushirish uchun Twenty’ni ikkinchi serverga o‘rnating, uni shu korporativ kalit bilan faollashtiring, so‘ng bu serverni ishlab chiqish instansiyasi sifatida ro‘yxatdan o‘tkazing. Ishlab chiqish instansiyalari qo‘shimcha hisob-kitobsiz korporativ funksiyalarni ochadi va ishlab chiqarish o‘rinlari soniga kiritilmaydi."
+msgid "One subscription provides one enterprise key that powers one production instance and one potential staging or test instance. To run a staging or test environment, install CRM Campuzz on a second server, activate it with this same enterprise key, then register that server as a development instance. Development instances unlock enterprise features without extra billing and do not count toward your production seats."
+msgstr "Bitta obuna bitta korporativ kalitni taqdim etadi, u bitta ishlab chiqarish instansiyasini va bitta ehtimoliy steyjing yoki test instansiyasini ishga tushiradi. Steyjing yoki test muhitini ishga tushirish uchun CRM Campuzz’ni ikkinchi serverga o‘rnating, uni shu korporativ kalit bilan faollashtiring, so‘ng bu serverni ishlab chiqish instansiyasi sifatida ro‘yxatdan o‘tkazing. Ishlab chiqish instansiyalari qo‘shimcha hisob-kitobsiz korporativ funksiyalarni ochadi va ishlab chiqarish o‘rinlari soniga kiritilmaydi."
 
 #. js-lingui-id: oFTo3P
 #: src/modules/settings/event-logs/components/SettingsLogs.tsx
@@ -14495,15 +14495,15 @@ msgstr "Blok sozlamalarini tahrirlash uchun email muharririni oching."
 msgid "Open as link"
 msgstr "Havola sifatida ochish"
 
-#. js-lingui-id: n0vVgf
+#. js-lingui-id: mjsk6x
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Open Claude with the Twenty connector name and MCP URL prefilled."
-msgstr "Claude ni Twenty konnektori nomi va oldindan to‘ldirilgan MCP URL bilan oching."
+msgid "Open Claude with the CRM Campuzz connector name and MCP URL prefilled."
+msgstr "Claude ni CRM Campuzz konnektori nomi va oldindan to‘ldirilgan MCP URL bilan oching."
 
-#. js-lingui-id: +n2jpB
+#. js-lingui-id: fOEAq8
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Open Cursor's MCP installer with the Twenty remote server config."
-msgstr "Cursor ning MCP o‘rnatish dasturini Twenty masofaviy server konfiguratsiyasi bilan oching."
+msgid "Open Cursor's MCP installer with the CRM Campuzz remote server config."
+msgstr "Cursor ning MCP o‘rnatish dasturini CRM Campuzz masofaviy server konfiguratsiyasi bilan oching."
 
 #. js-lingui-id: pZZH4Q
 #: src/modules/auth/sign-in-up/components/EmailVerificationSent.tsx
@@ -14557,15 +14557,15 @@ msgstr "Yozuvlarni quyidagida ochish"
 msgid "Open records on a dedicated page"
 msgstr "Yozuvlarni alohida sahifada oching"
 
-#. js-lingui-id: q170S2
+#. js-lingui-id: FT9wOr
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Open Replit with the Twenty remote server config."
-msgstr "Replit ni Twenty masofaviy server konfiguratsiyasi bilan oching."
+msgid "Open Replit with the CRM Campuzz remote server config."
+msgstr "Replit ni CRM Campuzz masofaviy server konfiguratsiyasi bilan oching."
 
-#. js-lingui-id: sBd/cl
+#. js-lingui-id: qK1DPM
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Open Twenty's official ChatGPT integration for your workspace."
-msgstr "Ish maydoningiz uchun Twenty ning rasmiy ChatGPT integratsiyasini oching."
+msgid "Open CRM Campuzz's official ChatGPT integration for your workspace."
+msgstr "Ish maydoningiz uchun CRM Campuzz ning rasmiy ChatGPT integratsiyasini oching."
 
 #. js-lingui-id: OV5wZZ
 #: src/modules/navigation-menu-item/display/sections/components/NavigationDrawerOpenedSection.tsx
@@ -14870,10 +14870,10 @@ msgstr "Sahifa tartiblari"
 msgid "Page name"
 msgstr "Sahifa nomi"
 
-#. js-lingui-id: NRvxzv
+#. js-lingui-id: 2HG7qd
 #: src/pages/not-found/NotFound.tsx
-msgid "Page Not Found | Twenty"
-msgstr "Sahifa topilmadi | Twenty"
+msgid "Page Not Found | CRM Campuzz"
+msgstr "Sahifa topilmadi | CRM Campuzz"
 
 #. js-lingui-id: oIhFvf
 #: src/modules/side-panel/pages/email-block-settings/components/EmailPageStyleSection.tsx
@@ -18681,8 +18681,8 @@ msgstr "Obuna faollashtirildi."
 #: src/modules/settings/billing/components/AddPaymentMethodForm.tsx
 #: src/modules/settings/billing/hooks/useSubmitSubscriptionPayment.ts
 #: src/modules/settings/billing/hooks/useSubmitSubscriptionPayment.ts
-msgid "Subscription error. Please retry or contact Twenty team"
-msgstr "Obuna xatosi. Iltimos, qayta urinib ko‘ring yoki Twenty jamoasiga murojaat qiling"
+msgid "Subscription error. Please retry or contact CRM Campuzz team"
+msgstr "Obuna xatosi. Iltimos, qayta urinib ko‘ring yoki CRM Campuzz jamoasiga murojaat qiling"
 
 #. js-lingui-id: FooJUj
 #. placeholder {0}: getTargetPlanLabel(targetPlanKey)
@@ -19254,10 +19254,10 @@ msgstr "Qabul qiluvchilar manzilingiz yonida ko‘radigan nom. U kanal yaratilga
 msgid "The page you're seeking is either gone or never was. Let's get you back on track"
 msgstr "Qidirayotgan sahifangiz o‘chirib tashlangan yoki hech qachon mavjud bo‘lmagan. Keling, sizni yana kerakli yo‘lga qaytaramiz"
 
-#. js-lingui-id: Ya1wb4
+#. js-lingui-id: Kyrlx4
 #: src/pages/settings/legal/SettingsLegalDpaNew.tsx
-msgid "The PDF is pre-signed by Twenty and executed with your legal entity and authorized signatory."
-msgstr "PDF hujjati oldindan Twenty tomonidan imzolangan va sizning yuridik shaxsingiz hamda vakolatli imzolovchingiz bilan rasmiylashtiriladi."
+msgid "The PDF is pre-signed by CRM Campuzz and executed with your legal entity and authorized signatory."
+msgstr "PDF hujjati oldindan CRM Campuzz tomonidan imzolangan va sizning yuridik shaxsingiz hamda vakolatli imzolovchingiz bilan rasmiylashtiriladi."
 
 #. js-lingui-id: Ir4tSJ
 #: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
@@ -20255,10 +20255,10 @@ msgstr "Navbat topilmadi"
 msgid "Turquoise"
 msgstr "Firuzarang"
 
-#. js-lingui-id: JnaRPe
+#. js-lingui-id: AdT7fk
 #: src/modules/spreadsheet-import/steps/components/MatchColumnsStep/components/ColumnGrid.tsx
-msgid "Twenty fields"
-msgstr "Twenty maydonlari"
+msgid "CRM Campuzz fields"
+msgstr "CRM Campuzz maydonlari"
 
 #. js-lingui-id: YIjS4q
 #: src/modules/ai/components/SettingsAgentModelCapabilities.tsx
@@ -21858,10 +21858,10 @@ msgstr "haftalar"
 msgid "Weight"
 msgstr "Vazn"
 
-#. js-lingui-id: nTuObL
+#. js-lingui-id: CGpYFe
 #: src/pages/auth/SignInUp.tsx
-msgid "Welcome to Twenty"
-msgstr "Twenty ga xush kelibsiz"
+msgid "Welcome to CRM Campuzz"
+msgstr "CRM Campuzz ga xush kelibsiz"
 
 #. js-lingui-id: t8ZvkC
 #: src/modules/onboarding/constants/WelcomeTitleMessage.ts

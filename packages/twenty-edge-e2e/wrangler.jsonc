@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "campuzz-e2e-prod",
+  "main": "src/index.ts",
+  "account_id": "51eb880ef71493c1e995c9fb5906e367",
+  "compatibility_date": "2026-09-12",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  // Test code lives in its own Worker so it never ships inside the API.
+  "browser": { "binding": "BROWSER" },
+
+  // Screenshots are written here so a failed run leaves evidence behind.
+  "r2_buckets": [{ "binding": "ARTIFACTS", "bucket_name": "campuzz-files-prod" }],
+
+  "vars": {
+    "TARGET_URL": "https://crm.campuzz.com.br",
+    "TEST_EMAIL": "contato@pablobaptista.com.br"
+  }
+}

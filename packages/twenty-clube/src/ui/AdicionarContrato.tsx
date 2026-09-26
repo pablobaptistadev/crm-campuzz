@@ -1,0 +1,300 @@
+import { useEffect, useState } from 'react';
+
+import { api } from 'src/api/client';
+import { type Bu } from 'src/ui/Bus';
+import { dataCurta, dinheiroCurto } from 'src/ui/format';
+import {
+  AcoesDoFormulario,
+  CampoMarcar,
+  CampoSelecao,
+  Campos,
+  CampoTexto,
+} from 'src/ui/campos';
+import { Campo, Chip, Grid, rotuloDe, Secao } from 'src/ui/primitives';
+
+type Moeda = { amountMicros: number | null; currencyCode: string | null } | null;
+
+type Previa = {
+  businessUnit: { id: string; name: string };
+  holderEmail: string;
+  emailConfere: boolean;
+  alreadyLinkedContractId: string | null;
+  contract: {
+    kind: 'SUBSCRIPTION' | 'TRANSACTION';
+    code: string | null;
+    status: string;
+    amount: Moeda;
+    frequency: string | null;
+    paymentMethod: string | null;
+    nextChargeAt: string | null;
+    customer: { name: string | null; email: string | null; document: string | null };
+    invoices: { externalInvoiceId: string; status: string; amount: Moeda; dueAt: string | null }[];
+  };
+};
+
+export const AdicionarContrato = ({
+  dono,
+  donoId,
+  onFechar,
+  onVinculado,
+}: {
+  dono: 'clube' | 'membro';
+  donoId: string;
+  onFechar: () => void;
+  onVinculado: () => void;
+}) => {
+  const [identificador, setIdentificador] = useState('');
+  const [bus, setBus] = useState<Bu[]>([]);
+  const [businessUnitId, setBusinessUnitId] = useState('');
+  const [previa, setPrevia] = useState<Previa | null>(null);
+  const [confirmaTitular, setConfirmaTitular] = useState(false);
+  const [ocupado, setOcupado] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  useEffect(() => {
+    const carregar = async () => {
+      try {
+        const lista = (await api<{ bus: Bu[] }>('/bus')).bus;
+
+        setBus(lista);
+        // Já escolhida: com uma BU só e sem marca de padrão, deixar em branco
+        // faria a cascata não achar nenhuma e a busca morrer sem a pessoa
+        // entender por quê.
+        setBusinessUnitId(
+          (lista.find((bu) => bu.isDefault) ?? lista[0])?.id ?? '',
+        );
+      } catch {
+        // Sem a lista, o seletor some e a cascata escolhe a BU sozinha. Isso é
+        // pior do que ter o seletor, mas ainda funciona — não vale travar a tela.
+        setBus([]);
+      }
+    };
+
+    void carregar();
+  }, []);
+
+  const corpo = () => ({
+    [dono === 'clube' ? 'clubeId' : 'membroId']: donoId,
+    identifier: identificador.trim(),
+    ...(businessUnitId === '' ? {} : { businessUnitId }),
+  });
+
+  const buscar = async () => {
+    if (identificador.trim() === '') {
+      setErro('Informe o número do contrato ou da transação.');
+
+      return;
+    }
+
+    setOcupado(true);
+    setErro(null);
+    setPrevia(null);
+
+    try {
+      setConfirmaTitular(false);
+
+      const encontrada = await api<Previa>('/contrato/preview', corpo());
+
+      // O preview procura nas outras BUs quando não acha na escolhida. Sem
+      // trazer a escolha de volta para o seletor, o vincular mandaria de novo a
+      // BU que não tem o contrato.
+      setBusinessUnitId(encontrada.businessUnit.id);
+      setPrevia(encontrada);
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : 'Erro inesperado.');
+    } finally {
+      setOcupado(false);
+    }
+  };
+
+  const vincular = async () => {
+    setOcupado(true);
+    setErro(null);
+
+    try {
+      await api('/contrato/vincular', {
+        ...corpo(),
+        permitirEmailDiferente: confirmaTitular,
+      });
+      onVinculado();
+    } catch (falha) {
+      setErro(falha instanceof Error ? falha.message : 'Erro inesperado.');
+    } finally {
+      setOcupado(false);
+    }
+  };
+
+  const contrato = previa?.contract;
+  // Cancelada não é dívida: some do total e da contagem, como no painel da
+  // Routerfy. A prévia já chega no vocabulário do domínio, traduzido no gateway.
+  const validas = (contrato?.invoices ?? []).filter(
+    (fatura) => fatura.status !== 'CANCELED',
+  );
+  const canceladas = (contrato?.invoices.length ?? 0) - validas.length;
+  const totalEmMicros = validas.reduce(
+    (soma, fatura) => soma + (fatura.amount?.amountMicros ?? 0),
+    0,
+  );
+
+  return (
+    <div className="adm-modal" role="dialog" aria-label="Adicionar contrato">
+      <div className="adm-modal__caixa">
+        <header className="adm-card__head">
+          <span className="adm-card__title">Adicionar contrato</span>
+          <button type="button" className="adm-btn" onClick={onFechar}>
+            Fechar
+          </button>
+        </header>
+
+        <div className="adm-card__body">
+          {erro !== null && <div className="adm-error">{erro}</div>}
+
+          <Campos colunas={2}>
+            <CampoTexto
+              rotulo="Número ou ID do contrato"
+              valor={identificador}
+              onMudou={setIdentificador}
+              onEnter={() => void buscar()}
+              placeholder="2026051000000266 ou vxbh20i3athd2bbyvtpkg9ln67"
+              dica="Serve o número que aparece no painel da Routerfy ou o ID interno do contrato."
+              autoFoco
+            />
+            <CampoSelecao
+              rotulo="Procurar em qual BU"
+              valor={businessUnitId}
+              onMudou={setBusinessUnitId}
+              dica="Se não estiver nesta, procuramos nas outras."
+              opcoes={bus.map((bu) => ({
+                valor: bu.id,
+                rotulo: bu.isDefault ? `${bu.name} (padrão)` : bu.name,
+              }))}
+            />
+          </Campos>
+
+
+          <AcoesDoFormulario>
+            <button
+              type="button"
+              className="adm-btn adm-btn--primary"
+              disabled={ocupado}
+              onClick={() => void buscar()}
+            >
+              {ocupado && previa === null ? 'Procurando…' : 'Procurar contrato'}
+            </button>
+          </AcoesDoFormulario>
+
+          {contrato !== undefined && previa !== null && (
+            <>
+              <Secao>O que encontramos</Secao>
+
+              <Grid colunas={2}>
+                <Campo rotulo="Cliente no gateway" valor={contrato.customer.name} />
+                <Campo rotulo="E-mail" valor={contrato.customer.email} />
+                <Campo
+                  rotulo="Tipo"
+                  valor={
+                    contrato.kind === 'SUBSCRIPTION' ? 'Recorrência' : 'À vista'
+                  }
+                />
+                <Campo
+                  rotulo="Situação no gateway"
+                  valor={rotuloDe(contrato.status)}
+                />
+                <Campo
+                  rotulo="Valor da parcela"
+                  valor={dinheiroCurto(contrato.amount)}
+                />
+                <Campo
+                  rotulo="Parcelas"
+                  valor={
+                    canceladas === 0
+                      ? String(validas.length)
+                      : `${validas.length} (${canceladas} cancelada${canceladas > 1 ? 's' : ''})`
+                  }
+                />
+                <Campo
+                  rotulo="Total do contrato"
+                  valor={dinheiroCurto({
+                    amountMicros: totalEmMicros,
+                    currencyCode: contrato.amount?.currencyCode ?? 'BRL',
+                  })}
+                />
+                <Campo
+                  rotulo="Próxima cobrança"
+                  valor={dataCurta(contrato.nextChargeAt)}
+                />
+                <Campo rotulo="Forma de pagamento" valor={contrato.paymentMethod} />
+                <Campo rotulo="BU usada" valor={previa.businessUnit.name} />
+              </Grid>
+
+              {contrato.invoices.length > 0 && (
+                <table className="adm-table">
+                  <thead>
+                    <tr>
+                      <th>Fatura</th>
+                      <th>Valor</th>
+                      <th>Vencimento</th>
+                      <th>Situação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {contrato.invoices.map((fatura) => (
+                      <tr key={fatura.externalInvoiceId}>
+                        <td>{fatura.externalInvoiceId}</td>
+                        <td className="adm-table__num">
+                          {dinheiroCurto(fatura.amount)}
+                        </td>
+                        <td className="adm-table__muted">
+                          {dataCurta(fatura.dueAt)}
+                        </td>
+                        <td>
+                          <Chip valor={fatura.status} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {previa.emailConfere ? (
+                <p className="adm-painel__ajuda">
+                  O e-mail do contrato bate com {
+                    dono === 'clube'
+                      ? 'o financeiro cadastrado na BU'
+                      : 'o deste membro'
+                  } ({previa.holderEmail}).
+                </p>
+              ) : (
+                <div className="adm-error">
+                  <strong>O titular no gateway é outra pessoa.</strong> O contrato
+                  está em {contrato.customer.email ?? 'um e-mail não informado'} e{' '}
+                  {dono === 'clube'
+                    ? 'o financeiro desta BU'
+                    : 'o deste membro'} é {previa.holderEmail}. Vincular assim amarra a
+                  cobrança de alguém na ficha errada — só siga se souber que é
+                  esse mesmo (a empresa que paga pelo membro, o cônjuge, o sócio).
+                  <CampoMarcar
+                    rotulo="Sei que o titular é diferente e quero vincular mesmo assim"
+                    marcado={confirmaTitular}
+                    onMudou={setConfirmaTitular}
+                  />
+                </div>
+              )}
+
+              <AcoesDoFormulario>
+              <button
+                type="button"
+                className="adm-btn adm-btn--primary"
+                disabled={ocupado || (!previa.emailConfere && !confirmaTitular)}
+                onClick={() => void vincular()}
+              >
+                {ocupado ? 'Vinculando…' : 'Vincular este contrato'}
+              </button>
+              </AcoesDoFormulario>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};

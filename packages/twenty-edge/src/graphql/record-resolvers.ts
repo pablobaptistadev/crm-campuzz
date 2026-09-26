@@ -60,6 +60,7 @@ import {
   type TimelineAction,
 } from 'src/services/timeline';
 import { autorDaSessao, carimbarAutoria } from 'src/services/autoria';
+import { recusarSeForHistorico } from 'src/services/historico-imutavel';
 import { UserFacingError } from 'src/graphql/user-facing-error';
 
 // Several mutations are more than one statement — a bulk create is one INSERT
@@ -818,6 +819,12 @@ export const buildRecordResolvers = (
     ) => {
       assertAllowed(context, 'update');
 
+      // Um upsert com id que já existe reescreve a linha, texto e autor
+      // incluídos — no histórico, isso é editar.
+      if (upsert) {
+        recusarSeForHistorico(object.nameSingular);
+      }
+
       const autor = await autorDaSessao({
         client: context.client,
         workspaceId: context.metadata.workspaceId,
@@ -900,6 +907,7 @@ export const buildRecordResolvers = (
       context: RecordResolverContext,
     ) => {
       assertAllowed(context, 'update');
+      recusarSeForHistorico(object.nameSingular);
 
       // Dragging a card to the top or bottom of a kanban column sends the same
       // 'first'/'last' strings an insert does; an untouched position stays
@@ -959,6 +967,7 @@ export const buildRecordResolvers = (
       context: RecordResolverContext,
     ) => {
       assertAllowed(context, 'softDelete');
+      recusarSeForHistorico(object.nameSingular);
 
       // Arquivar o pai e o que é dele é um ato só: pela metade, o painel fica
       // com membro de clube que não existe mais.
@@ -1001,6 +1010,7 @@ export const buildRecordResolvers = (
       // Restoring puts a row back where everyone can see it, so it is the
       // delete permission that gates it, not the update one.
       assertAllowed(context, 'softDelete');
+      recusarSeForHistorico(object.nameSingular);
 
       return emTransacao(context.client, async () => {
         // O horário de arquivamento some no próprio restore, e é ele que diz
@@ -1058,6 +1068,7 @@ export const buildRecordResolvers = (
       context: RecordResolverContext,
     ) => {
       assertAllowed(context, 'update');
+      recusarSeForHistorico(object.nameSingular);
 
       if (!(args.dryRun === true)) {
         // Merging destroys information in the losing records, so it needs the
@@ -1200,6 +1211,7 @@ export const buildRecordResolvers = (
       context: RecordResolverContext,
     ) => {
       assertAllowed(context, 'destroy');
+      recusarSeForHistorico(object.nameSingular);
 
       const result = await runMutation(
         context,

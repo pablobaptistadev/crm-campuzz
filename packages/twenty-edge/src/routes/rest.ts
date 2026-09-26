@@ -15,6 +15,11 @@ import {
   type OrderByDirection,
 } from 'src/orm/select';
 import { buildWorkspaceTableShape } from 'src/orm/table-shape';
+import { autorDaSessao, carimbarAutoria } from 'src/services/autoria';
+import {
+  ehHistorico,
+  MENSAGEM_HISTORICO_IMUTAVEL,
+} from 'src/services/historico-imutavel';
 import {
   canPerform,
   loadWorkspacePermissions,
@@ -194,9 +199,39 @@ export const restRoute = new Hono<AppEnv>().all('/*', async (context) =>
       }
 
       const body = (await context.req.json()) as Record<string, unknown>;
-      const records = await runQuery(buildInsertQuery({ shape, input: body }));
+
+      // Mesmo carimbo do GraphQL: sem ele, quem monta o corpo escolhia em nome
+      // de quem a linha nascia.
+      const autor = await autorDaSessao({
+        client,
+        workspaceId: metadata.workspaceId,
+        userId: session.userId,
+      });
+      const records = await runQuery(
+        buildInsertQuery({
+          shape,
+          input: carimbarAutoria({
+            shape,
+            nomeDoObjeto: object.nameSingular,
+            dados: body,
+            autor,
+            origem: 'MANUAL',
+          }),
+        }),
+      );
 
       return context.json({ data: { [object.nameSingular]: records[0] } }, 201);
+    }
+
+    // O histórico só acrescenta, para todo papel — ver historico-imutavel.
+    if (
+      (context.req.method === 'PATCH' || context.req.method === 'DELETE') &&
+      ehHistorico(object.nameSingular)
+    ) {
+      return context.json(
+        { error: 'FORBIDDEN', message: MENSAGEM_HISTORICO_IMUTAVEL },
+        403,
+      );
     }
 
     if (context.req.method === 'PATCH' && recordId !== undefined) {

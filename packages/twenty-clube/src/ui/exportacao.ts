@@ -145,7 +145,12 @@ export const colunasDoCadastro = (objeto: ObjetoMeta, grupos: readonly GrupoDeCa
   return [...ordem, ...resto].flatMap((nome) => {
     const campo = campos.get(nome);
 
-    return campo === undefined ? [] : colunasDoCampo(campo, rotuloDaTela.get(nome) ?? campo.label);
+    if (campo === undefined) {
+      return [];
+    }
+
+    // O rótulo de `name` no metadata é o padrão em inglês, "Name".
+    return colunasDoCampo(campo, rotuloDaTela.get(nome) ?? (nome === 'name' ? 'Nome' : campo.label));
   });
 };
 

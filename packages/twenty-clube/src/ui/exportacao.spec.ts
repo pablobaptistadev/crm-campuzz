@@ -51,7 +51,7 @@ describe('colunas da exportação', () => {
 
   it('segue a ordem da tela e põe o resto em ordem alfabética', () => {
     expect(colunas.map((coluna) => coluna.titulo)).toEqual([
-      'Name',
+      'Nome',
       'Nascimento',
       'Status do membro',
       'Valor total (R$)',

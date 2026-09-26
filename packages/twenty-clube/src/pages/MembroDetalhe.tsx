@@ -6,6 +6,7 @@ import { carregarMetadata, type ObjetoMeta } from 'src/api/metadata';
 import { ARQUIVAR_MEMBRO, montarMembroQuery } from 'src/api/queries';
 import { type Etapa } from 'src/api/types';
 import { Historico } from 'src/ui/Historico';
+import { CAMPOS_DA_INADIMPLENCIA } from 'src/ui/inadimplencia';
 import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
 import { CardEditavel } from 'src/ui/CardEditavel';
 import { Bus } from 'src/ui/Bus';
@@ -281,7 +282,7 @@ export const MembroDetalhe = () => {
           registro={membro}
           onSalvo={aplicar}
           grupos={GRUPOS_DO_MEMBRO}
-          excluir={['name', 'emails', 'cpf', 'miniBio', 'fotoUrl']}
+          excluir={['name', 'emails', 'cpf', 'miniBio', 'fotoUrl', ...CAMPOS_DA_INADIMPLENCIA]}
         />
         </>
       )}
@@ -475,24 +476,7 @@ export const MembroDetalhe = () => {
 
       {aba === 'his' && (
         <Card titulo="Histórico" flush>
-          <Historico
-            linhas={membro.timelineActivities.edges.map((aresta: { node: any }) => aresta.node)}
-            campoAlvo="targetMembroId"
-            alvoId={membro.id}
-            onMudou={(proximas) =>
-              setMembro((atual) =>
-                atual === null
-                  ? atual
-                  : {
-                      ...atual,
-                      timelineActivities: {
-                        ...atual.timelineActivities,
-                        edges: proximas.map((node) => ({ node })),
-                      },
-                    },
-              )
-            }
-          />
+          <Historico campoAlvo="targetMembroId" alvoId={membro.id} />
         </Card>
       )}
     </>

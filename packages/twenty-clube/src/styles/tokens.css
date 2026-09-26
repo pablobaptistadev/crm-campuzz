@@ -167,6 +167,7 @@ button { font: inherit; }
 .adm-chip--rose { background: rgba(217, 82, 87, 0.12); color: rgb(185, 57, 62); }
 .adm-chip--gold { background: rgba(197, 165, 102, 0.16); color: var(--gold-deep); }
 .adm-chip--slate { background: var(--bg-elev-2); color: var(--text-muted); }
+.adm-chip--violet { background: rgba(110, 78, 168, 0.13); color: var(--violet); }
 
 /* ── Pipeline (bolinhas) ──────────────────────────────────── */
 .adm-pipeline { display: inline-flex; gap: 4px; }

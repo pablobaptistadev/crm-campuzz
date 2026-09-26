@@ -20,6 +20,15 @@ export const LINHA_DO_TEMPO = `
   id name happensAt createdAt properties workspaceMemberId
 `;
 
+export const HISTORICO_DO_ALVO_QUERY = `
+  query HistoricoDoAlvo($filtro: TimelineActivityFilterInput, $after: String) {
+    timelineActivities(first: 1000, after: $after, filter: $filtro) {
+      pageInfo { hasNextPage endCursor }
+      edges { node { ${LINHA_DO_TEMPO} } }
+    }
+  }
+`;
+
 // O painel usa três consultas achatadas em vez de uma aninhada: uma relação
 // to-many dentro de 38 clubes vira 76 idas ao banco e a tela fica em branco.
 export const CLUBES_QUERY = `
@@ -82,9 +91,6 @@ export const montarClubeQuery = (objeto: ObjetoMeta): string => `
       }
       parcelas {
         edges { node { id name valor ${MOEDA} vencimento situacao pagaEm } }
-      }
-      timelineActivities {
-        edges { node { ${LINHA_DO_TEMPO} } }
       }
     }
   }
@@ -157,9 +163,6 @@ export const montarMembroQuery = (objeto: ObjetoMeta): string => `
       }
       pendencias {
         edges { node { id name descricao situacao prazo resolvidaEm } }
-      }
-      timelineActivities {
-        edges { node { ${LINHA_DO_TEMPO} } }
       }
     }
   }

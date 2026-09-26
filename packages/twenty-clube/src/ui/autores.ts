@@ -8,9 +8,14 @@ export type Autor = {
   name: { firstName: string | null; lastName: string | null } | null;
 };
 
+// Inclui quem já saiu do workspace: a anotação continua sendo de quem a
+// escreveu, e sem isso ela passava a dizer "Autor não registrado".
 const AUTORES_QUERY = `
   query Autores {
-    workspaceMembers(first: 200) {
+    workspaceMembers(
+      first: 200
+      filter: { or: [{ deletedAt: { is: NULL } }, { deletedAt: { is: NOT_NULL } }] }
+    ) {
       edges { node { id avatarUrl name { firstName lastName } } }
     }
   }

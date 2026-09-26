@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { gql } from 'src/api/client';
-import { LINHA_DO_TEMPO } from 'src/api/queries';
+import { HISTORICO_DO_ALVO_QUERY, LINHA_DO_TEMPO } from 'src/api/queries';
 import { AvatarDoMembro } from 'src/modules/perfil/ui/AvatarDoMembro';
 import { type Autor, useAutores } from './autores';
 import { dataHora, dinheiroCurto, enderecoLinha, telefone } from './format';
+import { paginar } from './paginar';
 import { Vazio, rotuloDe } from './primitives';
 
 type Linha = {
@@ -20,8 +21,8 @@ type Linha = {
 };
 
 // A anotação é escrita por uma pessoa; o resto da linha do tempo é o registro
-// do que o sistema fez. Só a anotação pode ser apagada — apagar as outras
-// seria reescrever o que aconteceu.
+// do que o sistema fez. Nenhuma das duas se apaga nem se edita: o histórico é a
+// prova de quem fez o quê, e o servidor recusa reescrevê-lo para qualquer papel.
 const NOTA = 'nota';
 
 const CRIAR_NOTA = `
@@ -43,12 +44,6 @@ const nomeDoAutor = (autor: Autor | null | undefined): string | null => {
   return nome === '' ? 'Usuário sem nome' : nome;
 };
 
-const REMOVER_NOTA = `
-  mutation RemoverNota($id: UUID!) {
-    destroyTimelineActivity(id: $id) { id }
-  }
-`;
-
 const ACAO: Record<string, string> = {
   created: 'Criado',
   updated: 'Atualizado',
@@ -63,6 +58,10 @@ const ACAO: Record<string, string> = {
 const valor = (bruto: unknown): string => {
   if (bruto === null || bruto === undefined || bruto === '') {
     return '—';
+  }
+
+  if (typeof bruto === 'boolean') {
+    return bruto ? 'Sim' : 'Não';
   }
 
   if (typeof bruto !== 'object') {
@@ -112,22 +111,24 @@ const ROTULO_CAMPO: Record<string, string> = {
   camiseta: 'Camiseta',
   papel: 'Papel',
   nomeCracha: 'Nome no crachá',
+  inadimplenciaMarcada: 'Inadimplente',
+  inadimplenciaValor: 'Valor em aberto',
+  inadimplenciaVencimento: 'Vencimento da dívida',
+  opcional: 'Etapa opcional',
 };
 
+// O histórico vem numa lista achatada pelo alvo, e não aninhado na consulta do
+// registro: a relação aninhada devolve no máximo 60 linhas, e num membro com
+// mais que isso as anotações antigas sumiam sem aviso.
 export const Historico = ({
-  linhas,
   campoAlvo,
   alvoId,
-  onMudou,
 }: {
-  linhas: Linha[];
-  // Sem o alvo o histórico continua só de leitura, que é como ele aparece
-  // dentro de telas que não têm um registro único para anotar.
-  campoAlvo?: string;
-  alvoId?: string;
-  onMudou?: (proximas: Linha[]) => void;
+  campoAlvo: string;
+  alvoId: string;
 }) => {
   const autores = useAutores();
+  const [linhas, setLinhas] = useState<Linha[] | null>(null);
   const autorDe = (linha: Linha): Autor | null =>
     linha.workspaceMemberId === null || linha.workspaceMemberId === undefined
       ? null
@@ -137,10 +138,36 @@ export const Historico = ({
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
-  const podeAnotar = campoAlvo !== undefined && alvoId !== undefined && onMudou !== undefined;
+  useEffect(() => {
+    let ativo = true;
+
+    setLinhas(null);
+    paginar<Linha>(HISTORICO_DO_ALVO_QUERY, 'timelineActivities', {
+      filtro: { [campoAlvo]: { eq: alvoId } },
+    })
+      .then((carregadas) => {
+        if (ativo) {
+          setLinhas(carregadas);
+        }
+      })
+      .catch((causa: unknown) => {
+        if (ativo) {
+          setLinhas([]);
+          setErro(
+            causa instanceof Error
+              ? causa.message
+              : 'Não conseguimos carregar o histórico.',
+          );
+        }
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, [campoAlvo, alvoId]);
 
   const anotar = async () => {
-    if (!podeAnotar || texto.trim() === '') {
+    if (texto.trim() === '') {
       setErro('Escreva a anotação.');
 
       return;
@@ -165,7 +192,7 @@ export const Historico = ({
         },
       });
 
-      onMudou([...linhas, criada.createTimelineActivity]);
+      setLinhas((atuais) => [...(atuais ?? []), criada.createTimelineActivity]);
       setTexto('');
       setQuandoAconteceu('');
     } catch (causa) {
@@ -175,67 +202,50 @@ export const Historico = ({
     }
   };
 
-  const remover = async (linha: Linha) => {
-    if (!podeAnotar) {
-      return;
-    }
-
-    setOcupado(true);
-
-    try {
-      await gql(REMOVER_NOTA, { id: linha.id });
-      onMudou(linhas.filter((item) => item.id !== linha.id));
-    } catch (causa) {
-      setErro(causa instanceof Error ? causa.message : 'Não conseguimos remover.');
-    } finally {
-      setOcupado(false);
-    }
-  };
-
-  // A relação não aceita orderBy, então a ordem vem da posição da linha, não do
-  // relógio — e um histórico fora de ordem cronológica não é um histórico.
+  // A ordem da consulta é a da posição da linha, não a do relógio — e um
+  // histórico fora de ordem cronológica não é um histórico.
   const quando = (linha: Linha) =>
     new Date(linha.happensAt ?? linha.createdAt ?? 0).getTime();
-  const ordenadas = [...linhas].sort((a, b) => quando(b) - quando(a));
+  const ordenadas = [...(linhas ?? [])].sort((a, b) => quando(b) - quando(a));
 
   return (
     <div>
-      {podeAnotar && (
-        <div className="adm-nota">
-          <input
-            className="adm-input adm-nota__texto"
-            placeholder="Anotar no histórico: ligação, reunião, combinado…"
-            aria-label="Nova anotação"
-            value={texto}
-            onChange={(evento) => setTexto(evento.target.value)}
-            onKeyDown={(evento) => {
-              if (evento.key === 'Enter') {
-                void anotar();
-              }
-            }}
-          />
-          <input
-            className="adm-input"
-            type="date"
-            aria-label="Data da anotação"
-            title="Quando aconteceu (em branco = agora)"
-            value={quandoAconteceu}
-            onChange={(evento) => setQuandoAconteceu(evento.target.value)}
-          />
-          <button
-            type="button"
-            className="adm-btn adm-btn--primary adm-btn--pequeno"
-            disabled={ocupado}
-            onClick={() => void anotar()}
-          >
-            {ocupado ? 'Salvando…' : 'Anotar'}
-          </button>
-        </div>
-      )}
+      <div className="adm-nota">
+        <input
+          className="adm-input adm-nota__texto"
+          placeholder="Anotar no histórico: ligação, reunião, combinado…"
+          aria-label="Nova anotação"
+          value={texto}
+          onChange={(evento) => setTexto(evento.target.value)}
+          onKeyDown={(evento) => {
+            if (evento.key === 'Enter') {
+              void anotar();
+            }
+          }}
+        />
+        <input
+          className="adm-input"
+          type="date"
+          aria-label="Data da anotação"
+          title="Quando aconteceu (em branco = agora)"
+          value={quandoAconteceu}
+          onChange={(evento) => setQuandoAconteceu(evento.target.value)}
+        />
+        <button
+          type="button"
+          className="adm-btn adm-btn--primary adm-btn--pequeno"
+          disabled={ocupado}
+          onClick={() => void anotar()}
+        >
+          {ocupado ? 'Salvando…' : 'Anotar'}
+        </button>
+      </div>
 
       {erro !== null && <div className="adm-error">{erro}</div>}
 
-      {ordenadas.length === 0 ? (
+      {linhas === null ? (
+        <Vazio>Carregando o histórico…</Vazio>
+      ) : ordenadas.length === 0 ? (
         <Vazio>Ainda não há atividade neste registro.</Vazio>
       ) : (
         ordenadas.map((linha) => {
@@ -290,16 +300,6 @@ export const Historico = ({
                   {dataHora(linha.happensAt ?? linha.createdAt)}
                 </span>
               </span>
-              {ehNota && podeAnotar && (
-                <button
-                  type="button"
-                  className="adm-btn adm-btn--perigo adm-btn--pequeno"
-                  disabled={ocupado}
-                  onClick={() => void remover(linha)}
-                >
-                  Remover
-                </button>
-              )}
             </div>
           );
         })

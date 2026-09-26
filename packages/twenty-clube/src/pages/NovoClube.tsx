@@ -18,6 +18,7 @@ import {
   numeroLimpo,
 } from 'src/ui/parcelas';
 import { dataCurta } from 'src/ui/format';
+import { useOpcoes } from 'src/ui/useOpcoes';
 
 const PASSOS = ['Clube', 'Dados', 'Financeiro', 'Revisão'];
 
@@ -77,6 +78,7 @@ export const NovoClube = () => {
   const [grupoWhatsapp, setGrupoWhatsapp] = useState('');
   const [linkCheckout, setLinkCheckout] = useState('');
   const [mouSituacao, setMouSituacao] = useState('PENDENTE');
+  const opcoesDoMou = useOpcoes('clube', 'mouSituacao', MOU);
   const [mouAssinadoEm, setMouAssinadoEm] = useState('');
   const [mouValidade, setMouValidade] = useState('');
 
@@ -438,7 +440,7 @@ export const NovoClube = () => {
                 value={mouSituacao}
                 onChange={(evento) => setMouSituacao(evento.target.value)}
               >
-                {MOU.map((opcao) => (
+                {opcoesDoMou.map((opcao) => (
                   <option key={opcao.value} value={opcao.value}>
                     {opcao.label}
                   </option>

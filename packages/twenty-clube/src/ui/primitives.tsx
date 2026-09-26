@@ -61,6 +61,9 @@ const TONS = {
   PERDIDO: 'rose',
   EXPIRADO: 'rose',
   ATRASADA: 'rose',
+  // Contrato dividido entre sócios: não é pendência nem problema, só outro
+  // arranjo — uma cor própria para não se confundir com nenhum dos dois.
+  RATEIO: 'violet',
   // Situação da conexão com o gateway de pagamento.
   ACTIVE: 'green',
   INVALID: 'rose',
@@ -101,6 +104,7 @@ const ROTULOS: Record<string, string> = {
   ENVIADO: 'Enviado',
   ASSINADO: 'Assinado',
   EXPIRADO: 'Expirado',
+  RATEIO: 'Rateio',
   CONCLUIDA: 'Concluída',
   EM_ANDAMENTO: 'Em andamento',
   PAGA: 'Paga',

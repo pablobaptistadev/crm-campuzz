@@ -150,6 +150,8 @@ export const repositorioDeContratoEmPostgres = ({
     create: async (draft) => {
       const campos = camposDoGateway(draft.contract);
 
+      // Com position, a linha entra no fim da lista em vez de ficar sem lugar
+      // na ordem que a paginação segue.
       const { rows } = await client.query<Linha>(
         `INSERT INTO ${contratos}
            ("name","externalSubscriptionId","externalTransactionId","contractKind",
@@ -157,10 +159,11 @@ export const repositorioDeContratoEmPostgres = ({
             "frequency","frequencyInterval","startsAt","endsAt","nextChargeAt",
             "paymentMethod","customerEmail","customerDocument",
             "totalValueAmountMicros","totalValueCurrencyCode","paidInvoicesCount",
-            ${colBu}, ${colClube}, ${colMembro})
+            ${colBu}, ${colClube}, ${colMembro}, "position")
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,
                  $10::timestamptz,$11::timestamptz,$12::timestamptz,
-                 $13,$14,$15,$16,$17,$18,$19,$20,$21)
+                 $13,$14,$15,$16,$17,$18,$19,$20,$21,
+                 (SELECT COALESCE(MAX("position"), 0) + 1 FROM ${contratos}))
          RETURNING ${SELECAO}`,
         [
           campos.name,

@@ -70,12 +70,15 @@ export const repositorioDeFaturaEmPostgres = ({
           continue;
         }
 
+        // Com position, a fatura entra no fim da lista em vez de ficar sem
+        // lugar na ordem que a paginação segue.
         await client.query(
           `INSERT INTO ${faturas}
              (${colContrato}, "externalInvoiceId", "name", "invoiceStatus",
               "amountAmountMicros", "amountCurrencyCode",
-              "dueAt", "paidAt", "paymentUrlPrimaryLinkUrl")
-           VALUES ($1, $2, $3, $4, $5, $6, $7::timestamptz, $8::timestamptz, $9)`,
+              "dueAt", "paidAt", "paymentUrlPrimaryLinkUrl", "position")
+           VALUES ($1, $2, $3, $4, $5, $6, $7::timestamptz, $8::timestamptz, $9,
+                   (SELECT COALESCE(MAX("position"), 0) + 1 FROM ${faturas}))`,
           valores,
         );
       }

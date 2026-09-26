@@ -113,6 +113,7 @@ export const MEMBROS_DO_CLUBE_QUERY = `
       edges { node {
         id name situacao papel contratoSituacao fotoUrl
         emails ${EMAIL} emailFinanceiro telefones ${FONE} valorTotal ${MOEDA}
+        inadimplenciaMarcada inadimplenciaVencimento
       } }
     }
   }
@@ -213,21 +214,6 @@ export const EXCHANGE_MUTATION = `
 export const ATUALIZAR_ETAPA = `
   mutation AtualizarEtapa($id: UUID!, $data: EtapaJornadaUpdateInput!) {
     updateEtapaJornada(id: $id, data: $data) { ${ETAPA} }
-  }
-`;
-
-export const FINANCEIRO_QUERY = `
-  query Financeiro($after: String) {
-    parcelas(first: 200, after: $after) {
-      pageInfo { hasNextPage endCursor }
-      edges {
-        node {
-          id name numero situacao vencimento pagaEm lembreteEm
-          valor ${MOEDA}
-          formaPagamento membroId clubeId
-        }
-      }
-    }
   }
 `;
 

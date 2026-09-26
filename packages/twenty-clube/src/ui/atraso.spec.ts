@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { type Cobranca, situacaoDeCobranca } from 'src/ui/atraso';
+import { type Cobranca, cobrancasDe, situacaoDeCobranca } from 'src/ui/atraso';
 
 const HOJE = '2026-09-19';
 
@@ -55,7 +55,7 @@ describe('situação de cobrança dos dois financeiros', () => {
     );
 
     expect(situacao.origensEmAtraso).toEqual(['manual', 'automatico']);
-    expect(situacao.atrasadasPorOrigem).toEqual({ manual: 1, automatico: 1 });
+    expect(situacao.atrasadasPorOrigem).toEqual({ manual: 1, automatico: 1, marcacao: 0 });
   });
 
   // Pagar no gateway não quita a parcela lançada à mão. Exigir os dois em atraso
@@ -121,5 +121,50 @@ describe('situação de cobrança dos dois financeiros', () => {
 
   it('sem cobrança nenhuma, não há atraso', () => {
     expect(situacaoDeCobranca([], HOJE).emAtraso).toBe(false);
+  });
+});
+
+describe('marcação de inadimplência pela equipe', () => {
+  it('conta o membro marcado como em atraso, mesmo sem parcela nem fatura', () => {
+    const situacao = situacaoDeCobranca(
+      cobrancasDe({
+        parcelas: [],
+        contratos: null,
+        marcacao: { inadimplenciaMarcada: true, inadimplenciaVencimento: null },
+      }),
+      HOJE,
+    );
+
+    expect(situacao.emAtraso).toBe(true);
+    expect(situacao.origensEmAtraso).toEqual(['marcacao']);
+  });
+
+  // O caso da Gislene e da Mayara: contrato do gateway encerrado e todo pago,
+  // e a dívida combinada por fora, que só a equipe sabe.
+  it('não deixa o gateway em dia apagar a marcação', () => {
+    const situacao = situacaoDeCobranca(
+      [
+        automatico({ situacao: 'PAID', pagaEm: '2026-08-01' }),
+        ...cobrancasDe({
+          parcelas: [],
+          contratos: null,
+          marcacao: { inadimplenciaMarcada: true, inadimplenciaVencimento: '2026-08-31' },
+        }),
+      ],
+      HOJE,
+    );
+
+    expect(situacao.origensEmAtraso).toEqual(['marcacao']);
+  });
+
+  it('ignora a marcação desligada ou nunca usada', () => {
+    for (const marcacao of [
+      { inadimplenciaMarcada: false, inadimplenciaVencimento: '2026-08-31' },
+      { inadimplenciaMarcada: null, inadimplenciaVencimento: null },
+      null,
+      undefined,
+    ]) {
+      expect(situacaoDeCobranca(cobrancasDe({ parcelas: [], contratos: null, marcacao }), HOJE).emAtraso).toBe(false);
+    }
   });
 });

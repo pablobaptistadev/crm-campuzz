@@ -2,7 +2,12 @@ import { useEffect, useState } from 'react';
 
 import { gql } from 'src/api/client';
 import { AdicionarContrato } from 'src/ui/AdicionarContrato';
-import { type Cobranca, situacaoDeCobranca } from 'src/ui/atraso';
+import {
+  type Cobranca,
+  type Marcacao,
+  cobrancaDaMarcacao,
+  situacaoDeCobranca,
+} from 'src/ui/atraso';
 import { dataCurta, dinheiroCurto } from 'src/ui/format';
 import { Card, Chip, Secao, Vazio } from 'src/ui/primitives';
 
@@ -53,10 +58,12 @@ export const FinanceiroAutomatico = ({
   dono,
   donoId,
   parcelasManuais,
+  marcacao,
 }: {
   dono: 'clube' | 'membro';
   donoId: string;
   parcelasManuais: ParcelaManual[];
+  marcacao?: Marcacao;
 }) => {
   const [contratos, setContratos] = useState<Contrato[] | null>(null);
   const [adicionando, setAdicionando] = useState(false);
@@ -86,6 +93,7 @@ export const FinanceiroAutomatico = ({
   );
 
   const cobrancas: Cobranca[] = [
+    ...cobrancaDaMarcacao(marcacao),
     ...parcelasManuais.map((parcela) => ({
       origem: 'manual' as const,
       situacao: parcela.situacao,
@@ -103,12 +111,20 @@ export const FinanceiroAutomatico = ({
   const situacao = situacaoDeCobranca(cobrancas);
 
   const ondeEstaOAtraso = situacao.origensEmAtraso
-    .map((origem) =>
-      origem === 'manual'
-        ? `${situacao.atrasadasPorOrigem.manual} no financeiro manual`
-        : `${situacao.atrasadasPorOrigem.automatico} no automático`,
-    )
+    .map((origem) => {
+      switch (origem) {
+        case 'manual':
+          return `${situacao.atrasadasPorOrigem.manual} no financeiro manual`;
+        case 'automatico':
+          return `${situacao.atrasadasPorOrigem.automatico} no automático`;
+        case 'marcacao':
+          return 'a marcação de inadimplência feita pela equipe';
+      }
+    })
     .join(' e ');
+  // A marcação não é cobrança: contá-la no "olhamos as N cobranças" inflaria
+  // o número que a pessoa confere com o financeiro.
+  const quantasCobrancas = cobrancas.filter((cobranca) => cobranca.origem !== 'marcacao').length;
 
   return (
     <>
@@ -122,8 +138,8 @@ export const FinanceiroAutomatico = ({
 
         <p className="adm-painel__ajuda">
           {situacao.emAtraso
-            ? `Contamos ${ondeEstaOAtraso}. Basta um dos dois lados em atraso para o cliente estar em atraso.`
-            : `Olhamos as ${cobrancas.length} cobranças dos dois financeiros — o lançado à mão e o puxado do gateway. Nenhuma vencida em aberto.`}
+            ? `Contamos ${ondeEstaOAtraso}. Basta um lado em atraso para o cliente estar em atraso.`
+            : `Olhamos as ${quantasCobrancas} cobranças dos dois financeiros — o lançado à mão e o puxado do gateway. Nenhuma vencida em aberto.`}
         </p>
       </Card>
 

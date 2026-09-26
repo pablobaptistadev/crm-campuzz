@@ -68,6 +68,28 @@ export const CampoTexto = ({
   </Rotulo>
 );
 
+export const CampoData = ({
+  rotulo,
+  valor,
+  onMudou,
+  dica,
+}: {
+  rotulo: string;
+  // 'AAAA-MM-DD', ou '' para vazio — o mesmo formato do campo DATE.
+  valor: string;
+  onMudou: (valor: string) => void;
+  dica?: string;
+}) => (
+  <Rotulo rotulo={rotulo} dica={dica}>
+    <input
+      className="adm-input adm-campo__controle"
+      type="date"
+      value={valor}
+      onChange={(evento) => onMudou(evento.target.value)}
+    />
+  </Rotulo>
+);
+
 export const CampoSelecao = ({
   rotulo,
   valor,

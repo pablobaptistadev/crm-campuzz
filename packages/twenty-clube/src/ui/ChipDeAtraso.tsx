@@ -1,5 +1,6 @@
 import {
   type ContratosDoRegistro,
+  type Marcacao,
   cobrancasDe,
   situacaoDeCobranca,
 } from 'src/ui/atraso';
@@ -15,25 +16,29 @@ type Parcela = {
 export const ChipDeAtraso = ({
   parcelas,
   contratos,
+  marcacao,
 }: {
   parcelas: Parcela[];
   contratos: ContratosDoRegistro;
+  marcacao?: Marcacao;
 }) => {
-  const situacao = situacaoDeCobranca(cobrancasDe({ parcelas, contratos }));
+  const situacao = situacaoDeCobranca(cobrancasDe({ parcelas, contratos, marcacao }));
 
   if (!situacao.emAtraso) {
     return null;
   }
 
-  const total =
-    situacao.atrasadasPorOrigem.manual + situacao.atrasadasPorOrigem.automatico;
+  const { manual, automatico, marcacao: marcado } = situacao.atrasadasPorOrigem;
+  const cobrancas = manual + automatico;
+  const partes = [
+    `${manual} no financeiro manual`,
+    `${automatico} no automático`,
+    ...(marcado > 0 ? ['marcado como inadimplente pela equipe'] : []),
+  ];
 
   return (
-    <span
-      className="adm-chip adm-chip--rose"
-      title={`${situacao.atrasadasPorOrigem.manual} no financeiro manual, ${situacao.atrasadasPorOrigem.automatico} no automático`}
-    >
-      Em atraso · {total}
+    <span className="adm-chip adm-chip--rose" title={partes.join(', ')}>
+      {cobrancas > 0 ? `Em atraso · ${cobrancas}` : 'Inadimplente'}
     </span>
   );
 };

@@ -7,6 +7,7 @@ import { ARQUIVAR_MEMBRO, montarMembroQuery } from 'src/api/queries';
 import { type Etapa } from 'src/api/types';
 import { Historico } from 'src/ui/Historico';
 import { CAMPOS_DA_INADIMPLENCIA } from 'src/ui/inadimplencia';
+import { MarcacaoDeInadimplencia } from 'src/ui/MarcacaoDeInadimplencia';
 import { EtapasEmCards, type EtapaCompleta } from 'src/ui/EtapaCard';
 import { CardEditavel } from 'src/ui/CardEditavel';
 import { Bus } from 'src/ui/Bus';
@@ -200,6 +201,7 @@ export const MembroDetalhe = () => {
         <ChipDeAtraso
           parcelas={parcelas}
           contratos={membro.contratos}
+          marcacao={membro}
         />
         <StatusEditavel
           objeto={objeto}
@@ -382,10 +384,21 @@ export const MembroDetalhe = () => {
             }
           />
 
+          <MarcacaoDeInadimplencia
+            membroId={membro.id as string}
+            inadimplencia={{
+              inadimplenciaMarcada: membro.inadimplenciaMarcada ?? null,
+              inadimplenciaValor: membro.inadimplenciaValor ?? null,
+              inadimplenciaVencimento: membro.inadimplenciaVencimento ?? null,
+            }}
+            onSalvo={aplicar}
+          />
+
           <FinanceiroAutomatico
             dono="membro"
             donoId={membro.id as string}
             parcelasManuais={parcelas}
+            marcacao={membro}
           />
 
           <Card titulo="Pendências" flush>

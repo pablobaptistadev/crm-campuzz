@@ -14,6 +14,8 @@ export type MembroFiltravel = {
   emailFinanceiro?: string | null;
   parcelas?: { edges: { node: { situacao: string | null; vencimento: string | null; pagaEm: string | null } }[] } | null;
   contratos?: ContratosDoRegistro;
+  inadimplenciaMarcada?: boolean | null;
+  inadimplenciaVencimento?: string | null;
 };
 
 export type FiltroDeMembro = {
@@ -44,6 +46,7 @@ export const estaEmAtraso = (membro: MembroFiltravel): boolean =>
     cobrancasDe({
       parcelas: (membro.parcelas?.edges ?? []).map((aresta) => aresta.node),
       contratos: membro.contratos ?? null,
+      marcacao: membro,
     }),
   ).emAtraso;
 

@@ -1,4 +1,11 @@
-export type Origem = 'manual' | 'automatico';
+import { hojeLocal } from './datas';
+
+// manual: parcela lançada à mão. automatico: fatura do gateway. marcacao: a
+// equipe marcou o membro como inadimplente — a dívida que não está em parcela
+// nem no gateway, e que antes só existia escrita numa anotação.
+export type Origem = 'manual' | 'automatico' | 'marcacao';
+
+export const ORIGENS: readonly Origem[] = ['manual', 'automatico', 'marcacao'];
 
 export type Cobranca = {
   origem: Origem;
@@ -43,11 +50,12 @@ export type Situacao = {
 // deve a parcela lançada à mão, ou o contrário.
 export const situacaoDeCobranca = (
   cobrancas: readonly Cobranca[],
-  hoje: string = new Date().toISOString().slice(0, 10),
+  hoje: string = hojeLocal(),
 ): Situacao => {
   const atrasadasPorOrigem: Record<Origem, number> = {
     manual: 0,
     automatico: 0,
+    marcacao: 0,
   };
 
   for (const cobranca of cobrancas) {
@@ -56,7 +64,7 @@ export const situacaoDeCobranca = (
     }
   }
 
-  const origensEmAtraso = (['manual', 'automatico'] as const).filter(
+  const origensEmAtraso = ORIGENS.filter(
     (origem) => atrasadasPorOrigem[origem] > 0,
   );
 
@@ -83,16 +91,38 @@ export type ContratosDoRegistro = {
   edges: { node: { faturas: { edges: { node: FaturaDoGateway }[] } } }[];
 } | null;
 
-// As duas listas viram uma só aqui, e não em cada tela que precisa da regra: o
+export type Marcacao = {
+  inadimplenciaMarcada?: boolean | null;
+  inadimplenciaVencimento?: string | null;
+} | null;
+
+// Marcado é atraso, com ou sem vencimento: quem marca já sabe que a dívida
+// passou da data. O vencimento, quando existe, diz desde quando.
+export const cobrancaDaMarcacao = (marcacao: Marcacao | undefined): Cobranca[] =>
+  marcacao?.inadimplenciaMarcada === true
+    ? [
+        {
+          origem: 'marcacao',
+          situacao: 'ATRASADA',
+          vence: marcacao.inadimplenciaVencimento ?? null,
+          pagaEm: null,
+        },
+      ]
+    : [];
+
+// As listas viram uma só aqui, e não em cada tela que precisa da regra: o
 // chip da ficha e o filtro da lista de membros perguntam a mesma coisa, e duas
 // montagens iguais é como as duas passam a discordar.
 export const cobrancasDe = ({
   parcelas,
   contratos,
+  marcacao,
 }: {
   parcelas: readonly ParcelaManual[];
   contratos: ContratosDoRegistro;
+  marcacao?: Marcacao;
 }): Cobranca[] => [
+  ...cobrancaDaMarcacao(marcacao),
   ...parcelas.map((parcela) => ({
     origem: 'manual' as const,
     situacao: parcela.situacao,

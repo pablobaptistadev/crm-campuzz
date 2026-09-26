@@ -261,7 +261,7 @@ export const MEMBROS_SIMPLES_QUERY = `
 
 export const RADAR_QUERY = `
   query Radar($after: String) {
-    membros(first: 200, after: $after) {
+    membros(first: 1000, after: $after) {
       pageInfo { hasNextPage endCursor }
       edges {
         node {
@@ -270,15 +270,6 @@ export const RADAR_QUERY = `
           placaEntregue clubeId
         }
       }
-    }
-  }
-`;
-
-export const RADAR_CLUBES_QUERY = `
-  query RadarClubes($after: String) {
-    clubes(first: 60, after: $after) {
-      pageInfo { hasNextPage endCursor }
-      edges { node { id name inicio mouValidade situacao mentor } }
     }
   }
 `;

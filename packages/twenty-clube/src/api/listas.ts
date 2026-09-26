@@ -133,3 +133,128 @@ export const carregarContratosDoGateway = () =>
 
 export const carregarFaturasDoGateway = () =>
   paginar<FaturaDaLista>(FATURAS, 'gatewayInvoices').catch(() => []);
+
+export type SocioDaLista = { id: string; name: string; nascimento: string | null; clubeId: string | null };
+
+export type DependenteDaLista = {
+  id: string;
+  name: string;
+  nascimento: string | null;
+  parentesco: string | null;
+  membroId: string | null;
+};
+
+export type EtapaDaLista = {
+  id: string;
+  name: string;
+  escopo: string | null;
+  ordem: number | null;
+  situacao: string | null;
+  prazo: string | null;
+  concluidaEm: string | null;
+  responsavel: string | null;
+  opcional: boolean | null;
+  clubeId: string | null;
+  membroId: string | null;
+};
+
+export type EventoDeEtapa = {
+  targetEtapaJornadaId: string | null;
+  happensAt: string | null;
+  workspaceMemberId: string | null;
+  properties: { diff?: Record<string, { before?: unknown; after?: unknown }> } | null;
+};
+
+const ETAPA = `id name escopo ordem situacao prazo concluidaEm responsavel opcional clubeId membroId`;
+
+const SOCIOS = `
+  query ListaDeSocios($after: String) {
+    socios(first: 1000, after: $after) {
+      pageInfo { hasNextPage endCursor }
+      edges { node { id name nascimento clubeId } }
+    }
+  }
+`;
+
+const DEPENDENTES = `
+  query ListaDeDependentes($after: String) {
+    dependentes(first: 1000, after: $after) {
+      pageInfo { hasNextPage endCursor }
+      edges { node { id name nascimento parentesco membroId } }
+    }
+  }
+`;
+
+export const carregarSocios = () => paginar<SocioDaLista>(SOCIOS, 'socios');
+
+export const carregarDependentes = () => paginar<DependenteDaLista>(DEPENDENTES, 'dependentes');
+
+const DATA = /^\d{4}-\d{2}-\d{2}$/;
+
+// Só o que o radar usa: etapa com prazo, ou concluída desde a data pedida. As
+// outras mil e tantas etapas pendentes sem prazo não geram evento nenhum.
+export const carregarEtapasDoRadar = (desde: string) => {
+  if (!DATA.test(desde)) {
+    throw new Error(`Data inválida: ${desde}`);
+  }
+
+  return paginar<EtapaDaLista>(
+    `query EtapasDoRadar($after: String) {
+      etapasJornada(
+        first: 1000
+        after: $after
+        filter: { or: [{ prazo: { is: NOT_NULL } }, { concluidaEm: { gte: "${desde}" } }] }
+      ) {
+        pageInfo { hasNextPage endCursor }
+        edges { node { ${ETAPA} } }
+      }
+    }`,
+    'etapasJornada',
+  );
+};
+
+// Toda etapa com dono, de clube e de membro. As 2.101 etapas órfãs de uma
+// importação antiga (sem clube nem membro) ficam de fora já na consulta.
+export const carregarEtapasComDono = () =>
+  Promise.all([
+    paginar<EtapaDaLista>(
+      `query EtapasDeClube($after: String) {
+        etapasJornada(first: 1000, after: $after, filter: { escopo: { eq: "CLUBE" }, clubeId: { is: NOT_NULL } }) {
+          pageInfo { hasNextPage endCursor }
+          edges { node { ${ETAPA} } }
+        }
+      }`,
+      'etapasJornada',
+    ),
+    paginar<EtapaDaLista>(
+      `query EtapasDeMembro($after: String) {
+        etapasJornada(first: 1000, after: $after, filter: { escopo: { eq: "MEMBRO" }, membroId: { is: NOT_NULL } }) {
+          pageInfo { hasNextPage endCursor }
+          edges { node { ${ETAPA} } }
+        }
+      }`,
+      'etapasJornada',
+    ),
+  ]).then(([doClube, doMembro]) => [...doClube, ...doMembro]);
+
+// As mudanças de etapa registradas no histórico desde a data pedida — é daqui
+// que sai quem concluiu cada uma.
+export const carregarEventosDeEtapa = (desde: string) => {
+  if (!DATA.test(desde)) {
+    throw new Error(`Data inválida: ${desde}`);
+  }
+
+  return paginar<EventoDeEtapa>(
+    `query EventosDeEtapa($after: String) {
+      timelineActivities(
+        first: 1000
+        after: $after
+        filter: { name: { eq: "updated" }, targetEtapaJornadaId: { is: NOT_NULL }, happensAt: { gte: "${desde}" } }
+      ) {
+        pageInfo { hasNextPage endCursor }
+        edges { node { targetEtapaJornadaId happensAt workspaceMemberId properties } }
+      }
+    }`,
+    'timelineActivities',
+  );
+};

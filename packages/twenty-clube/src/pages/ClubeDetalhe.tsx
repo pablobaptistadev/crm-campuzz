@@ -11,6 +11,7 @@ import { CardEditavel } from 'src/ui/CardEditavel';
 import { Bus } from 'src/ui/Bus';
 import { FinanceiroAutomatico } from 'src/ui/FinanceiroAutomatico';
 import { CadastroCompleto, type GrupoDeCampos } from 'src/ui/CadastroCompleto';
+import { GRUPOS_DO_CLUBE } from 'src/ui/gruposDeCampos';
 import { AvatarDoMembro, MembroComFoto } from 'src/modules/perfil/ui/AvatarDoMembro';
 import { TrocarFoto } from 'src/modules/perfil/ui/TrocarFoto';
 import { NovoMembro } from 'src/ui/NovoMembro';
@@ -51,60 +52,6 @@ const ABAS: { id: Aba; rotulo: string }[] = [
   { id: 'cfg', rotulo: 'Configurações' },
 ];
 
-// Ordem, não filtro: o que não estiver aqui cai em "Outros campos" e continua
-// editável. É o que garante que um campo criado amanhã apareça sozinho.
-const GRUPOS_DO_CLUBE: GrupoDeCampos[] = [
-  {
-    titulo: 'Identificação',
-    campos: [
-      { nome: 'name', rotulo: 'Nome do clube' },
-      'nomeCracha',
-      'mentor',
-      'responsavel',
-      'nicho',
-      'situacao',
-      'inicio',
-      'miniBio',
-    ],
-  },
-  {
-    titulo: 'Financeiro',
-    campos: [
-      { nome: 'capitalNegociado', rotulo: 'Valor total' },
-      { nome: 'modeloFinanceiro', rotulo: 'Modelo de pagamento' },
-      'linkFastpay',
-      'linkCheckout',
-    ],
-  },
-  {
-    titulo: 'Contrato e MOU',
-    campos: [
-      'mouSituacao',
-      'mouAssinadoEm',
-      'mouValidade',
-      'mouLink',
-      'origemContrato',
-      'contratoMlsAssinado',
-      'contratoMlsEm',
-      'mlsId',
-      'contratoScpAssinado',
-      'contratoScpEm',
-    ],
-  },
-  {
-    titulo: 'Operação',
-    campos: ['kickoffFeito', 'kickoffEm', 'lms', 'bu', 'mlsHouse', 'fastval', 'scpCriada', 'scpCriadaEm', 'grupoWhatsapp'],
-  },
-  {
-    titulo: 'Presentes e preferências',
-    campos: ['camiseta', 'calca', 'moletom', 'calcado', 'chocolateFavorito', 'frutaFavorita', 'placaEntregue', 'placaEntregueEm'],
-  },
-  {
-    titulo: 'Contato de emergência',
-    campos: ['contatoEmergenciaNome', 'contatoEmergenciaTelefone'],
-  },
-  { titulo: 'Anotações', campos: ['maiorObjetivo', 'observacoes'] },
-];
 
 const sim = (valor: boolean | null) => (valor === true ? 'Sim' : valor === false ? 'Não' : TRACO);
 

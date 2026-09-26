@@ -10,6 +10,7 @@ import { TRACO, dataCurta, dinheiroCurto } from 'src/ui/format';
 import { AvatarDoMembro } from 'src/modules/perfil/ui/AvatarDoMembro';
 import { buscarNoPainel } from 'src/ui/busca';
 import { type AlunoDoPainel, BuscaGlobal } from 'src/ui/BuscaGlobal';
+import { ExportarDados } from 'src/ui/ExportarDados';
 import { paginar } from 'src/ui/paginar';
 
 type Clube = Omit<ClubeResumo, 'membros' | 'jornada'>;
@@ -158,6 +159,7 @@ export const Dashboard = () => {
           clubes={encontrados.clubes}
         />
         <AlternarVisao modo={modo} onChange={setModo} />
+        <ExportarDados />
         <Link className="adm-btn adm-btn--primary" to="/clubes/novo">
           + Novo clube
         </Link>

@@ -13,6 +13,7 @@ import { CardEditavel } from 'src/ui/CardEditavel';
 import { Bus } from 'src/ui/Bus';
 import { FinanceiroAutomatico } from 'src/ui/FinanceiroAutomatico';
 import { CadastroCompleto, type GrupoDeCampos } from 'src/ui/CadastroCompleto';
+import { GRUPOS_DO_MEMBRO } from 'src/ui/gruposDeCampos';
 import { CamposDoPerfil } from 'src/modules/perfil/ui/CamposDoPerfil';
 import { AvatarDoMembro } from 'src/modules/perfil/ui/AvatarDoMembro';
 import { TrocarFoto } from 'src/modules/perfil/ui/TrocarFoto';
@@ -45,37 +46,6 @@ const ABAS: { id: Aba; rotulo: string }[] = [
   { id: 'cfg', rotulo: 'Configurações' },
 ];
 
-// Ordem do que já conhecemos; o resto entra em "Outros campos" e continua
-// editável, então um campo novo não depende de alguém lembrar desta lista.
-const GRUPOS_DO_MEMBRO: GrupoDeCampos[] = [
-  {
-    titulo: 'Documentos',
-    campos: ['rg', 'cnpj', 'nascimento', 'sexo', 'estadoCivil', 'nacionalidade', 'naturalidade', 'profissao', 'conjuge'],
-  },
-  {
-    // O financeiro mora junto do contato, não do contrato: é um jeito de falar
-    // com a pessoa, e é onde quem atualiza cadastro vai procurar.
-    titulo: 'Contato',
-    campos: ['emailFinanceiro', 'telefones', 'telefoneFixo', 'endereco', 'instagram', 'linkedin', 'site'],
-  },
-  {
-    titulo: 'No clube',
-    campos: ['nomeCracha', 'papel', 'situacao', 'entradaEm'],
-  },
-  {
-    titulo: 'Contrato',
-    campos: ['contratoNumero', 'contratoSituacao', 'contratoAssinadoEm', 'contratoLink', 'valorTotal', 'modeloPagamento', 'linkFastpay'],
-  },
-  {
-    titulo: 'Presentes e preferências',
-    campos: ['camiseta', 'calca', 'moletom', 'calcado', 'chocolateFavorito', 'frutaFavorita', 'placaEntregue', 'placaEntregueEm'],
-  },
-  {
-    titulo: 'Contato de emergência',
-    campos: ['contatoEmergenciaNome', 'contatoEmergenciaTelefone'],
-  },
-  { titulo: 'Anotações', campos: ['maiorObjetivo', 'observacoes'] },
-];
 
 const linkTexto = (valor: { primaryLinkUrl: string | null; primaryLinkLabel: string | null } | null) =>
   valor?.primaryLinkUrl === null || valor?.primaryLinkUrl === undefined ? (

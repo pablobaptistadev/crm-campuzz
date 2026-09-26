@@ -1,5 +1,9 @@
 // Mirrors ApiPath in twenty-shared. Kept as a local copy so the Worker has no
 // dependency on the server package; the two must stay in sync.
+//
+// /financeiro is left out on purpose: it is also a page of the clube SPA, and
+// listing it here answered a reload of that page with a 501. The API under
+// /financeiro/* still works, because its routes match before the catch-all.
 export const API_PATH_PREFIXES = new Set([
   'admin-panel',
   'app',
@@ -12,7 +16,6 @@ export const API_PATH_PREFIXES = new Set([
   'file',
   'file-upload',
   'files',
-  'financeiro',
   'graphql',
   'healthz',
   'mcp',

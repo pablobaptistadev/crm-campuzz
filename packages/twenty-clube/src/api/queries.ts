@@ -2,7 +2,7 @@ import { type ObjetoMeta } from './metadata';
 import { selecaoDeCampos } from './selecao';
 
 const ETAPA = `
-  id name ordem escopo situacao concluidaEm observacoes responsavel prazo
+  id name ordem escopo situacao concluidaEm observacoes responsavel prazo opcional
   attachments { edges { node { id name fullPath type } } }
 `;
 const MOEDA = `{ amountMicros currencyCode }`;

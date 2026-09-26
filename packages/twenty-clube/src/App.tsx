@@ -8,6 +8,7 @@ import { ClubeDetalhe } from 'src/pages/ClubeDetalhe';
 import { Dashboard } from 'src/pages/Dashboard';
 import { Financeiro } from 'src/pages/Financeiro';
 import { NovoClube } from 'src/pages/NovoClube';
+import { Pendencias } from 'src/pages/Pendencias';
 import { Radar } from 'src/pages/Radar';
 import { Login } from 'src/pages/Login';
 import { MembroDetalhe } from 'src/pages/MembroDetalhe';
@@ -103,6 +104,12 @@ export const App = () => {
           Financeiro
         </NavLink>
         <NavLink
+          to="/pendencias"
+          className={({ isActive }) => (isActive ? 'adm-banner__link adm-banner__link--on' : 'adm-banner__link')}
+        >
+          Pendências
+        </NavLink>
+        <NavLink
           to="/radar"
           className={({ isActive }) => (isActive ? 'adm-banner__link adm-banner__link--on' : 'adm-banner__link')}
         >
@@ -182,6 +189,7 @@ export const App = () => {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/financeiro" element={<Financeiro />} />
+          <Route path="/pendencias" element={<Pendencias />} />
           <Route path="/radar" element={<Radar />} />
           <Route path="/arquivados" element={<Arquivados />} />
           <Route path="/clubes/novo" element={<NovoClube />} />

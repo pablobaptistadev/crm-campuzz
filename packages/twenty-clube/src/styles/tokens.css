@@ -355,6 +355,27 @@ button { font: inherit; }
 .adm-etapa__linha { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .adm-etapa__linha .adm-fieldlabel { margin: 0; }
 .adm-input--data { min-width: 0; width: 148px; padding: 5px 9px; font-size: 12.5px; }
+/* Obrigatória / Opcional: duas opções lado a lado, a escolhida em dourado. */
+.adm-exigencia { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.adm-segmentado {
+  display: inline-flex; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--bg-elev-2); padding: 2px;
+}
+.adm-segmentado__opcao {
+  border: 0; background: transparent; cursor: pointer; border-radius: 999px;
+  padding: 4px 10px; font-size: 12px; color: var(--text-muted); font-family: inherit;
+}
+.adm-segmentado__opcao:hover:not(:disabled) { color: var(--text); }
+.adm-segmentado__opcao--on {
+  background: var(--bg-elev-1); color: var(--gold-deep); font-weight: 600;
+  box-shadow: var(--sombra-1);
+}
+.adm-link-botao {
+  border: 0; background: transparent; cursor: pointer; padding: 2px 4px; border-radius: 6px;
+  color: var(--gold-deep); font-size: 12px; font-weight: 600; font-family: inherit;
+}
+.adm-link-botao:hover:not(:disabled) { background: rgba(197, 165, 102, 0.12); }
+.adm-link-botao:disabled, .adm-segmentado__opcao:disabled { opacity: 0.55; cursor: default; }
 .adm-etapa__nota-texto {
   display: block; width: 100%; text-align: left; cursor: pointer;
   background: var(--bg-elev-2); border: 1px dashed var(--border);

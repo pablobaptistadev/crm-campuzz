@@ -20,6 +20,8 @@ export type Etapa = {
   escopo: 'MEMBRO' | 'CLUBE' | null;
   situacao: EtapaSituacao | null;
   concluidaEm: string | null;
+  // Vazio é obrigatória: o campo nasceu depois das etapas.
+  opcional?: boolean | null;
 };
 
 export type Socio = {

@@ -258,3 +258,23 @@ export const carregarEventosDeEtapa = (desde: string) => {
     'timelineActivities',
   );
 };
+
+export type PendenciaDaLista = {
+  id: string;
+  name: string;
+  descricao: string | null;
+  situacao: string | null;
+  prazo: string | null;
+  membroId: string | null;
+};
+
+const PENDENCIAS = `
+  query ListaDePendencias($after: String) {
+    pendencias(first: 1000, after: $after) {
+      pageInfo { hasNextPage endCursor }
+      edges { node { id name descricao situacao prazo membroId } }
+    }
+  }
+`;
+
+export const carregarPendenciasManuais = () => paginar<PendenciaDaLista>(PENDENCIAS, 'pendencias');

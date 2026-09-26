@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { gql } from 'src/api/client';
 import { CRIAR_ETAPAS, CRIAR_MEMBRO, JORNADA_MEMBRO } from 'src/api/clube-novo';
+import { nomesDasEtapasOpcionais } from './exigencia';
 import { validarPerfil } from 'src/modules/perfil';
 import { micros, numeroLimpo } from './parcelas';
 
@@ -94,6 +95,8 @@ export const NovoMembro = ({
 
       // Sem as etapas o membro abre com a aba CRM vazia, que é justamente a
       // tela que a equipe usa para tocar o onboarding dele.
+      const opcionais = await nomesDasEtapasOpcionais('MEMBRO');
+
       await gql(CRIAR_ETAPAS, {
         data: JORNADA_MEMBRO.map((etapa, indice) => ({
           name: etapa,
@@ -102,6 +105,7 @@ export const NovoMembro = ({
           situacao: 'PENDENTE',
           membroId: membro.createMembro.id,
           position: indice + 1,
+          ...(opcionais.has(etapa) ? { opcional: true } : {}),
         })),
       });
 

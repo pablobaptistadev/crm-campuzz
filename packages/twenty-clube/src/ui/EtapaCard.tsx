@@ -5,11 +5,13 @@ import { type Etapa } from 'src/api/types';
 import { AlternarVisao, useModoVisao } from './primitives';
 import { subirAnexo, type Anexo } from './anexos';
 import { dataCurta } from './format';
+import { ExigenciaDaEtapa } from './ExigenciaDaEtapa';
+import { ehOpcional } from './exigencia';
 
 const ATUALIZAR = `
   mutation AtualizarEtapa($id: UUID!, $data: EtapaJornadaUpdateInput!) {
     updateEtapaJornada(id: $id, data: $data) {
-      id situacao concluidaEm observacoes responsavel prazo
+      id situacao concluidaEm observacoes responsavel prazo opcional
     }
   }
 `;
@@ -101,6 +103,7 @@ export const EtapaCard = ({
         </button>
         <span className="adm-etapa__ordem">{numero}</span>
         <span className="adm-etapa__nome">{etapa.name}</span>
+        {ehOpcional(etapa) && <span className="adm-chip adm-chip--slate">Opcional</span>}
       </header>
 
       {erro !== null && <div className="adm-error">{erro}</div>}
@@ -133,6 +136,11 @@ export const EtapaCard = ({
           }
         />
       </div>
+
+      <ExigenciaDaEtapa
+        etapa={etapa}
+        onMudou={(opcional) => onMudou({ ...etapa, opcional })}
+      />
 
       <div className="adm-etapa__nota">
         <span className="adm-fieldlabel">Observações</span>
@@ -279,6 +287,11 @@ const EtapaLinha = ({
       </td>
       <td>
         <span className="adm-etapalista__nome">{etapa.name}</span>
+        {ehOpcional(etapa) && (
+          <span className="adm-chip adm-chip--slate" style={{ marginLeft: 6 }}>
+            Opcional
+          </span>
+        )}
         {(etapa.observacoes ?? '') !== '' && (
           <div className="adm-etapalista__meta">{etapa.observacoes}</div>
         )}

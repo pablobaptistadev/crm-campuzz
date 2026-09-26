@@ -18,6 +18,7 @@ import {
   numeroLimpo,
 } from 'src/ui/parcelas';
 import { dataCurta } from 'src/ui/format';
+import { nomesDasEtapasOpcionais } from 'src/ui/exigencia';
 import { useOpcoes } from 'src/ui/useOpcoes';
 
 const PASSOS = ['Clube', 'Dados', 'Financeiro', 'Revisão'];
@@ -147,6 +148,8 @@ export const NovoClube = () => {
 
       // A jornada e o pipeline nascem com o clube: um clube sem etapas abre com
       // a aba CRM vazia e ninguém sabe por onde começar.
+      const opcionais = await nomesDasEtapasOpcionais('CLUBE');
+
       await gql(CRIAR_ETAPAS, {
         data: [
           ...JORNADA_CLUBE.map((etapa, indice) => ({
@@ -156,6 +159,7 @@ export const NovoClube = () => {
             situacao: 'PENDENTE',
             clubeId,
             position: indice + 1,
+            ...(opcionais.has(etapa) ? { opcional: true } : {}),
           })),
           ...PIPELINE_CLUBE.map((etapa, indice) => ({
             name: etapa,
@@ -164,6 +168,7 @@ export const NovoClube = () => {
             situacao: 'PENDENTE',
             clubeId,
             position: 101 + indice,
+            ...(opcionais.has(etapa) ? { opcional: true } : {}),
           })),
         ],
       });

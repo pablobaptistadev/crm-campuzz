@@ -2921,6 +2921,8 @@ export const METADATA_RESOLVERS = {
       return rows[0];
     },
 
+    // Mudar o esquema — criar ou apagar objeto e campo — é configuração do
+    // workspace. Com só a sessão, qualquer membro apagava um objeto inteiro.
     createOneObject: async (
       _parent: unknown,
       args: {
@@ -2935,7 +2937,7 @@ export const METADATA_RESOLVERS = {
       },
       context: MetadataContext,
     ) => {
-      const workspaceId = await requireWorkspaceId(context);
+      const workspaceId = await requireSettingsAccess(context);
       const metadata = await loadMetadataForSession(context);
 
       const object = await createObjectMetadata({
@@ -2975,7 +2977,7 @@ export const METADATA_RESOLVERS = {
       },
       context: MetadataContext,
     ) => {
-      const workspaceId = await requireWorkspaceId(context);
+      const workspaceId = await requireSettingsAccess(context);
       const metadata = await loadMetadataForSession(context);
 
       const object = metadata.objects.find((entry) =>
@@ -3012,7 +3014,7 @@ export const METADATA_RESOLVERS = {
       },
       context: MetadataContext,
     ) => {
-      const workspaceId = await requireWorkspaceId(context);
+      const workspaceId = await requireSettingsAccess(context);
       const metadata = await loadMetadataForSession(context);
       const object = metadata.objects.find(
         (entry) => entry.id === args.input.objectMetadataId,
@@ -3039,7 +3041,7 @@ export const METADATA_RESOLVERS = {
       args: { id: string },
       context: MetadataContext,
     ) => {
-      const workspaceId = requireWorkspaceId(context);
+      const workspaceId = await requireSettingsAccess(context);
       const metadata = await loadMetadataForSession(context);
       const object = metadata.objects.find((entry) => entry.id === args.id);
 
@@ -3059,7 +3061,7 @@ export const METADATA_RESOLVERS = {
       args: { id: string },
       context: MetadataContext,
     ) => {
-      const workspaceId = requireWorkspaceId(context);
+      const workspaceId = await requireSettingsAccess(context);
       const metadata = await loadMetadataForSession(context);
       const object = metadata.objects.find((entry) =>
         entry.fields.some((field) => field.id === args.id),

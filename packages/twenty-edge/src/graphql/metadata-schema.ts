@@ -1339,6 +1339,57 @@ const requireSettingsAccess = async (
   return membership.workspace.id;
 };
 
+// A flag is what the front reads to show or hide a feature. Without checking it
+// here too, hiding the button was the only barrier, and a hand-written call to
+// save a view or upload a file went through for a read-only role.
+const requirePermissionFlag = async (
+  context: MetadataContext,
+  flags: readonly string[],
+): Promise<string> => {
+  const membership = context.sessionContext?.membership ?? null;
+
+  if (membership === null) {
+    throw new UserFacingError('UNAUTHENTICATED');
+  }
+
+  const permissions = await loadWorkspacePermissions({
+    client: context.client,
+    workspaceId: membership.workspace.id,
+    userWorkspaceId: membership.userWorkspaceId,
+    objectMetadataIds: [],
+  });
+
+  // No role is the creator of a workspace that has no roles yet, and settings
+  // access covers every flag: both already pass requireSettingsAccess.
+  if (
+    permissions.role === null ||
+    permissions.canUpdateAllSettings ||
+    flags.some((flag) => permissions.permissionFlags.includes(flag))
+  ) {
+    return membership.workspace.id;
+  }
+
+  throw new UserFacingError(
+    `Not allowed to use ${flags.join(' or ')} with your role`,
+    'FORBIDDEN',
+  );
+};
+
+const requireViewsAccess = (context: MetadataContext) =>
+  requirePermissionFlag(context, ['VIEWS']);
+
+// Your own profile picture is part of your profile, not of the workspace's data,
+// so PROFILE_INFORMATION is enough for that folder and nothing else.
+const UPLOAD_FLAGS_BY_FOLDER: Record<string, readonly string[]> = {
+  CorePicture: ['UPLOAD_FILE', 'PROFILE_INFORMATION'],
+};
+
+const requireUploadAccess = (context: MetadataContext, fileFolder: string) =>
+  requirePermissionFlag(
+    context,
+    UPLOAD_FLAGS_BY_FOLDER[fileFolder] ?? ['UPLOAD_FILE'],
+  );
+
 // The invitation exists whether or not the mail went out — the link works
 // either way, and failing the mutation would make the feature unusable until
 // the provider key arrives. The error comes back beside the invitation instead.
@@ -2896,7 +2947,9 @@ export const METADATA_RESOLVERS = {
       args: { customDomain: string | null },
       context: MetadataContext,
     ) => {
-      const workspaceId = await requireWorkspaceId(context);
+      // The domain decides where every member signs in, so it is a settings
+      // change like the rest of the workspace's configuration.
+      const workspaceId = await requireSettingsAccess(context);
       const customDomain =
         args.customDomain === null || args.customDomain.trim().length === 0
           ? null
@@ -3085,12 +3138,12 @@ export const METADATA_RESOLVERS = {
       args: { input: CreateViewArgs },
       context: MetadataContext,
     ) => {
-      const membership = requireMembership(context);
+      const workspaceId = await requireViewsAccess(context);
       const metadata = await loadMetadataForSession(context);
 
       const view = await insertView({
         client: context.client,
-        workspaceId: membership.workspace.id,
+        workspaceId,
         input: args.input,
       });
 
@@ -3103,7 +3156,7 @@ export const METADATA_RESOLVERS = {
       if (object !== undefined) {
         await seedViewFields({
           client: context.client,
-          workspaceId: membership.workspace.id,
+          workspaceId,
           viewId: view.id,
           fields: orderedVisibleFields(object),
           visibleCount: VISIBLE_VIEW_FIELD_COUNT,
@@ -3112,7 +3165,7 @@ export const METADATA_RESOLVERS = {
 
       const children = await loadViewChildren({
         client: context.client,
-        workspaceId: membership.workspace.id,
+        workspaceId,
       });
 
       return toViewDto(view, children);
@@ -3123,18 +3176,18 @@ export const METADATA_RESOLVERS = {
       args: { id: string; input: ViewSettingsInput },
       context: MetadataContext,
     ) => {
-      const membership = requireMembership(context);
+      const workspaceId = await requireViewsAccess(context);
 
       const view = await updateViewSettings({
         client: context.client,
-        workspaceId: membership.workspace.id,
+        workspaceId,
         id: args.id,
         input: args.input,
       });
 
       const children = await loadViewChildren({
         client: context.client,
-        workspaceId: membership.workspace.id,
+        workspaceId,
       });
 
       return toViewDto(view, children);
@@ -3145,146 +3198,146 @@ export const METADATA_RESOLVERS = {
       args: { id: string },
       context: MetadataContext,
     ) => {
-      const membership = requireMembership(context);
+      const workspaceId = await requireViewsAccess(context);
 
       const view = await softDeleteView({
         client: context.client,
-        workspaceId: membership.workspace.id,
+        workspaceId,
         id: args.id,
       });
 
       const children = await loadViewChildren({
         client: context.client,
-        workspaceId: membership.workspace.id,
+        workspaceId,
       });
 
       return toViewDto(view, children);
     },
 
-    destroyView: (
+    destroyView: async (
       _parent: unknown,
       args: { id: string },
       context: MetadataContext,
     ) =>
       destroyView({
         client: context.client,
-        workspaceId: requireMembership(context).workspace.id,
+        workspaceId: await requireViewsAccess(context),
         id: args.id,
       }),
 
-    createManyViewFields: (
+    createManyViewFields: async (
       _parent: unknown,
       args: { inputs: CreateViewFieldArgs[] },
       context: MetadataContext,
     ) =>
       createViewFields({
         client: context.client,
-        workspaceId: requireMembership(context).workspace.id,
+        workspaceId: await requireViewsAccess(context),
         inputs: args.inputs,
       }),
 
-    updateViewField: (
+    updateViewField: async (
       _parent: unknown,
       args: { input: { id: string; update: Record<string, never> } },
       context: MetadataContext,
     ) =>
       updateViewField({
         client: context.client,
-        workspaceId: requireMembership(context).workspace.id,
+        workspaceId: await requireViewsAccess(context),
         id: args.input.id,
         update: args.input.update,
       }),
 
-    deleteViewField: (
+    deleteViewField: async (
       _parent: unknown,
       args: { input: { id: string } },
       context: MetadataContext,
     ) =>
       softDeleteViewChild<ViewFieldRow>({
         client: context.client,
-        workspaceId: requireMembership(context).workspace.id,
+        workspaceId: await requireViewsAccess(context),
         table: 'viewField',
         id: args.input.id,
       }),
 
-    destroyViewField: (
+    destroyViewField: async (
       _parent: unknown,
       args: { input: { id: string } },
       context: MetadataContext,
     ) =>
       destroyViewChild<ViewFieldRow>({
         client: context.client,
-        workspaceId: requireMembership(context).workspace.id,
+        workspaceId: await requireViewsAccess(context),
         table: 'viewField',
         id: args.input.id,
       }),
 
-    createViewFilter: (
+    createViewFilter: async (
       _parent: unknown,
       args: { input: CreateViewFilterArgs },
       context: MetadataContext,
     ) =>
       createViewFilter({
         client: context.client,
-        workspaceId: requireMembership(context).workspace.id,
+        workspaceId: await requireViewsAccess(context),
         input: args.input,
       }),
 
-    updateViewFilter: (
+    updateViewFilter: async (
       _parent: unknown,
       args: { input: { id: string; update: Record<string, never> } },
       context: MetadataContext,
     ) =>
       updateViewFilter({
         client: context.client,
-        workspaceId: requireMembership(context).workspace.id,
+        workspaceId: await requireViewsAccess(context),
         id: args.input.id,
         update: args.input.update,
       }),
 
-    deleteViewFilter: (
+    deleteViewFilter: async (
       _parent: unknown,
       args: { input: { id: string } },
       context: MetadataContext,
     ) =>
       softDeleteViewChild<ViewFilterRow>({
         client: context.client,
-        workspaceId: requireMembership(context).workspace.id,
+        workspaceId: await requireViewsAccess(context),
         table: 'viewFilter',
         id: args.input.id,
       }),
 
-    destroyViewFilter: (
+    destroyViewFilter: async (
       _parent: unknown,
       args: { input: { id: string } },
       context: MetadataContext,
     ) =>
       destroyViewChild<ViewFilterRow>({
         client: context.client,
-        workspaceId: requireMembership(context).workspace.id,
+        workspaceId: await requireViewsAccess(context),
         table: 'viewFilter',
         id: args.input.id,
       }),
 
-    createViewSort: (
+    createViewSort: async (
       _parent: unknown,
       args: { input: CreateViewSortArgs },
       context: MetadataContext,
     ) =>
       createViewSort({
         client: context.client,
-        workspaceId: requireMembership(context).workspace.id,
+        workspaceId: await requireViewsAccess(context),
         input: args.input,
       }),
 
-    updateViewSort: (
+    updateViewSort: async (
       _parent: unknown,
       args: { input: { id: string; update: Record<string, never> } },
       context: MetadataContext,
     ) =>
       updateViewSort({
         client: context.client,
-        workspaceId: requireMembership(context).workspace.id,
+        workspaceId: await requireViewsAccess(context),
         id: args.input.id,
         update: args.input.update,
       }),
@@ -3296,7 +3349,7 @@ export const METADATA_RESOLVERS = {
     ) => {
       await softDeleteViewChild({
         client: context.client,
-        workspaceId: requireMembership(context).workspace.id,
+        workspaceId: await requireViewsAccess(context),
         table: 'viewSort',
         id: args.input.id,
       });
@@ -3311,7 +3364,7 @@ export const METADATA_RESOLVERS = {
     ) => {
       await destroyViewChild({
         client: context.client,
-        workspaceId: requireMembership(context).workspace.id,
+        workspaceId: await requireViewsAccess(context),
         table: 'viewSort',
         id: args.input.id,
       });
@@ -3319,47 +3372,47 @@ export const METADATA_RESOLVERS = {
       return true;
     },
 
-    createManyViewGroups: (
+    createManyViewGroups: async (
       _parent: unknown,
       args: { inputs: CreateViewGroupArgs[] },
       context: MetadataContext,
     ) =>
       createViewGroups({
         client: context.client,
-        workspaceId: requireMembership(context).workspace.id,
+        workspaceId: await requireViewsAccess(context),
         inputs: args.inputs,
       }),
 
-    updateManyViewGroups: (
+    updateManyViewGroups: async (
       _parent: unknown,
       args: { inputs: { id: string; update: Record<string, never> }[] },
       context: MetadataContext,
     ) =>
       updateViewGroups({
         client: context.client,
-        workspaceId: requireMembership(context).workspace.id,
+        workspaceId: await requireViewsAccess(context),
         inputs: args.inputs,
       }),
 
-    createViewFilterGroup: (
+    createViewFilterGroup: async (
       _parent: unknown,
       args: { input: CreateViewFilterGroupArgs },
       context: MetadataContext,
     ) =>
       createViewFilterGroup({
         client: context.client,
-        workspaceId: requireMembership(context).workspace.id,
+        workspaceId: await requireViewsAccess(context),
         input: args.input,
       }),
 
-    updateViewFilterGroup: (
+    updateViewFilterGroup: async (
       _parent: unknown,
       args: { input: { id: string } & Record<string, never> },
       context: MetadataContext,
     ) =>
       updateViewFilterGroup({
         client: context.client,
-        workspaceId: requireMembership(context).workspace.id,
+        workspaceId: await requireViewsAccess(context),
         input: args.input,
       }),
 
@@ -3370,7 +3423,7 @@ export const METADATA_RESOLVERS = {
     ) => {
       await destroyViewChild({
         client: context.client,
-        workspaceId: requireMembership(context).workspace.id,
+        workspaceId: await requireViewsAccess(context),
         table: 'viewFilterGroup',
         id: args.id,
       });
@@ -3399,6 +3452,8 @@ export const METADATA_RESOLVERS = {
       if (folder === undefined) {
         throw new UserFacingError(`UNKNOWN_FILE_FOLDER: ${args.fileFolder}`);
       }
+
+      await requireUploadAccess(context, args.fileFolder);
 
       const file = await insertFile({
         client: context.client,
@@ -3431,6 +3486,12 @@ export const METADATA_RESOLVERS = {
       context: MetadataContext,
     ) => {
       const membership = requireMembership(context);
+
+      // The second half of an upload only createFileUpload's flags could start.
+      await requirePermissionFlag(context, [
+        'UPLOAD_FILE',
+        'PROFILE_INFORMATION',
+      ]);
 
       const file = await markFileUploaded({
         client: context.client,
@@ -3691,14 +3752,13 @@ export const METADATA_RESOLVERS = {
       _parent: unknown,
       _args: unknown,
       context: MetadataContext,
-    ) => {
-      const membership = requireMembership(context);
-
-      return syncStandardMetadata({
+    ) =>
+      // It adds objects, fields and roles to the workspace: a schema change,
+      // like createOneObject.
+      syncStandardMetadata({
         client: context.client,
-        workspaceId: membership.workspace.id,
-      });
-    },
+        workspaceId: await requireSettingsAccess(context),
+      }),
 
     // Accepted and dropped: we keep no analytics pipeline, and the front only
     // reads `success`.

@@ -24,6 +24,12 @@ import { resolveBusinessUnit } from 'src/financeiro/core/use-cases/resolve-busin
 import { attachContract } from 'src/financeiro/core/use-cases/attach-contract.use-case';
 import { saveBusinessUnit } from 'src/financeiro/core/use-cases/save-business-unit.use-case';
 import { type WorkspaceMetadata } from 'src/metadata/types';
+import {
+  OBJETO_DA_BU,
+  OBJETO_DA_FATURA,
+  OBJETO_DO_CONTRATO,
+} from 'src/financeiro/infra/tabela';
+import { canPerform, loadWorkspacePermissions } from 'src/services/permissions';
 
 // CREATE TABLE IF NOT EXISTS é barato, mas não de graça: uma vez por isolate
 // basta, e o isolate morre sozinho. Isso troca uma etapa de migração manual —
@@ -161,9 +167,48 @@ const donoDoCorpo = (corpo: {
   return null;
 };
 
+// Ver o financeiro é de quem lê os registros; mudar BU, chave ou contrato é de
+// quem pode editar esses objetos. Sem isso, o acesso só de visualização gravava
+// por aqui o que a API de registros recusa.
+export const podeAlterar = async ({
+  client,
+  membership,
+  metadata,
+  objetos,
+}: {
+  client: Client;
+  membership: { workspace: { id: string }; userWorkspaceId: string };
+  metadata: WorkspaceMetadata;
+  objetos: readonly string[];
+}): Promise<boolean> => {
+  if (objetos.length === 0) {
+    return true;
+  }
+
+  const permissions = await loadWorkspacePermissions({
+    client,
+    workspaceId: membership.workspace.id,
+    userWorkspaceId: membership.userWorkspaceId,
+    objectMetadataIds: metadata.objects.map((objeto) => objeto.id),
+  });
+
+  return objetos.every((nome) => {
+    const objeto = metadata.objects.find(
+      (candidato) => candidato.nameSingular === nome,
+    );
+
+    // Sem o objeto não há o que gravar nele; o erro, se vier, é o da rota.
+    return (
+      objeto === undefined ||
+      canPerform({ permissions, objectMetadataId: objeto.id, action: 'update' })
+    );
+  });
+};
+
 const comSessao = async <T>(
   context: Context<AppEnv>,
   executar: (sessao: Sessao) => Promise<T>,
+  alteraObjetos: readonly string[] = [],
 ) =>
   withDatabaseClient(context.env, context.executionCtx, async (client) => {
     const sessionToken = readSessionToken(context);
@@ -200,6 +245,20 @@ const comSessao = async <T>(
       workspaceId: workspace.id,
       metadataVersion: workspace.metadataVersion,
     });
+
+    if (
+      !(await podeAlterar({
+        client,
+        membership: sessionContext.membership,
+        metadata,
+        objetos: alteraObjetos,
+      }))
+    ) {
+      return context.json(
+        { error: 'FORBIDDEN', message: 'Seu acesso não permite essa alteração.' },
+        403,
+      );
+    }
 
     try {
       return context.json(
@@ -289,7 +348,7 @@ export const financeiroRoute = new Hono<AppEnv>()
       } catch (causa) {
         throw comoErroDeNegocio(causa, '');
       }
-    }),
+    }, [OBJETO_DA_BU]),
   )
 
   .post('/contrato/preview', (context) =>
@@ -378,7 +437,7 @@ export const financeiroRoute = new Hono<AppEnv>()
 
         throw comoErroDeNegocio(causa, corpo.identifier ?? '');
       }
-    }),
+    }, [OBJETO_DO_CONTRATO, OBJETO_DA_FATURA]),
   )
   // Trocar o financeiro não passa por saveBusinessUnit de propósito: aquele
   // valida credencial e reinstala o webhook, e quem só quer corrigir um e-mail
@@ -416,5 +475,5 @@ export const financeiroRoute = new Hono<AppEnv>()
           financeEmail: email === '' ? null : email,
         }),
       };
-    }),
+    }, [OBJETO_DA_BU]),
   );

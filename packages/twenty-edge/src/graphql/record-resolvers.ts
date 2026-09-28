@@ -99,6 +99,15 @@ export type RecordResolverContext = {
 const DEFAULT_PAGE_SIZE = 60;
 const MAX_PAGE_SIZE = 1000;
 
+// userEmail e userId ficam de fora: ligam o membro à conta, e trocá-los é
+// trocar de quem é o perfil.
+const CAMPOS_DO_PROPRIO_PERFIL = new Set([
+  'name',
+  'avatarUrl',
+  'locale',
+  'colorScheme',
+]);
+
 type FindManyArguments = {
   filter?: RecordFilter;
   orderBy?: Record<string, unknown>[];
@@ -901,12 +910,49 @@ export const buildRecordResolvers = (
       return created.filter((record) => record !== null);
     };
 
+    // O próprio perfil — nome, foto, idioma, tema — é da pessoa, não dos dados
+    // do workspace: quem só pode ver os registros continua cuidando dele.
+    const ehSoOProprioPerfil = async (
+      context: RecordResolverContext,
+      id: string,
+      data: Record<string, unknown>,
+    ): Promise<boolean> => {
+      if (
+        object.nameSingular !== 'workspaceMember' ||
+        context.userId === null ||
+        !context.permissions.permissionFlags.includes('PROFILE_INFORMATION') ||
+        !Object.keys(data).every((campo) =>
+          CAMPOS_DO_PROPRIO_PERFIL.has(campo),
+        )
+      ) {
+        return false;
+      }
+
+      const { rows } = await context.client.query(
+        `SELECT 1 FROM ${qualifiedTableName(shape)}
+         WHERE ${escapeIdentifier('id')} = $1 AND ${escapeIdentifier('userId')} = $2`,
+        [id, context.userId],
+      );
+
+      return rows.length > 0;
+    };
+
     mutation[`update${singular}`] = async (
       _parent: unknown,
       args: { id: string; data: Record<string, unknown> },
       context: RecordResolverContext,
     ) => {
-      assertAllowed(context, 'update');
+      const podeAtualizar =
+        canPerform({
+          permissions: context.permissions,
+          objectMetadataId: object.id,
+          action: 'update',
+        }) || (await ehSoOProprioPerfil(context, args.id, args.data));
+
+      if (!podeAtualizar) {
+        assertAllowed(context, 'update');
+      }
+
       recusarSeForHistorico(object.nameSingular);
 
       // Dragging a card to the top or bottom of a kanban column sends the same

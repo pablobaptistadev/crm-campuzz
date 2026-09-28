@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+import { usePodeEditar } from 'src/ui/acesso';
+
 import { formatarCpf, type Perfil, type Problema } from '../dominio/Perfil';
 import { PerfilInvalido } from '../aplicacao/erros';
 import { perfilDoMembro } from '../index';
@@ -16,6 +18,7 @@ export const CamposDoPerfil = ({
   perfil: Perfil;
   onSalvo: (salvo: Perfil) => void;
 }) => {
+  const podeEditar = usePodeEditar();
   const [rascunho, setRascunho] = useState<Perfil>(perfil);
   const [problemas, setProblemas] = useState<Problema[]>([]);
   const [salvando, setSalvando] = useState(false);
@@ -77,6 +80,7 @@ export const CamposDoPerfil = ({
             rows={3}
             style={{ width: '100%' }}
             value={valor}
+            readOnly={!podeEditar}
             placeholder={extras.placeholder}
             onChange={(evento) => mudar(chave, evento.target.value)}
           />
@@ -86,6 +90,7 @@ export const CamposDoPerfil = ({
             className={problema === null ? 'adm-input' : 'adm-input adm-input--erro'}
             style={{ width: '100%' }}
             value={valor}
+            readOnly={!podeEditar}
             placeholder={extras.placeholder}
             aria-invalid={problema !== null}
             aria-describedby={problema === null ? undefined : `${id}-erro`}
@@ -125,17 +130,19 @@ export const CamposDoPerfil = ({
 
       {erro !== null && <div className="adm-error">{erro}</div>}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16 }}>
-        <button
-          type="button"
-          className="adm-btn adm-btn--primary"
-          disabled={salvando}
-          onClick={() => void salvar()}
-        >
-          {salvando ? 'Salvando…' : 'Salvar perfil'}
-        </button>
-        {salvo && <span className="adm-salvo">Salvo</span>}
-      </div>
+      {podeEditar && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16 }}>
+          <button
+            type="button"
+            className="adm-btn adm-btn--primary"
+            disabled={salvando}
+            onClick={() => void salvar()}
+          >
+            {salvando ? 'Salvando…' : 'Salvar perfil'}
+          </button>
+          {salvo && <span className="adm-salvo">Salvo</span>}
+        </div>
+      )}
     </div>
   );
 };

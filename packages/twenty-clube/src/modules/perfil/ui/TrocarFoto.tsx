@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
 
+import { usePodeEditar } from 'src/ui/acesso';
+
 import { AvatarDoMembro, type TamanhoDoAvatar } from './AvatarDoMembro';
 import { RecortarFoto } from './RecortarFoto';
 import { type DonoDaFoto, fotoDe } from '../index';
@@ -41,6 +43,7 @@ export const TrocarFoto = ({
   aoClicar?: () => void;
   onTrocada: (url: string | null) => void;
 }) => {
+  const podeEditar = usePodeEditar();
   const [escolhido, setEscolhido] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -82,6 +85,16 @@ export const TrocarFoto = ({
       setEnviando(false);
     }
   };
+
+  // A foto da própria conta é perfil da pessoa; a de membro e de clube é dado do
+  // workspace, e quem só visualiza vê a foto sem o botão de trocar.
+  if (dono !== 'usuario' && !podeEditar) {
+    return (
+      <div className="adm-trocarfoto">
+        <AvatarDoMembro nome={nome} fotoUrl={fotoUrl} tamanho={tamanho} vazio={vazio} />
+      </div>
+    );
+  }
 
   return (
     <div className="adm-trocarfoto">

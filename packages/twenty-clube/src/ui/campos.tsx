@@ -1,5 +1,7 @@
 import { type ReactNode, useState } from 'react';
 
+import { usePodeEditar } from './acesso';
+
 // Os campos de formulário moram aqui, e só aqui. Antes cada tela montava o seu
 // com label solta e input cru: o select nativo vinha sem borda nem seta, e a
 // mesma tela tinha três alturas de campo diferentes. Uma tela nova que precise
@@ -159,9 +161,14 @@ export const TextoEditavel = ({
   vazio?: string;
   placeholder?: string;
 }) => {
+  const podeEditar = usePodeEditar();
   const [editando, setEditando] = useState(false);
   const [rascunho, setRascunho] = useState(valor ?? '');
   const [salvando, setSalvando] = useState(false);
+
+  if (!podeEditar) {
+    return <span>{valor === null || valor === '' ? '—' : valor}</span>;
+  }
 
   const confirmar = async () => {
     if (rascunho === (valor ?? '')) {

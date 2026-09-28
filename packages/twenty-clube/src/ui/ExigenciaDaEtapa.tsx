@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { usePodeEditar } from './acesso';
 import { type Escopo, carregarEtapasIrmas, ehOpcional, gravarExigencia } from './exigencia';
 import { emLotes } from './lotes';
 
@@ -30,6 +31,7 @@ export const ExigenciaDaEtapa = ({
   etapa: EtapaComExigencia;
   onMudou: (opcional: boolean) => void;
 }) => {
+  const podeEditar = usePodeEditar();
   const opcional = ehOpcional(etapa);
   const escopo: Escopo | null =
     etapa.escopo === 'CLUBE' || etapa.escopo === 'MEMBRO' ? etapa.escopo : null;
@@ -38,6 +40,15 @@ export const ExigenciaDaEtapa = ({
   const [confirmacao, setConfirmacao] = useState<Confirmacao | null>(null);
   const plural = escopo === 'CLUBE' ? 'clubes' : 'membros';
   const escolha = opcional ? 'opcional' : 'obrigatória';
+
+  if (!podeEditar) {
+    return (
+      <div className="adm-etapa__linha">
+        <span className="adm-fieldlabel">Exigência</span>
+        <span className="adm-chip adm-chip--slate">{opcional ? 'Opcional' : 'Obrigatória'}</span>
+      </div>
+    );
+  }
 
   const trocar = async (proximo: boolean) => {
     if (proximo === opcional) {

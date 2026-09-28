@@ -41,7 +41,15 @@ const request = async <TData>(
       first?.extensions?.code === 'UNAUTHENTICATED' ||
       /não autenticad|unauthenticated/i.test(first?.message ?? '');
 
-    throw new ApiError(first?.message ?? 'Erro inesperado.', isUnauthenticated);
+    // A recusa por permissão vem em inglês, escrita para o front do Twenty;
+    // aqui quem lê é a pessoa na tela.
+    const recusada =
+      first?.extensions?.code === 'FORBIDDEN' || /^Not allowed to /.test(first?.message ?? '');
+
+    throw new ApiError(
+      recusada ? 'Seu acesso não permite essa alteração.' : (first?.message ?? 'Erro inesperado.'),
+      isUnauthenticated,
+    );
   }
 
   if (body.data === undefined) {

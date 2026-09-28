@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { gql } from 'src/api/client';
+import { usePodeEditar } from 'src/ui/acesso';
 import { AdicionarContrato } from 'src/ui/AdicionarContrato';
 import {
   type Cobranca,
@@ -65,6 +66,7 @@ export const FinanceiroAutomatico = ({
   parcelasManuais: ParcelaManual[];
   marcacao?: Marcacao;
 }) => {
+  const podeEditar = usePodeEditar();
   const [contratos, setContratos] = useState<Contrato[] | null>(null);
   const [adicionando, setAdicionando] = useState(false);
 
@@ -158,20 +160,24 @@ export const FinanceiroAutomatico = ({
       <Card
         titulo="Financeiro automático"
         acao={
-          <button
-            type="button"
-            className="adm-btn adm-btn--primary"
-            onClick={() => setAdicionando(true)}
-          >
-            + Adicionar contrato
-          </button>
+          podeEditar ? (
+            <button
+              type="button"
+              className="adm-btn adm-btn--primary"
+              onClick={() => setAdicionando(true)}
+            >
+              + Adicionar contrato
+            </button>
+          ) : undefined
         }
       >
         {contratos === null ? (
           <Vazio>Carregando…</Vazio>
         ) : contratos.length === 0 ? (
           <Vazio>
-            Nenhum contrato vinculado ainda. Use “+ Adicionar contrato” e informe o número do contrato.
+            {podeEditar
+              ? 'Nenhum contrato vinculado ainda. Use “+ Adicionar contrato” e informe o número do contrato.'
+              : 'Nenhum contrato vinculado ainda.'}
           </Vazio>
         ) : (
           contratos.map((contrato) => (

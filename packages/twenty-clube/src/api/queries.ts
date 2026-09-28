@@ -191,6 +191,7 @@ export const CURRENT_USER_QUERY = `
       id email firstName lastName
       currentWorkspace { id displayName }
       workspaceMember { id avatarUrl }
+      currentUserWorkspace { objectsPermissions { canUpdateObjectRecords } }
     }
   }
 `;

@@ -23,6 +23,7 @@ import { NovaVenda } from 'src/ui/NovaVenda';
 import { ChipDeAtraso } from 'src/ui/ChipDeAtraso';
 import { StatusEditavel } from 'src/ui/StatusEditavel';
 import { Arquivar } from 'src/ui/Arquivar';
+import { usePodeEditar } from 'src/ui/acesso';
 import { Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe } from 'src/ui/primitives';
 import {
   TRACO,
@@ -59,6 +60,7 @@ const linkTexto = (valor: { primaryLinkUrl: string | null; primaryLinkLabel: str
 const SEXO: Record<string, string> = { F: 'Feminino', M: 'Masculino', OUTRO: 'Outro' };
 
 export const MembroDetalhe = () => {
+  const podeEditar = usePodeEditar();
   const { id } = useParams<{ id: string }>();
   const navegar = useNavigate();
   const [membro, setMembro] = useState<Record<string, any> | null>(null);
@@ -306,13 +308,15 @@ export const MembroDetalhe = () => {
                     {parcelas.length} parcelas
                   </span>
                   <span className="adm-toolbar__spacer" />
-                  <button
-                    type="button"
-                    className="adm-btn adm-btn--primary"
-                    onClick={() => setAbrindoVenda(true)}
-                  >
-                    + Nova venda
-                  </button>
+                  {podeEditar && (
+                    <button
+                      type="button"
+                      className="adm-btn adm-btn--primary"
+                      onClick={() => setAbrindoVenda(true)}
+                    >
+                      + Nova venda
+                    </button>
+                  )}
                 </div>
                 {parcelas.length > 0 && (
                 <>

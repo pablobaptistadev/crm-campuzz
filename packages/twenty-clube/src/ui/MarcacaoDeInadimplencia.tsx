@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { gql } from 'src/api/client';
+import { usePodeEditar } from './acesso';
 import { AcoesDoFormulario, CampoData, CampoTexto, Campos } from './campos';
 import { diasEntre, hojeLocal } from './datas';
 import { dataCurta, dinheiroCurto } from './format';
@@ -46,6 +47,7 @@ export const MarcacaoDeInadimplencia = ({
   onSalvo: (mudancas: Partial<Inadimplencia>) => void;
 }) => {
   const marcada = inadimplencia.inadimplenciaMarcada === true;
+  const podeEditar = usePodeEditar();
   const [editando, setEditando] = useState(false);
   const [valor, setValor] = useState('');
   const [vencimento, setVencimento] = useState('');
@@ -97,7 +99,7 @@ export const MarcacaoDeInadimplencia = ({
     <Card
       titulo="Inadimplência"
       acao={
-        marcada && !editando ? (
+        podeEditar && marcada && !editando ? (
           <span style={{ display: 'flex', gap: 8 }}>
             <button type="button" className="adm-card__edit" onClick={abrir} disabled={salvando}>
               Editar
@@ -163,12 +165,15 @@ export const MarcacaoDeInadimplencia = ({
       ) : (
         <div className="adm-toolbar" style={{ flexWrap: 'wrap', gap: 12 }}>
           <span className="adm-painel__ajuda" style={{ margin: 0, flex: 1, minWidth: 220 }}>
-            Para a dívida que não está em parcela nem no financeiro automático. Marcado, o
-            membro entra em Financeiro › Quem está em atraso.
+            {podeEditar
+              ? 'Para a dívida que não está em parcela nem no financeiro automático. Marcado, o membro entra em Financeiro › Quem está em atraso.'
+              : 'Sem marcação de inadimplência.'}
           </span>
-          <button type="button" className="adm-btn" onClick={abrir}>
-            Marcar como inadimplente
-          </button>
+          {podeEditar && (
+            <button type="button" className="adm-btn" onClick={abrir}>
+              Marcar como inadimplente
+            </button>
+          )}
         </div>
       )}
     </Card>

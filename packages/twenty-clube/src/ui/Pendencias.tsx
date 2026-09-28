@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { gql } from 'src/api/client';
+import { usePodeEditar } from './acesso';
 import { dataCurta } from './format';
 
 export type Pendencia = {
@@ -43,6 +44,7 @@ export const Pendencias = ({
   pendencias: Pendencia[];
   onMudou: (proximas: Pendencia[]) => void;
 }) => {
+  const podeEditar = usePodeEditar();
   const [texto, setTexto] = useState('');
   const [prazo, setPrazo] = useState('');
   const [ocupado, setOcupado] = useState(false);
@@ -146,6 +148,7 @@ export const Pendencias = ({
                       ? `Reabrir ${textoDe(pendencia)}`
                       : `Resolver ${textoDe(pendencia)}`
                   }
+                  disabled={!podeEditar}
                   onClick={() => alternar(pendencia)}
                 >
                   ✓
@@ -155,6 +158,7 @@ export const Pendencias = ({
                   className="adm-input adm-pendencia__texto"
                   aria-label={`Pendência: ${textoDe(pendencia)}`}
                   defaultValue={textoDe(pendencia)}
+                  readOnly={!podeEditar}
                   onBlur={(evento) => {
                     const proximo = evento.target.value.trim();
 
@@ -169,6 +173,7 @@ export const Pendencias = ({
                   type="date"
                   aria-label={`Prazo de ${textoDe(pendencia)}`}
                   defaultValue={pendencia.prazo?.slice(0, 10) ?? ''}
+                  disabled={!podeEditar}
                   onBlur={(evento) => {
                     const proximo = evento.target.value === '' ? null : evento.target.value;
 
@@ -184,51 +189,55 @@ export const Pendencias = ({
                     : ''}
                 </span>
 
-                <button
-                  type="button"
-                  className="adm-btn adm-btn--perigo adm-btn--pequeno"
-                  disabled={ocupado}
-                  onClick={() => void remover(pendencia)}
-                >
-                  Remover
-                </button>
+                {podeEditar && (
+                  <button
+                    type="button"
+                    className="adm-btn adm-btn--perigo adm-btn--pequeno"
+                    disabled={ocupado}
+                    onClick={() => void remover(pendencia)}
+                  >
+                    Remover
+                  </button>
+                )}
               </div>
             );
           })}
         </div>
       )}
 
-      <div className="adm-pendencia adm-pendencia--nova">
-        <span className="adm-check adm-check--vazio" aria-hidden="true" />
-        <input
-          className="adm-input adm-pendencia__texto"
-          placeholder="O que ficou pendente?"
-          aria-label="Nova pendência"
-          value={texto}
-          onChange={(evento) => setTexto(evento.target.value)}
-          onKeyDown={(evento) => {
-            if (evento.key === 'Enter') {
-              void adicionar();
-            }
-          }}
-        />
-        <input
-          className="adm-input"
-          type="date"
-          aria-label="Prazo da nova pendência"
-          value={prazo}
-          onChange={(evento) => setPrazo(evento.target.value)}
-        />
-        <span className="adm-pendencia__quando" />
-        <button
-          type="button"
-          className="adm-btn adm-btn--primary adm-btn--pequeno"
-          disabled={ocupado}
-          onClick={() => void adicionar()}
-        >
-          {ocupado ? 'Salvando…' : 'Adicionar'}
-        </button>
-      </div>
+      {podeEditar && (
+        <div className="adm-pendencia adm-pendencia--nova">
+          <span className="adm-check adm-check--vazio" aria-hidden="true" />
+          <input
+            className="adm-input adm-pendencia__texto"
+            placeholder="O que ficou pendente?"
+            aria-label="Nova pendência"
+            value={texto}
+            onChange={(evento) => setTexto(evento.target.value)}
+            onKeyDown={(evento) => {
+              if (evento.key === 'Enter') {
+                void adicionar();
+              }
+            }}
+          />
+          <input
+            className="adm-input"
+            type="date"
+            aria-label="Prazo da nova pendência"
+            value={prazo}
+            onChange={(evento) => setPrazo(evento.target.value)}
+          />
+          <span className="adm-pendencia__quando" />
+          <button
+            type="button"
+            className="adm-btn adm-btn--primary adm-btn--pequeno"
+            disabled={ocupado}
+            onClick={() => void adicionar()}
+          >
+            {ocupado ? 'Salvando…' : 'Adicionar'}
+          </button>
+        </div>
+      )}
 
       {pendencias.length > 0 && (
         <div className="adm-pendencias__resumo">

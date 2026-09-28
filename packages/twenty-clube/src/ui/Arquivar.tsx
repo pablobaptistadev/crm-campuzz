@@ -2,6 +2,8 @@ import { useState } from 'react';
 
 import { gql } from 'src/api/client';
 
+import { usePodeEditar } from './acesso';
+
 // Arquivar é soft delete: o registro some das listas e o histórico continua
 // lá. Por isso o texto fala em arquivar, não em excluir — quem lê precisa
 // saber que dá para voltar atrás.
@@ -18,9 +20,14 @@ export const Arquivar = ({
   oQue: 'clube' | 'membro' | 'sócio';
   onArquivado: () => void;
 }) => {
+  const podeEditar = usePodeEditar();
   const [confirmando, setConfirmando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+
+  if (!podeEditar) {
+    return null;
+  }
 
   const arquivar = async () => {
     setSalvando(true);

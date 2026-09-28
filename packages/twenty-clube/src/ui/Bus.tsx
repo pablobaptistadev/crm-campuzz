@@ -9,6 +9,7 @@ import {
   CampoTexto,
   TextoEditavel,
 } from 'src/ui/campos';
+import { usePodeEditar } from 'src/ui/acesso';
 import { Card, Chip, Vazio } from 'src/ui/primitives';
 
 export type Bu = {
@@ -38,6 +39,7 @@ export const Bus = ({
   businessUnitId: string | null;
   onLigada: (businessUnitId: string | null) => void;
 }) => {
+  const podeEditar = usePodeEditar();
   const [bus, setBus] = useState<Bu[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aberto, setAberto] = useState(false);
@@ -142,13 +144,15 @@ export const Bus = ({
     <Card
       titulo="Chaves do gateway"
       acao={
-        <button
-          type="button"
-          className="adm-btn"
-          onClick={() => setAberto((estava) => !estava)}
-        >
-          {aberto ? 'Cancelar' : '+ Cadastrar BU'}
-        </button>
+        podeEditar ? (
+          <button
+            type="button"
+            className="adm-btn"
+            onClick={() => setAberto((estava) => !estava)}
+          >
+            {aberto ? 'Cancelar' : '+ Cadastrar BU'}
+          </button>
+        ) : undefined
       }
     >
       {erro !== null && <div className="adm-error">{erro}</div>}
@@ -212,22 +216,35 @@ export const Bus = ({
       ) : (
         <>
           <Campos colunas={2}>
-            <CampoSelecao
-              rotulo={`BU ${dono === 'clube' ? 'deste clube' : 'deste membro'}`}
-              valor={businessUnitId ?? ''}
-              onMudou={(escolhida) => void ligar(escolhida === '' ? null : escolhida)}
-              dica={`Em branco, herda ${herdarDe}.`}
-              opcoes={[
-                { valor: '', rotulo: `Herdar ${herdarDe}` },
-                ...bus.map((bu) => ({ valor: bu.id, rotulo: bu.name })),
-              ]}
-            />
+            {podeEditar ? (
+              <CampoSelecao
+                rotulo={`BU ${dono === 'clube' ? 'deste clube' : 'deste membro'}`}
+                valor={businessUnitId ?? ''}
+                onMudou={(escolhida) => void ligar(escolhida === '' ? null : escolhida)}
+                dica={`Em branco, herda ${herdarDe}.`}
+                opcoes={[
+                  { valor: '', rotulo: `Herdar ${herdarDe}` },
+                  ...bus.map((bu) => ({ valor: bu.id, rotulo: bu.name })),
+                ]}
+              />
+            ) : (
+              <div>
+                <div className="adm-fieldlabel">
+                  BU {dono === 'clube' ? 'deste clube' : 'deste membro'}
+                </div>
+                <div className="adm-fieldvalue">
+                  {bus.find((bu) => bu.id === businessUnitId)?.name ?? `Herda ${herdarDe}`}
+                </div>
+              </div>
+            )}
           </Campos>
 
-          <p className="adm-painel__ajuda">
-            O financeiro do clube pode ser corrigido a qualquer momento: clique
-            no e-mail na tabela abaixo. As chaves ficam como estão.
-          </p>
+          {podeEditar && (
+            <p className="adm-painel__ajuda">
+              O financeiro do clube pode ser corrigido a qualquer momento: clique
+              no e-mail na tabela abaixo. As chaves ficam como estão.
+            </p>
+          )}
 
           <table className="adm-table">
             <thead>

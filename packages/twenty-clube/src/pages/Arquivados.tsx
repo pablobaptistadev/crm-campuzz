@@ -9,6 +9,7 @@ import {
   RESTAURAR_CLUBE,
   RESTAURAR_MEMBRO,
 } from 'src/api/queries';
+import { usePodeEditar } from 'src/ui/acesso';
 import { Chip, Tabs, Vazio, rotuloDe } from 'src/ui/primitives';
 import { MembroComFoto } from 'src/modules/perfil/ui/AvatarDoMembro';
 import { paginar } from 'src/ui/paginar';
@@ -35,6 +36,7 @@ type MembroArquivado = {
 type Aba = 'clubes' | 'membros';
 
 export const Arquivados = () => {
+  const podeEditar = usePodeEditar();
   const [clubes, setClubes] = useState<ClubeArquivado[] | null>(null);
   const [membros, setMembros] = useState<MembroArquivado[] | null>(null);
   const [nomeDoClube, setNomeDoClube] = useState<Map<string, string>>(new Map());
@@ -156,14 +158,16 @@ export const Arquivados = () => {
                     </td>
                     <td className="adm-table__muted">{dataHora(clube.deletedAt)}</td>
                     <td style={{ textAlign: 'right' }}>
-                      <button
-                        type="button"
-                        className="adm-btn"
-                        disabled={restaurando === clube.id}
-                        onClick={() => void restaurar('clubes', clube.id)}
-                      >
-                        {restaurando === clube.id ? 'Restaurando…' : 'Restaurar'}
-                      </button>
+                      {podeEditar && (
+                        <button
+                          type="button"
+                          className="adm-btn"
+                          disabled={restaurando === clube.id}
+                          onClick={() => void restaurar('clubes', clube.id)}
+                        >
+                          {restaurando === clube.id ? 'Restaurando…' : 'Restaurar'}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -201,14 +205,16 @@ export const Arquivados = () => {
                     <td>{rotuloDe(membro.papel)}</td>
                     <td className="adm-table__muted">{dataHora(membro.deletedAt)}</td>
                     <td style={{ textAlign: 'right' }}>
-                      <button
-                        type="button"
-                        className="adm-btn"
-                        disabled={restaurando === membro.id}
-                        onClick={() => void restaurar('membros', membro.id)}
-                      >
-                        {restaurando === membro.id ? 'Restaurando…' : 'Restaurar'}
-                      </button>
+                      {podeEditar && (
+                        <button
+                          type="button"
+                          className="adm-btn"
+                          disabled={restaurando === membro.id}
+                          onClick={() => void restaurar('membros', membro.id)}
+                        >
+                          {restaurando === membro.id ? 'Restaurando…' : 'Restaurar'}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

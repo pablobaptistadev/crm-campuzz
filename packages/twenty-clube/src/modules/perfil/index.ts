@@ -14,6 +14,7 @@ import { type Perfil } from './dominio/Perfil';
 
 const conversor = criarConversorNoCanvas();
 const armazenamento = criarArmazenamentoDoWorker();
+const armazenamentoDaConta = criarArmazenamentoDoWorker('CorePicture');
 const registro = criarRegistroDeAnexo();
 const repositorio = criarRepositorioDePerfil();
 
@@ -36,7 +37,7 @@ export const fotoDe = (dono: DonoDaFoto) => {
     trocar: (donoId: string, arquivo: File, recorte?: Recorte) =>
       enviarFoto({
         conversor,
-        armazenamento,
+        armazenamento: dono === 'usuario' ? armazenamentoDaConta : armazenamento,
         repositorio: repositorioDaFoto,
         donoId,
         arquivo,

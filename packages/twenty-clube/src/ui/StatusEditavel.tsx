@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { gql } from 'src/api/client';
 import { type ObjetoMeta } from 'src/api/metadata';
+import { usePodeEditar } from './acesso';
 import { Chip } from './primitives';
 
 const pascal = (nome: string) => nome.charAt(0).toUpperCase() + nome.slice(1);
@@ -45,12 +46,13 @@ export const StatusEditavel = ({
   tamanho?: 'linha' | 'titulo';
   onSalvo: (proximo: string) => void;
 }) => {
+  const podeEditar = usePodeEditar();
   const [editando, setEditando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const meta = objeto.campoPorNome.get(campo);
   const opcoes = meta?.options ?? [];
 
-  if (opcoes.length === 0) {
+  if (opcoes.length === 0 || !podeEditar) {
     return (
       <span className={`adm-status adm-status--${tamanho}`}>
         <Chip valor={valor} />

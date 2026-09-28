@@ -44,14 +44,18 @@ const TIPO_DE_ANEXO: Record<string, string> = {
   svg: 'Image',
 };
 
-export const criarArmazenamentoDoWorker = (): ArmazenamentoDeArquivo => ({
+// FilesField guarda anexo e foto de registro; CorePicture, a foto da própria
+// conta — a pasta que quem só visualiza também pode usar.
+export const criarArmazenamentoDoWorker = (
+  pasta: 'FilesField' | 'CorePicture' = 'FilesField',
+): ArmazenamentoDeArquivo => ({
   async guardar(arquivo) {
     const criado = await meta<{
       createFileUpload: { fileId: string; uploadUrl: string; contentType: string };
     }>(CRIAR_UPLOAD, {
       filename: arquivo.name,
       size: arquivo.size,
-      fileFolder: 'FilesField',
+      fileFolder: pasta,
     });
 
     // O PUT vai para o nosso próprio Worker, que confere a origem antes de

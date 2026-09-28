@@ -2,9 +2,10 @@ import { useRef, useState } from 'react';
 
 import { gql } from 'src/api/client';
 import { type Etapa } from 'src/api/types';
+import { usePodeEditar } from './acesso';
 import { AlternarVisao, useModoVisao } from './primitives';
 import { subirAnexo, type Anexo } from './anexos';
-import { dataCurta } from './format';
+import { TRACO, dataCurta } from './format';
 import { ExigenciaDaEtapa } from './ExigenciaDaEtapa';
 import { ehOpcional } from './exigencia';
 
@@ -34,6 +35,7 @@ export const EtapaCard = ({
   numero: number;
   onMudou: (proxima: EtapaCompleta) => void;
 }) => {
+  const podeEditar = usePodeEditar();
   const [rascunho, setRascunho] = useState(etapa.observacoes ?? '');
   const [editandoNota, setEditandoNota] = useState(false);
   const [anexos, setAnexos] = useState<Anexo[]>(
@@ -96,7 +98,7 @@ export const EtapaCard = ({
           className={concluida ? 'adm-step__mark adm-step__mark--on' : 'adm-step__mark'}
           aria-pressed={concluida}
           aria-label={concluida ? `Reabrir ${etapa.name}` : `Concluir ${etapa.name}`}
-          disabled={ocupado}
+          disabled={ocupado || !podeEditar}
           onClick={alternar}
         >
           {concluida ? '✓' : ''}
@@ -114,7 +116,7 @@ export const EtapaCard = ({
           className="adm-input adm-input--data"
           type="date"
           value={etapa.concluidaEm?.slice(0, 10) ?? ''}
-          disabled={ocupado}
+          disabled={ocupado || !podeEditar}
           onChange={(evento) =>
             void salvar({
               concluidaEm: evento.target.value === '' ? null : evento.target.value,
@@ -130,7 +132,7 @@ export const EtapaCard = ({
           className="adm-input adm-input--data"
           type="date"
           value={etapa.prazo?.slice(0, 10) ?? ''}
-          disabled={ocupado}
+          disabled={ocupado || !podeEditar}
           onChange={(evento) =>
             void salvar({ prazo: evento.target.value === '' ? null : evento.target.value })
           }
@@ -177,10 +179,14 @@ export const EtapaCard = ({
               </button>
             </div>
           </>
-        ) : (
+        ) : podeEditar ? (
           <button type="button" className="adm-etapa__nota-texto" onClick={() => setEditandoNota(true)}>
             {etapa.observacoes ?? 'Adicionar observação'}
           </button>
+        ) : (
+          <div className={etapa.observacoes ? 'adm-fieldvalue' : 'adm-fieldvalue adm-fieldvalue--empty'}>
+            {etapa.observacoes ?? TRACO}
+          </div>
         )}
       </div>
 
@@ -197,28 +203,34 @@ export const EtapaCard = ({
             ))}
           </ul>
         )}
-        <input
-          ref={inputArquivo}
-          type="file"
-          style={{ display: 'none' }}
-          onChange={(evento) => {
-            const arquivo = evento.target.files?.[0];
+        {podeEditar ? (
+          <>
+            <input
+              ref={inputArquivo}
+              type="file"
+              style={{ display: 'none' }}
+              onChange={(evento) => {
+                const arquivo = evento.target.files?.[0];
 
-            evento.target.value = '';
+                evento.target.value = '';
 
-            if (arquivo !== undefined) {
-              void anexar(arquivo);
-            }
-          }}
-        />
-        <button
-          type="button"
-          className="adm-btn"
-          disabled={ocupado}
-          onClick={() => inputArquivo.current?.click()}
-        >
-          {ocupado ? 'Enviando…' : '+ Anexar arquivo'}
-        </button>
+                if (arquivo !== undefined) {
+                  void anexar(arquivo);
+                }
+              }}
+            />
+            <button
+              type="button"
+              className="adm-btn"
+              disabled={ocupado}
+              onClick={() => inputArquivo.current?.click()}
+            >
+              {ocupado ? 'Enviando…' : '+ Anexar arquivo'}
+            </button>
+          </>
+        ) : (
+          anexos.length === 0 && <div className="adm-fieldvalue adm-fieldvalue--empty">{TRACO}</div>
+        )}
       </div>
 
       <div className="adm-etapa__rodape">
@@ -243,6 +255,7 @@ const EtapaLinha = ({
   numero: number;
   onMudou: (proxima: EtapaCompleta) => void;
 }) => {
+  const podeEditar = usePodeEditar();
   const [ocupado, setOcupado] = useState(false);
   const concluida = etapa.situacao === 'CONCLUIDA';
   const anexos = etapa.attachments?.edges.length ?? 0;
@@ -268,7 +281,7 @@ const EtapaLinha = ({
       <td>
         <button
           type="button"
-          disabled={ocupado}
+          disabled={ocupado || !podeEditar}
           aria-label={concluida ? 'Marcar como pendente' : 'Marcar como concluída'}
           className={
             concluida

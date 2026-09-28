@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { carregarMetadata, type ObjetoMeta } from 'src/api/metadata';
 import { CLUBES_QUERY, MEMBROS_RESUMO_QUERY, PIPELINE_QUERY } from 'src/api/queries';
 import { type ClubeResumo } from 'src/api/types';
+import { usePodeEditar } from 'src/ui/acesso';
 import { AlternarVisao, Chip, Pipeline, Vazio, useModoVisao } from 'src/ui/primitives';
 import { StatusEditavel } from 'src/ui/StatusEditavel';
 import { TRACO, dataCurta, dinheiroCurto } from 'src/ui/format';
@@ -32,6 +33,7 @@ const diasAte = (data: string | null): number | null => {
 };
 
 export const Dashboard = () => {
+  const podeEditar = usePodeEditar();
   const [clubes, setClubes] = useState<Clube[] | null>(null);
   const [membros, setMembros] = useState<MembroResumo[]>([]);
   const [pipeline, setPipeline] = useState<EtapaResumo[]>([]);
@@ -160,9 +162,11 @@ export const Dashboard = () => {
         />
         <AlternarVisao modo={modo} onChange={setModo} />
         <ExportarDados />
-        <Link className="adm-btn adm-btn--primary" to="/clubes/novo">
-          + Novo clube
-        </Link>
+        {podeEditar && (
+          <Link className="adm-btn adm-btn--primary" to="/clubes/novo">
+            + Novo clube
+          </Link>
+        )}
       </div>
 
       {buscando && (

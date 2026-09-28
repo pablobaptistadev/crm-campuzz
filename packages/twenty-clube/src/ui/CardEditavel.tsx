@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 
 import { gql } from 'src/api/client';
 import { type ObjetoMeta } from 'src/api/metadata';
+import { usePodeEditar } from './acesso';
 import { CampoEditor, type Rascunho, valorParaLeitura } from './CampoEditor';
 import { TRACO } from './format';
 
@@ -28,6 +29,7 @@ export const CardEditavel = ({
   extra?: ReactNode;
   onSalvo: (mudancas: Record<string, unknown>) => void;
 }) => {
+  const podeEditar = usePodeEditar();
   const [editando, setEditando] = useState(false);
   const [rascunho, setRascunho] = useState<Rascunho>({});
   const [salvando, setSalvando] = useState(false);
@@ -94,9 +96,11 @@ export const CardEditavel = ({
             </button>
           </span>
         ) : (
-          <button type="button" className="adm-card__edit" onClick={() => setEditando(true)}>
-            Editar
-          </button>
+          podeEditar && (
+            <button type="button" className="adm-card__edit" onClick={() => setEditando(true)}>
+              Editar
+            </button>
+          )
         )}
       </header>
 

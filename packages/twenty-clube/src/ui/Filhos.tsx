@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { gql } from 'src/api/client';
+import { usePodeEditar } from './acesso';
 import { dataCurta } from './format';
 
 export type Dependente = {
@@ -48,6 +49,7 @@ export const Filhos = ({
   dependentes: Dependente[];
   onMudou: (proximos: Dependente[]) => void;
 }) => {
+  const podeEditar = usePodeEditar();
   const [editando, setEditando] = useState(false);
   const [novo, setNovo] = useState(vazio());
   const [ocupado, setOcupado] = useState(false);
@@ -128,13 +130,15 @@ export const Filhos = ({
         <span className="adm-secao">
           Filhos{dependentes.length > 0 && <span className="adm-filhos__n">{dependentes.length}</span>}
         </span>
-        <button
-          type="button"
-          className="adm-btn adm-btn--pequeno"
-          onClick={() => setEditando((atual) => !atual)}
-        >
-          {editando ? 'Concluir' : dependentes.length === 0 ? '+ Adicionar filho' : 'Editar filhos'}
-        </button>
+        {podeEditar && (
+          <button
+            type="button"
+            className="adm-btn adm-btn--pequeno"
+            onClick={() => setEditando((atual) => !atual)}
+          >
+            {editando ? 'Concluir' : dependentes.length === 0 ? '+ Adicionar filho' : 'Editar filhos'}
+          </button>
+        )}
       </div>
 
       {erro !== null && <div className="adm-error">{erro}</div>}

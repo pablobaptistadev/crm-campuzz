@@ -20,6 +20,7 @@ import { estaAtrasada } from 'src/ui/atraso';
 import { diasEntre, hojeLocal } from 'src/ui/datas';
 import { listarDevedores } from 'src/ui/devedores';
 import { NovaVenda } from 'src/ui/NovaVenda';
+import { usePodeEditar } from 'src/ui/acesso';
 import { Chip, Tabs, Vazio } from 'src/ui/primitives';
 import { QuemEstaEmAtraso } from 'src/ui/QuemEstaEmAtraso';
 import { StatusEditavel } from 'src/ui/StatusEditavel';
@@ -105,6 +106,7 @@ const naFaixa = (parcela: Parcela, faixa: Faixa): boolean => {
 };
 
 export const Financeiro = () => {
+  const podeEditar = usePodeEditar();
   const [parametros, setParametros] = useSearchParams();
   const aba: Aba = parametros.get('aba') === 'parcelas' ? 'parcelas' : 'atraso';
   const [parcelas, setParcelas] = useState<Parcela[] | null>(null);
@@ -247,13 +249,15 @@ export const Financeiro = () => {
           </div>
         </div>
         <span className="adm-record__spacer" />
-        <button
-          type="button"
-          className="adm-btn adm-btn--primary"
-          onClick={() => setAbrindoVenda(true)}
-        >
-          + Nova venda
-        </button>
+        {podeEditar && (
+          <button
+            type="button"
+            className="adm-btn adm-btn--primary"
+            onClick={() => setAbrindoVenda(true)}
+          >
+            + Nova venda
+          </button>
+        )}
       </div>
 
       {abrindoVenda && (
@@ -407,14 +411,16 @@ export const Financeiro = () => {
                       )}
                     </td>
                     <td>
-                      <button
-                        type="button"
-                        className="adm-btn"
-                        style={{ padding: '5px 10px', fontSize: 12.5 }}
-                        onClick={() => void marcarPaga(parcela)}
-                      >
-                        {parcela.situacao === 'PAGA' ? 'Reabrir' : 'Dar baixa'}
-                      </button>
+                      {podeEditar && (
+                        <button
+                          type="button"
+                          className="adm-btn"
+                          style={{ padding: '5px 10px', fontSize: 12.5 }}
+                          onClick={() => void marcarPaga(parcela)}
+                        >
+                          {parcela.situacao === 'PAGA' ? 'Reabrir' : 'Dar baixa'}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );

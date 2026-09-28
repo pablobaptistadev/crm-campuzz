@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { gql } from 'src/api/client';
 import { HISTORICO_DO_ALVO_QUERY, LINHA_DO_TEMPO } from 'src/api/queries';
 import { AvatarDoMembro } from 'src/modules/perfil/ui/AvatarDoMembro';
+import { usePodeEditar } from './acesso';
 import { type Autor, useAutores } from './autores';
 import { dataHora, dinheiroCurto, enderecoLinha, telefone } from './format';
 import { paginar } from './paginar';
@@ -127,6 +128,7 @@ export const Historico = ({
   campoAlvo: string;
   alvoId: string;
 }) => {
+  const podeEditar = usePodeEditar();
   const autores = useAutores();
   const [linhas, setLinhas] = useState<Linha[] | null>(null);
   const autorDe = (linha: Linha): Autor | null =>
@@ -210,36 +212,38 @@ export const Historico = ({
 
   return (
     <div>
-      <div className="adm-nota">
-        <input
-          className="adm-input adm-nota__texto"
-          placeholder="Anotar no histórico: ligação, reunião, combinado…"
-          aria-label="Nova anotação"
-          value={texto}
-          onChange={(evento) => setTexto(evento.target.value)}
-          onKeyDown={(evento) => {
-            if (evento.key === 'Enter') {
-              void anotar();
-            }
-          }}
-        />
-        <input
-          className="adm-input"
-          type="date"
-          aria-label="Data da anotação"
-          title="Quando aconteceu (em branco = agora)"
-          value={quandoAconteceu}
-          onChange={(evento) => setQuandoAconteceu(evento.target.value)}
-        />
-        <button
-          type="button"
-          className="adm-btn adm-btn--primary adm-btn--pequeno"
-          disabled={ocupado}
-          onClick={() => void anotar()}
-        >
-          {ocupado ? 'Salvando…' : 'Anotar'}
-        </button>
-      </div>
+      {podeEditar && (
+        <div className="adm-nota">
+          <input
+            className="adm-input adm-nota__texto"
+            placeholder="Anotar no histórico: ligação, reunião, combinado…"
+            aria-label="Nova anotação"
+            value={texto}
+            onChange={(evento) => setTexto(evento.target.value)}
+            onKeyDown={(evento) => {
+              if (evento.key === 'Enter') {
+                void anotar();
+              }
+            }}
+          />
+          <input
+            className="adm-input"
+            type="date"
+            aria-label="Data da anotação"
+            title="Quando aconteceu (em branco = agora)"
+            value={quandoAconteceu}
+            onChange={(evento) => setQuandoAconteceu(evento.target.value)}
+          />
+          <button
+            type="button"
+            className="adm-btn adm-btn--primary adm-btn--pequeno"
+            disabled={ocupado}
+            onClick={() => void anotar()}
+          >
+            {ocupado ? 'Salvando…' : 'Anotar'}
+          </button>
+        </div>
+      )}
 
       {erro !== null && <div className="adm-error">{erro}</div>}
 

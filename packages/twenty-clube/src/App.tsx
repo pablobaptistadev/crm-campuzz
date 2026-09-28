@@ -14,6 +14,7 @@ import { Login } from 'src/pages/Login';
 import { MembroDetalhe } from 'src/pages/MembroDetalhe';
 import { MeuPerfil } from 'src/pages/MeuPerfil';
 import { TrocarFoto } from 'src/modules/perfil/ui/TrocarFoto';
+import { PodeEditarProvider, podeEditarAlgum } from 'src/ui/acesso';
 import { iniciais } from 'src/ui/format';
 
 type Usuario = {
@@ -23,6 +24,9 @@ type Usuario = {
   lastName: string | null;
   currentWorkspace: { id: string; displayName: string } | null;
   workspaceMember: { id: string; avatarUrl: string | null } | null;
+  currentUserWorkspace: {
+    objectsPermissions: { canUpdateObjectRecords: boolean | null }[];
+  } | null;
 };
 
 export const App = () => {
@@ -80,6 +84,7 @@ export const App = () => {
 
   const nome = [usuario.firstName, usuario.lastName].filter(Boolean).join(' ') || usuario.email;
   const workspace = usuario.currentWorkspace?.displayName ?? 'CRM Campuzz';
+  const podeEditar = podeEditarAlgum(usuario.currentUserWorkspace?.objectsPermissions);
   const cabecalho = (
     <header className="adm-banner">
       <div className="adm-banner__brand">
@@ -125,6 +130,11 @@ export const App = () => {
 
       <div className="adm-banner__right">
         {temClubes === true && <span className="adm-banner__ok">✓ sincronizado</span>}
+        {!podeEditar && (
+          <span className="adm-chip adm-chip--slate" title="Seu acesso é só de visualização.">
+            Somente visualização
+          </span>
+        )}
         {usuario.workspaceMember === null ? (
           <span className="adm-banner__avatar" title={nome}>
             {iniciais(nome)}
@@ -186,30 +196,35 @@ export const App = () => {
       {cabecalho}
 
       <main className="adm-shell">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/financeiro" element={<Financeiro />} />
-          <Route path="/pendencias" element={<Pendencias />} />
-          <Route path="/radar" element={<Radar />} />
-          <Route path="/arquivados" element={<Arquivados />} />
-          <Route path="/clubes/novo" element={<NovoClube />} />
-          <Route path="/clubes/:id" element={<ClubeDetalhe />} />
-          <Route path="/membros/:id" element={<MembroDetalhe />} />
-          <Route
-            path="/perfil"
-            element={
-              <MeuPerfil
-                usuario={usuario}
-                onMudou={(mudancas) =>
-                  setUsuario((atual) =>
-                    atual === null || atual === undefined ? atual : { ...atual, ...mudancas },
-                  )
-                }
-              />
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <PodeEditarProvider value={podeEditar}>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/financeiro" element={<Financeiro />} />
+            <Route path="/pendencias" element={<Pendencias />} />
+            <Route path="/radar" element={<Radar />} />
+            <Route path="/arquivados" element={<Arquivados />} />
+            <Route
+              path="/clubes/novo"
+              element={podeEditar ? <NovoClube /> : <Navigate to="/" replace />}
+            />
+            <Route path="/clubes/:id" element={<ClubeDetalhe />} />
+            <Route path="/membros/:id" element={<MembroDetalhe />} />
+            <Route
+              path="/perfil"
+              element={
+                <MeuPerfil
+                  usuario={usuario}
+                  onMudou={(mudancas) =>
+                    setUsuario((atual) =>
+                      atual === null || atual === undefined ? atual : { ...atual, ...mudancas },
+                    )
+                  }
+                />
+              }
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </PodeEditarProvider>
       </main>
     </>
   );

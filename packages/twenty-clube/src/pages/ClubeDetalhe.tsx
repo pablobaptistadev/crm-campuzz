@@ -28,6 +28,7 @@ import { paginar } from 'src/ui/paginar';
 import { carregarFinanceiroDosMembros } from 'src/ui/financeiroDosMembros';
 import { StatusEditavel } from 'src/ui/StatusEditavel';
 import { Arquivar } from 'src/ui/Arquivar';
+import { usePodeEditar } from 'src/ui/acesso';
 import { AlternarVisao, Campo, Card, Chip, Grid, Secao, Tabs, Vazio, rotuloDe, useModoVisao } from 'src/ui/primitives';
 import {
   TRACO,
@@ -65,6 +66,7 @@ const linkTexto = (valor: { primaryLinkUrl: string | null; primaryLinkLabel: str
   );
 
 export const ClubeDetalhe = () => {
+  const podeEditar = usePodeEditar();
   const { id } = useParams<{ id: string }>();
   const navegar = useNavigate();
   const [clube, setClube] = useState<Record<string, any> | null>(null);
@@ -323,13 +325,15 @@ export const ClubeDetalhe = () => {
                 : `${socios.length} ${socios.length === 1 ? 'sócio' : 'sócios'}`}
             </span>
             <span className="adm-toolbar__spacer" />
-            <button
-              type="button"
-              className="adm-btn adm-btn--primary"
-              onClick={() => setAdicionandoSocio(true)}
-            >
-              + Adicionar sócio
-            </button>
+            {podeEditar && (
+              <button
+                type="button"
+                className="adm-btn adm-btn--primary"
+                onClick={() => setAdicionandoSocio(true)}
+              >
+                + Adicionar sócio
+              </button>
+            )}
           </div>
 
           {adicionandoSocio && (
@@ -571,13 +575,15 @@ export const ClubeDetalhe = () => {
             />
           )}
           <AlternarVisao modo={modoMembros} onChange={setModoMembros} />
-          <button
-            type="button"
-            className="adm-btn adm-btn--primary"
-            onClick={() => setAdicionandoMembro(true)}
-          >
-            + Adicionar membro
-          </button>
+          {podeEditar && (
+            <button
+              type="button"
+              className="adm-btn adm-btn--primary"
+              onClick={() => setAdicionandoMembro(true)}
+            >
+              + Adicionar membro
+            </button>
+          )}
         </div>
 
         {adicionandoMembro && (

@@ -1604,35 +1604,35 @@ msgstr "Ajouter un fournisseur d'identité SSO"
 msgid "Add test input for evaluation (e.g., \"Find all customers in NY\")"
 msgstr "Ajouter une entrée de test pour évaluation (par exemple, « trouver tous les clients à NY »)"
 
-#. js-lingui-id: FKGcEL
+#. js-lingui-id: h2UQVK
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty MCP server as a remote context server in Zed."
-msgstr "Ajoutez le serveur MCP Twenty comme serveur de contexte distant dans Zed."
+msgid "Add the CRM Campuzz MCP server as a remote context server in Zed."
+msgstr "Ajoutez le serveur MCP CRM Campuzz comme serveur de contexte distant dans Zed."
 
-#. js-lingui-id: iA2nHX
+#. js-lingui-id: UklFHd
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty MCP server from Augment Code settings."
-msgstr "Ajoutez le serveur MCP Twenty depuis les paramètres d'Augment Code."
+msgid "Add the CRM Campuzz MCP server from Augment Code settings."
+msgstr "Ajoutez le serveur MCP CRM Campuzz depuis les paramètres d'Augment Code."
 
-#. js-lingui-id: l+NzAk
+#. js-lingui-id: mN1+/F
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty MCP server from Raycast's MCP commands or settings."
-msgstr "Ajoutez le serveur MCP Twenty depuis les commandes ou les paramètres MCP de Raycast."
+msgid "Add the CRM Campuzz MCP server from Raycast's MCP commands or settings."
+msgstr "Ajoutez le serveur MCP CRM Campuzz depuis les commandes ou les paramètres MCP de Raycast."
 
-#. js-lingui-id: j6G/yI
+#. js-lingui-id: 57Etpp
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty MCP server in Gemini CLI settings."
-msgstr "Ajoutez le serveur MCP Twenty dans les paramètres de Gemini CLI."
+msgid "Add the CRM Campuzz MCP server in Gemini CLI settings."
+msgstr "Ajoutez le serveur MCP CRM Campuzz dans les paramètres de Gemini CLI."
 
-#. js-lingui-id: /OyhlM
+#. js-lingui-id: bPre4P
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty MCP server to your LibreChat configuration file."
-msgstr "Ajoutez le serveur MCP Twenty à votre fichier de configuration LibreChat."
+msgid "Add the CRM Campuzz MCP server to your LibreChat configuration file."
+msgstr "Ajoutez le serveur MCP CRM Campuzz à votre fichier de configuration LibreChat."
 
-#. js-lingui-id: K0DXoj
+#. js-lingui-id: OmUrpX
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty remote server with LM Studio's install link."
-msgstr "Ajoutez le serveur distant Twenty avec le lien d'installation de LM Studio."
+msgid "Add the CRM Campuzz remote server with LM Studio's install link."
+msgstr "Ajoutez le serveur distant CRM Campuzz avec le lien d'installation de LM Studio."
 
 #. js-lingui-id: 5+ttxv
 #: src/modules/settings/accounts/components/SettingsAccountsBlocklistInput.tsx
@@ -1649,10 +1649,10 @@ msgstr "Ajouter aux favoris"
 msgid "Add topic"
 msgstr "Ajouter un sujet"
 
-#. js-lingui-id: 4D/zWv
+#. js-lingui-id: EI/noC
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add Twenty as a Streamable HTTP extension in Goose."
-msgstr "Ajoutez Twenty comme extension HTTP Streamable dans Goose."
+msgid "Add CRM Campuzz as a Streamable HTTP extension in Goose."
+msgstr "Ajoutez CRM Campuzz comme extension HTTP Streamable dans Goose."
 
 #. js-lingui-id: XnwceV
 #: src/pages/settings/applications/components/SettingsApplicationRegistrationRedirectURIsInput.tsx
@@ -3300,10 +3300,10 @@ msgstr "Intervalle de facturation"
 msgid "Billing period"
 msgstr "Période de facturation"
 
-#. js-lingui-id: xF/NXI
+#. js-lingui-id: NjURf2
 #: src/modules/settings/billing/hooks/useBillingPortalSession.ts
-msgid "Billing portal session error. Please retry or contact Twenty team"
-msgstr "Erreur de session du portail de facturation. Veuillez réessayer ou contacter l'équipe Twenty"
+msgid "Billing portal session error. Please retry or contact CRM Campuzz team"
+msgstr "Erreur de session du portail de facturation. Veuillez réessayer ou contacter l'équipe CRM Campuzz"
 
 #. js-lingui-id: 8kIU+G
 #: src/modules/advanced-text-editor/constants/AdvancedTextEditorBlockCatalog.ts
@@ -3491,10 +3491,10 @@ msgstr "Bouton"
 msgid "by {author}"
 msgstr "par {author}"
 
-#. js-lingui-id: 8Pfllj
+#. js-lingui-id: dXVowt
 #: src/modules/auth/sign-in-up/components/FooterNote.tsx
-msgid "By using Twenty, you agree to the"
-msgstr "En utilisant Twenty, vous acceptez les"
+msgid "By using CRM Campuzz, you agree to the"
+msgstr "En utilisant CRM Campuzz, vous acceptez les"
 
 #. js-lingui-id: Yx41df
 #: src/modules/auth/sign-in-up/components/FooterNote.tsx
@@ -4026,11 +4026,11 @@ msgstr "Vérifiez vos e-mails"
 msgid "Check your inbox to verify your new email address."
 msgstr "Vérifiez votre boîte de réception pour valider votre nouvelle adresse e-mail."
 
-#. js-lingui-id: SxwQE8
+#. js-lingui-id: A0AJpe
 #: src/modules/settings/billing/hooks/useHandleCheckoutSession.ts
 #: src/modules/settings/billing/hooks/useHandleCheckoutSession.ts
-msgid "Checkout session error. Please retry or contact Twenty team"
-msgstr "Erreur de session de paiement. Veuillez réessayer ou contacter l'équipe Twenty"
+msgid "Checkout session error. Please retry or contact CRM Campuzz team"
+msgstr "Erreur de session de paiement. Veuillez réessayer ou contacter l'équipe CRM Campuzz"
 
 #. js-lingui-id: SviKkE
 #: src/localization/hooks/useLocaleOptions.ts
@@ -4698,15 +4698,15 @@ msgstr "Configurez le serveur MCP distant via les paramètres d'agent de Warp."
 msgid "Configure the remote server in Amazon Q Developer's MCP settings."
 msgstr "Configurez le serveur distant dans les paramètres MCP d'Amazon Q Developer."
 
-#. js-lingui-id: g1/8jH
+#. js-lingui-id: lZiA2W
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Configure the Twenty MCP server manually in Cascade."
-msgstr "Configurez manuellement le serveur MCP Twenty dans Cascade."
+msgid "Configure the CRM Campuzz MCP server manually in Cascade."
+msgstr "Configurez manuellement le serveur MCP CRM Campuzz dans Cascade."
 
-#. js-lingui-id: XiyvRh
+#. js-lingui-id: 0oL9Jq
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Configure the Twenty MCP server manually in Cline."
-msgstr "Configurez manuellement le serveur MCP Twenty dans Cline."
+msgid "Configure the CRM Campuzz MCP server manually in Cline."
+msgstr "Configurez manuellement le serveur MCP CRM Campuzz dans Cline."
 
 #. js-lingui-id: qA9AGQ
 #: src/modules/settings/domains/components/SettingsDomainRecords.tsx
@@ -8257,10 +8257,10 @@ msgstr "Erreur lors de l'annulation du changement d'intervalle."
 msgid "Error while cancelling plan switching."
 msgstr "Erreur lors de l'annulation du changement de plan."
 
-#. js-lingui-id: QmR+2U
+#. js-lingui-id: ft1OT/
 #: src/modules/settings/billing/hooks/useEndSubscriptionTrialPeriod.ts
-msgid "Error while ending trial period. Please contact Twenty team."
-msgstr "Erreur lors de la fin de la période d'essai. Veuillez contacter l'équipe Twenty."
+msgid "Error while ending trial period. Please contact CRM Campuzz team."
+msgstr "Erreur lors de la fin de la période d'essai. Veuillez contacter l'équipe CRM Campuzz."
 
 #. js-lingui-id: 5g78zo
 #: src/pages/settings/members/SettingsWorkspaceMember.tsx
@@ -10125,10 +10125,10 @@ msgstr "Masquer l'étiquette"
 msgid "Hide system indexes"
 msgstr "Masquer les index système"
 
-#. js-lingui-id: 1ETc0T
+#. js-lingui-id: dh2bZ9
 #: src/pages/settings/community/SettingsCommunity.tsx
-msgid "Hire a partner to help you implement and customize Twenty."
-msgstr "Faites appel à un partenaire pour vous aider à mettre en œuvre et à personnaliser Twenty."
+msgid "Hire a partner to help you implement and customize CRM Campuzz."
+msgstr "Faites appel à un partenaire pour vous aider à mettre en œuvre et à personnaliser CRM Campuzz."
 
 #. js-lingui-id: i0qMbr
 #: src/modules/navigation/hooks/useMobileNavigationBarItems.ts
@@ -14525,10 +14525,10 @@ msgstr "Récompense d’intégration"
 msgid "One or more filters reference deactivated or deleted fields and will be automatically removed on save."
 msgstr "Un ou plusieurs filtres font référence à des champs désactivés ou supprimés et seront automatiquement supprimés lors de l'enregistrement."
 
-#. js-lingui-id: 2l4SGU
+#. js-lingui-id: q15w7v
 #: src/pages/settings/enterprise/SettingsEnterprise.tsx
-msgid "One subscription provides one enterprise key that powers one production instance and one potential staging or test instance. To run a staging or test environment, install Twenty on a second server, activate it with this same enterprise key, then register that server as a development instance. Development instances unlock enterprise features without extra billing and do not count toward your production seats."
-msgstr "Un abonnement fournit une clé Enterprise qui alimente une instance de production et une instance potentielle de staging ou de test. Pour exécuter un environnement de staging ou de test, installez Twenty sur un deuxième serveur, activez-le avec cette même clé Enterprise, puis enregistrez ce serveur comme instance de développement. Les instances de développement débloquent les fonctionnalités Enterprise sans facturation supplémentaire et ne sont pas comptabilisées dans vos places de production."
+msgid "One subscription provides one enterprise key that powers one production instance and one potential staging or test instance. To run a staging or test environment, install CRM Campuzz on a second server, activate it with this same enterprise key, then register that server as a development instance. Development instances unlock enterprise features without extra billing and do not count toward your production seats."
+msgstr "Un abonnement fournit une clé Enterprise qui alimente une instance de production et une instance potentielle de staging ou de test. Pour exécuter un environnement de staging ou de test, installez CRM Campuzz sur un deuxième serveur, activez-le avec cette même clé Enterprise, puis enregistrez ce serveur comme instance de développement. Les instances de développement débloquent les fonctionnalités Enterprise sans facturation supplémentaire et ne sont pas comptabilisées dans vos places de production."
 
 #. js-lingui-id: oFTo3P
 #: src/modules/settings/event-logs/components/SettingsLogs.tsx
@@ -14621,15 +14621,15 @@ msgstr "Ouvrez un éditeur d’e-mails pour modifier les paramètres du bloc."
 msgid "Open as link"
 msgstr "Ouvrir en tant que lien"
 
-#. js-lingui-id: n0vVgf
+#. js-lingui-id: mjsk6x
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Open Claude with the Twenty connector name and MCP URL prefilled."
-msgstr "Ouvrez Claude avec le nom du connecteur Twenty et l'URL MCP préremplis."
+msgid "Open Claude with the CRM Campuzz connector name and MCP URL prefilled."
+msgstr "Ouvrez Claude avec le nom du connecteur CRM Campuzz et l'URL MCP préremplis."
 
-#. js-lingui-id: +n2jpB
+#. js-lingui-id: fOEAq8
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Open Cursor's MCP installer with the Twenty remote server config."
-msgstr "Ouvrez l'installeur MCP de Cursor avec la configuration du serveur distant Twenty."
+msgid "Open Cursor's MCP installer with the CRM Campuzz remote server config."
+msgstr "Ouvrez l'installeur MCP de Cursor avec la configuration du serveur distant CRM Campuzz."
 
 #. js-lingui-id: pZZH4Q
 #: src/modules/auth/sign-in-up/components/EmailVerificationSent.tsx
@@ -14683,15 +14683,15 @@ msgstr "Ouvrir les enregistrements dans"
 msgid "Open records on a dedicated page"
 msgstr "Ouvrir les enregistrements sur une page dédiée"
 
-#. js-lingui-id: q170S2
+#. js-lingui-id: FT9wOr
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Open Replit with the Twenty remote server config."
-msgstr "Ouvrez Replit avec la configuration du serveur distant Twenty."
+msgid "Open Replit with the CRM Campuzz remote server config."
+msgstr "Ouvrez Replit avec la configuration du serveur distant CRM Campuzz."
 
-#. js-lingui-id: sBd/cl
+#. js-lingui-id: qK1DPM
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Open Twenty's official ChatGPT integration for your workspace."
-msgstr "Ouvrez l'intégration ChatGPT officielle de Twenty pour votre espace de travail."
+msgid "Open CRM Campuzz's official ChatGPT integration for your workspace."
+msgstr "Ouvrez l'intégration ChatGPT officielle de CRM Campuzz pour votre espace de travail."
 
 #. js-lingui-id: OV5wZZ
 #: src/modules/navigation-menu-item/display/sections/components/NavigationDrawerOpenedSection.tsx
@@ -14996,10 +14996,10 @@ msgstr "Mises en page"
 msgid "Page name"
 msgstr "Nom de la page"
 
-#. js-lingui-id: NRvxzv
+#. js-lingui-id: 2HG7qd
 #: src/pages/not-found/NotFound.tsx
-msgid "Page Not Found | Twenty"
-msgstr "Page non trouvée | Twenty"
+msgid "Page Not Found | CRM Campuzz"
+msgstr "Page non trouvée | CRM Campuzz"
 
 #. js-lingui-id: oIhFvf
 #: src/modules/side-panel/pages/email-block-settings/components/EmailPageStyleSection.tsx
@@ -18836,8 +18836,8 @@ msgstr "Péripéqdha."
 #: src/modules/settings/billing/components/AddPaymentMethodForm.tsx
 #: src/modules/settings/billing/hooks/useSubmitSubscriptionPayment.ts
 #: src/modules/settings/billing/hooks/useSubmitSubscriptionPayment.ts
-msgid "Subscription error. Please retry or contact Twenty team"
-msgstr "Erreur d'abonnement. Veuillez réessayer ou contacter l'équipe Twenty"
+msgid "Subscription error. Please retry or contact CRM Campuzz team"
+msgstr "Erreur d'abonnement. Veuillez réessayer ou contacter l'équipe CRM Campuzz"
 
 #. js-lingui-id: FooJUj
 #. placeholder {0}: getTargetPlanLabel(targetPlanKey)
@@ -19431,10 +19431,10 @@ msgstr "Le nom que les destinataires voient à côté de votre adresse. Il est d
 msgid "The page you're seeking is either gone or never was. Let's get you back on track"
 msgstr "La page que vous recherchez a disparu ou n'a jamais existé. Revenons sur la bonne voie"
 
-#. js-lingui-id: Ya1wb4
+#. js-lingui-id: Kyrlx4
 #: src/pages/settings/legal/SettingsLegalDpaNew.tsx
-msgid "The PDF is pre-signed by Twenty and executed with your legal entity and authorized signatory."
-msgstr "Le PDF est pré-signé par Twenty et exécuté avec votre entité légale et votre signataire autorisé."
+msgid "The PDF is pre-signed by CRM Campuzz and executed with your legal entity and authorized signatory."
+msgstr "Le PDF est pré-signé par CRM Campuzz et exécuté avec votre entité légale et votre signataire autorisé."
 
 #. js-lingui-id: Ir4tSJ
 #: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
@@ -20430,10 +20430,10 @@ msgstr ""
 msgid "Turquoise"
 msgstr "Turquoise"
 
-#. js-lingui-id: JnaRPe
+#. js-lingui-id: AdT7fk
 #: src/modules/spreadsheet-import/steps/components/MatchColumnsStep/components/ColumnGrid.tsx
-msgid "Twenty fields"
-msgstr "Champs Twenty"
+msgid "CRM Campuzz fields"
+msgstr "Champs CRM Campuzz"
 
 #. js-lingui-id: YIjS4q
 #: src/modules/ai/components/SettingsAgentModelCapabilities.tsx
@@ -22031,10 +22031,10 @@ msgstr "semaines"
 msgid "Weight"
 msgstr "Pondération"
 
-#. js-lingui-id: nTuObL
+#. js-lingui-id: CGpYFe
 #: src/pages/auth/SignInUp.tsx
-msgid "Welcome to Twenty"
-msgstr "Bienvenue sur Twenty"
+msgid "Welcome to CRM Campuzz"
+msgstr "Bienvenue sur CRM Campuzz"
 
 #. js-lingui-id: t8ZvkC
 #: src/modules/onboarding/constants/WelcomeTitleMessage.ts

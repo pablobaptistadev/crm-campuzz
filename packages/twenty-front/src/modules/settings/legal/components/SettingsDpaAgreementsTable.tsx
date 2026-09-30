@@ -36,7 +36,7 @@ export const SettingsDpaAgreementsTable = ({
     try {
       await downloadFile(
         agreement.downloadUrl,
-        `Twenty-DPA-${agreement.templateVersion}-${agreement.customerLegalEntityName ?? 'copy'}.pdf`,
+        `CRM-Campuzz-DPA-${agreement.templateVersion}-${agreement.customerLegalEntityName ?? 'copy'}.pdf`,
       );
     } catch {
       enqueueErrorSnackBar({ message: t`Could not download the document.` });

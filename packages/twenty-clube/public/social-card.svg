@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="CRM Campuzz — Jornadas épicas">
+  <defs>
+    <linearGradient id="ouro" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="rgb(197,165,102)"/>
+      <stop offset="100%" stop-color="rgb(163,109,49)"/>
+    </linearGradient>
+    <radialGradient id="brilho" cx="0.78" cy="0.18" r="0.62">
+      <stop offset="0%" stop-color="rgb(197,165,102)" stop-opacity="0.20"/>
+      <stop offset="100%" stop-color="rgb(197,165,102)" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="rgb(8,12,28)"/>
+  <rect width="1200" height="630" fill="url(#brilho)"/>
+
+  <g transform="translate(96,150)">
+    <rect width="64" height="64" rx="16" fill="url(#ouro)"/>
+    <text x="32" y="42" font-family="DM Sans, Inter, system-ui, sans-serif" font-size="26"
+          font-weight="700" fill="rgb(3,8,9)" text-anchor="middle">CC</text>
+  </g>
+
+  <text x="96" y="300" font-family="DM Sans, Inter, system-ui, sans-serif" font-size="76"
+        font-weight="700" letter-spacing="-2" fill="rgb(248,250,252)">CRM Campuzz</text>
+
+  <text x="96" y="368" font-family="DM Sans, Inter, system-ui, sans-serif" font-size="34"
+        fill="rgb(197,165,102)">Jornadas épicas</text>
+
+  <rect x="96" y="416" width="132" height="4" rx="2" fill="url(#ouro)"/>
+
+  <text x="96" y="484" font-family="DM Sans, Inter, system-ui, sans-serif" font-size="22"
+        fill="rgba(248,250,252,0.5)">Sistema de Parceiros · clubes, membros e jornadas</text>
+</svg>

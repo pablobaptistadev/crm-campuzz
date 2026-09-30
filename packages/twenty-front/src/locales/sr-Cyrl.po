@@ -1604,35 +1604,35 @@ msgstr "Додајте провајдер за SSO идентификацију"
 msgid "Add test input for evaluation (e.g., \"Find all customers in NY\")"
 msgstr ""
 
-#. js-lingui-id: FKGcEL
+#. js-lingui-id: h2UQVK
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty MCP server as a remote context server in Zed."
-msgstr "Додај Twenty MCP сервер као удаљени контекст сервер у Zed."
+msgid "Add the CRM Campuzz MCP server as a remote context server in Zed."
+msgstr "Додај CRM Campuzz MCP сервер као удаљени контекст сервер у Zed."
 
-#. js-lingui-id: iA2nHX
+#. js-lingui-id: UklFHd
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty MCP server from Augment Code settings."
-msgstr "Додај Twenty MCP сервер из подешавања Augment Code."
+msgid "Add the CRM Campuzz MCP server from Augment Code settings."
+msgstr "Додај CRM Campuzz MCP сервер из подешавања Augment Code."
 
-#. js-lingui-id: l+NzAk
+#. js-lingui-id: mN1+/F
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty MCP server from Raycast's MCP commands or settings."
-msgstr "Додај Twenty MCP сервер из Raycast MCP команди или подешавања."
+msgid "Add the CRM Campuzz MCP server from Raycast's MCP commands or settings."
+msgstr "Додај CRM Campuzz MCP сервер из Raycast MCP команди или подешавања."
 
-#. js-lingui-id: j6G/yI
+#. js-lingui-id: 57Etpp
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty MCP server in Gemini CLI settings."
-msgstr "Додај Twenty MCP сервер у подешавањима Gemini CLI."
+msgid "Add the CRM Campuzz MCP server in Gemini CLI settings."
+msgstr "Додај CRM Campuzz MCP сервер у подешавањима Gemini CLI."
 
-#. js-lingui-id: /OyhlM
+#. js-lingui-id: bPre4P
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty MCP server to your LibreChat configuration file."
-msgstr "Додај Twenty MCP сервер у своју LibreChat конфигурациону датотеку."
+msgid "Add the CRM Campuzz MCP server to your LibreChat configuration file."
+msgstr "Додај CRM Campuzz MCP сервер у своју LibreChat конфигурациону датотеку."
 
-#. js-lingui-id: K0DXoj
+#. js-lingui-id: OmUrpX
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty remote server with LM Studio's install link."
-msgstr "Додај Twenty удаљени сервер помоћу LM Studio линка за инсталацију."
+msgid "Add the CRM Campuzz remote server with LM Studio's install link."
+msgstr "Додај CRM Campuzz удаљени сервер помоћу LM Studio линка за инсталацију."
 
 #. js-lingui-id: 5+ttxv
 #: src/modules/settings/accounts/components/SettingsAccountsBlocklistInput.tsx
@@ -1649,10 +1649,10 @@ msgstr "Додајте у омиљене"
 msgid "Add topic"
 msgstr "Додај тему"
 
-#. js-lingui-id: 4D/zWv
+#. js-lingui-id: EI/noC
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add Twenty as a Streamable HTTP extension in Goose."
-msgstr "Додај Twenty као Streamable HTTP екстензију у Goose."
+msgid "Add CRM Campuzz as a Streamable HTTP extension in Goose."
+msgstr "Додај CRM Campuzz као Streamable HTTP екстензију у Goose."
 
 #. js-lingui-id: XnwceV
 #: src/pages/settings/applications/components/SettingsApplicationRegistrationRedirectURIsInput.tsx
@@ -3300,10 +3300,10 @@ msgstr "Интервал наплате"
 msgid "Billing period"
 msgstr "Период наплате"
 
-#. js-lingui-id: xF/NXI
+#. js-lingui-id: NjURf2
 #: src/modules/settings/billing/hooks/useBillingPortalSession.ts
-msgid "Billing portal session error. Please retry or contact Twenty team"
-msgstr "Грешка сесије портала за наплату. Покушајте поново или контактирајте Twenty тим"
+msgid "Billing portal session error. Please retry or contact CRM Campuzz team"
+msgstr "Грешка сесије портала за наплату. Покушајте поново или контактирајте CRM Campuzz тим"
 
 #. js-lingui-id: 8kIU+G
 #: src/modules/advanced-text-editor/constants/AdvancedTextEditorBlockCatalog.ts
@@ -3491,10 +3491,10 @@ msgstr "Дугме"
 msgid "by {author}"
 msgstr ""
 
-#. js-lingui-id: 8Pfllj
+#. js-lingui-id: dXVowt
 #: src/modules/auth/sign-in-up/components/FooterNote.tsx
-msgid "By using Twenty, you agree to the"
-msgstr "Коришћењем Twenty, слажете се са"
+msgid "By using CRM Campuzz, you agree to the"
+msgstr "Коришћењем CRM Campuzz, слажете се са"
 
 #. js-lingui-id: Yx41df
 #: src/modules/auth/sign-in-up/components/FooterNote.tsx
@@ -4026,11 +4026,11 @@ msgstr "Проверите имејл пошту"
 msgid "Check your inbox to verify your new email address."
 msgstr "Проверите пријемно сандуче да потврдите своју нову имејл адресу."
 
-#. js-lingui-id: SxwQE8
+#. js-lingui-id: A0AJpe
 #: src/modules/settings/billing/hooks/useHandleCheckoutSession.ts
 #: src/modules/settings/billing/hooks/useHandleCheckoutSession.ts
-msgid "Checkout session error. Please retry or contact Twenty team"
-msgstr "Грешка у сесији наплате. Молимо да покушате поново или контактирајте Twenty тим"
+msgid "Checkout session error. Please retry or contact CRM Campuzz team"
+msgstr "Грешка у сесији наплате. Молимо да покушате поново или контактирајте CRM Campuzz тим"
 
 #. js-lingui-id: SviKkE
 #: src/localization/hooks/useLocaleOptions.ts
@@ -4698,15 +4698,15 @@ msgstr "Конфигуришите удаљени MCP сервер преко Wa
 msgid "Configure the remote server in Amazon Q Developer's MCP settings."
 msgstr "Конфигуришите удаљени сервер у Amazon Q Developer MCP подешавањима."
 
-#. js-lingui-id: g1/8jH
+#. js-lingui-id: lZiA2W
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Configure the Twenty MCP server manually in Cascade."
-msgstr "Ручно конфигуришите Twenty MCP сервер у Cascade."
+msgid "Configure the CRM Campuzz MCP server manually in Cascade."
+msgstr "Ручно конфигуришите CRM Campuzz MCP сервер у Cascade."
 
-#. js-lingui-id: XiyvRh
+#. js-lingui-id: 0oL9Jq
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Configure the Twenty MCP server manually in Cline."
-msgstr "Ручно конфигуришите Twenty MCP сервер у Cline."
+msgid "Configure the CRM Campuzz MCP server manually in Cline."
+msgstr "Ручно конфигуришите CRM Campuzz MCP сервер у Cline."
 
 #. js-lingui-id: qA9AGQ
 #: src/modules/settings/domains/components/SettingsDomainRecords.tsx
@@ -8257,10 +8257,10 @@ msgstr "Грешка при отказивању промене интервал
 msgid "Error while cancelling plan switching."
 msgstr "Грешка при отказивању промене плана."
 
-#. js-lingui-id: QmR+2U
+#. js-lingui-id: ft1OT/
 #: src/modules/settings/billing/hooks/useEndSubscriptionTrialPeriod.ts
-msgid "Error while ending trial period. Please contact Twenty team."
-msgstr "Грешка приликом завршетка пробног периода. Молимо вас контактирајте Twenty тим."
+msgid "Error while ending trial period. Please contact CRM Campuzz team."
+msgstr "Грешка приликом завршетка пробног периода. Молимо вас контактирајте CRM Campuzz тим."
 
 #. js-lingui-id: 5g78zo
 #: src/pages/settings/members/SettingsWorkspaceMember.tsx
@@ -10125,10 +10125,10 @@ msgstr "Сакриј ознаку"
 msgid "Hide system indexes"
 msgstr "Сакриј системске индексе"
 
-#. js-lingui-id: 1ETc0T
+#. js-lingui-id: dh2bZ9
 #: src/pages/settings/community/SettingsCommunity.tsx
-msgid "Hire a partner to help you implement and customize Twenty."
-msgstr "Ангажујте партнера који ће вам помоћи да примените и прилагодите Twenty."
+msgid "Hire a partner to help you implement and customize CRM Campuzz."
+msgstr "Ангажујте партнера који ће вам помоћи да примените и прилагодите CRM Campuzz."
 
 #. js-lingui-id: i0qMbr
 #: src/modules/navigation/hooks/useMobileNavigationBarItems.ts
@@ -14525,10 +14525,10 @@ msgstr "Награда за увођење"
 msgid "One or more filters reference deactivated or deleted fields and will be automatically removed on save."
 msgstr "Један или више филтера референцирају деактивирана или обрисана поља и биће аутоматски уклоњени приликом чувања."
 
-#. js-lingui-id: 2l4SGU
+#. js-lingui-id: q15w7v
 #: src/pages/settings/enterprise/SettingsEnterprise.tsx
-msgid "One subscription provides one enterprise key that powers one production instance and one potential staging or test instance. To run a staging or test environment, install Twenty on a second server, activate it with this same enterprise key, then register that server as a development instance. Development instances unlock enterprise features without extra billing and do not count toward your production seats."
-msgstr "Једна претплата обезбеђује један ентерпрајз кључ који покреће једну продукциону инстанцу и једну потенцијалну staging или тест инстанцу. Да бисте покренули staging или тест окружење, инсталирајте Twenty на други сервер, активирајте га истим ентерпрајз кључем, а затим региструјте тај сервер као развојну инстанцу. Развојне инстанце откључавају ентерпрајз функционалности без додатне наплате и не рачунају се у ваша продукциона места."
+msgid "One subscription provides one enterprise key that powers one production instance and one potential staging or test instance. To run a staging or test environment, install CRM Campuzz on a second server, activate it with this same enterprise key, then register that server as a development instance. Development instances unlock enterprise features without extra billing and do not count toward your production seats."
+msgstr "Једна претплата обезбеђује један ентерпрајз кључ који покреће једну продукциону инстанцу и једну потенцијалну staging или тест инстанцу. Да бисте покренули staging или тест окружење, инсталирајте CRM Campuzz на други сервер, активирајте га истим ентерпрајз кључем, а затим региструјте тај сервер као развојну инстанцу. Развојне инстанце откључавају ентерпрајз функционалности без додатне наплате и не рачунају се у ваша продукциона места."
 
 #. js-lingui-id: oFTo3P
 #: src/modules/settings/event-logs/components/SettingsLogs.tsx
@@ -14621,15 +14621,15 @@ msgstr "Отворите уређивач имејла да бисте уред�
 msgid "Open as link"
 msgstr "Отвори као везу"
 
-#. js-lingui-id: n0vVgf
+#. js-lingui-id: mjsk6x
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Open Claude with the Twenty connector name and MCP URL prefilled."
-msgstr "Отворите Claude са унапред попуњеним Twenty именом конектора и MCP URL-ом."
+msgid "Open Claude with the CRM Campuzz connector name and MCP URL prefilled."
+msgstr "Отворите Claude са унапред попуњеним CRM Campuzz именом конектора и MCP URL-ом."
 
-#. js-lingui-id: +n2jpB
+#. js-lingui-id: fOEAq8
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Open Cursor's MCP installer with the Twenty remote server config."
-msgstr "Отворите Cursor MCP инсталатор са Twenty конфигурацијом удаљеног сервера."
+msgid "Open Cursor's MCP installer with the CRM Campuzz remote server config."
+msgstr "Отворите Cursor MCP инсталатор са CRM Campuzz конфигурацијом удаљеног сервера."
 
 #. js-lingui-id: pZZH4Q
 #: src/modules/auth/sign-in-up/components/EmailVerificationSent.tsx
@@ -14683,15 +14683,15 @@ msgstr "Отвори записе у"
 msgid "Open records on a dedicated page"
 msgstr "Отварајте записе на посебној страници"
 
-#. js-lingui-id: q170S2
+#. js-lingui-id: FT9wOr
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Open Replit with the Twenty remote server config."
-msgstr "Отворите Replit са Twenty конфигурацијом удаљеног сервера."
+msgid "Open Replit with the CRM Campuzz remote server config."
+msgstr "Отворите Replit са CRM Campuzz конфигурацијом удаљеног сервера."
 
-#. js-lingui-id: sBd/cl
+#. js-lingui-id: qK1DPM
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Open Twenty's official ChatGPT integration for your workspace."
-msgstr "Отворите званичну Twenty ChatGPT интеграцију за свој радни простор."
+msgid "Open CRM Campuzz's official ChatGPT integration for your workspace."
+msgstr "Отворите званичну CRM Campuzz ChatGPT интеграцију за свој радни простор."
 
 #. js-lingui-id: OV5wZZ
 #: src/modules/navigation-menu-item/display/sections/components/NavigationDrawerOpenedSection.tsx
@@ -14996,10 +14996,10 @@ msgstr "Распореди страница"
 msgid "Page name"
 msgstr "Назив странице"
 
-#. js-lingui-id: NRvxzv
+#. js-lingui-id: 2HG7qd
 #: src/pages/not-found/NotFound.tsx
-msgid "Page Not Found | Twenty"
-msgstr "Страница није пронађена | Twenty"
+msgid "Page Not Found | CRM Campuzz"
+msgstr "Страница није пронађена | CRM Campuzz"
 
 #. js-lingui-id: oIhFvf
 #: src/modules/side-panel/pages/email-block-settings/components/EmailPageStyleSection.tsx
@@ -18836,8 +18836,8 @@ msgstr "Претплата је активирана."
 #: src/modules/settings/billing/components/AddPaymentMethodForm.tsx
 #: src/modules/settings/billing/hooks/useSubmitSubscriptionPayment.ts
 #: src/modules/settings/billing/hooks/useSubmitSubscriptionPayment.ts
-msgid "Subscription error. Please retry or contact Twenty team"
-msgstr "Грешка претплате. Покушајте поново или контактирајте Twenty тим"
+msgid "Subscription error. Please retry or contact CRM Campuzz team"
+msgstr "Грешка претплате. Покушајте поново или контактирајте CRM Campuzz тим"
 
 #. js-lingui-id: FooJUj
 #. placeholder {0}: getTargetPlanLabel(targetPlanKey)
@@ -19431,10 +19431,10 @@ msgstr "Име које примаоци виде поред ваше адрес
 msgid "The page you're seeking is either gone or never was. Let's get you back on track"
 msgstr "Страница коју тражите је или уклоњена или никад није постојала. Вратимо вас на прави пут"
 
-#. js-lingui-id: Ya1wb4
+#. js-lingui-id: Kyrlx4
 #: src/pages/settings/legal/SettingsLegalDpaNew.tsx
-msgid "The PDF is pre-signed by Twenty and executed with your legal entity and authorized signatory."
-msgstr "PDF је унапред потписан од стране Twenty и закључује се са вашим правним лицем и овлашћеним потписником."
+msgid "The PDF is pre-signed by CRM Campuzz and executed with your legal entity and authorized signatory."
+msgstr "PDF је унапред потписан од стране CRM Campuzz и закључује се са вашим правним лицем и овлашћеним потписником."
 
 #. js-lingui-id: Ir4tSJ
 #: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
@@ -20428,10 +20428,10 @@ msgstr ""
 msgid "Turquoise"
 msgstr "Тиркиз"
 
-#. js-lingui-id: JnaRPe
+#. js-lingui-id: AdT7fk
 #: src/modules/spreadsheet-import/steps/components/MatchColumnsStep/components/ColumnGrid.tsx
-msgid "Twenty fields"
-msgstr "Twenty поља"
+msgid "CRM Campuzz fields"
+msgstr "CRM Campuzz поља"
 
 #. js-lingui-id: YIjS4q
 #: src/modules/ai/components/SettingsAgentModelCapabilities.tsx
@@ -22029,10 +22029,10 @@ msgstr ""
 msgid "Weight"
 msgstr "Тежина"
 
-#. js-lingui-id: nTuObL
+#. js-lingui-id: CGpYFe
 #: src/pages/auth/SignInUp.tsx
-msgid "Welcome to Twenty"
-msgstr "Добродошли у Twenty"
+msgid "Welcome to CRM Campuzz"
+msgstr "Добродошли у CRM Campuzz"
 
 #. js-lingui-id: t8ZvkC
 #: src/modules/onboarding/constants/WelcomeTitleMessage.ts

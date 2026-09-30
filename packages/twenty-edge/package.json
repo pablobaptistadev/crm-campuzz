@@ -1,0 +1,31 @@
+{
+  "name": "twenty-edge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "types": "wrangler types"
+  },
+  "dependencies": {
+    "@graphql-tools/schema": "^10.1.1",
+    "@upstash/redis": "^1.38.4",
+    "graphql": "^16.11.0",
+    "graphql-tag": "^2.12.7",
+    "graphql-yoga": "^5.23.0",
+    "hono": "^4.13.7",
+    "jose": "^6.2.12",
+    "pg": "^8.23.0",
+    "zod": "^4.6.3"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260911.1",
+    "@types/pg": "^8.23.1",
+    "typescript": "^6.0.2",
+    "vitest": "^5.0.0",
+    "wrangler": "^4.131.1"
+  }
+}

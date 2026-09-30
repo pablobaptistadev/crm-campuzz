@@ -1,0 +1,1056 @@
+/* ============================================================
+   Tokens portados de admin-front/src/newadmin/index.css.
+   Mesma paleta gold + slate, mesma tipografia, mesmo raio.
+   ============================================================ */
+
+:root {
+  --gold: rgb(197, 165, 102);
+  --gold-deep: rgb(163, 109, 49);
+  --gold-light: rgb(210, 174, 109);
+  --gold-soft: rgb(233, 223, 192);
+  --gradient-gold: linear-gradient(135deg, rgb(197, 165, 102) 0%, rgb(163, 109, 49) 100%);
+
+  --emerald: rgb(31, 138, 91);
+  --rose: rgb(217, 82, 87);
+  --azure: rgb(60, 100, 165);
+  --violet: rgb(110, 78, 168);
+
+  --bg: rgb(248, 250, 252);
+  --bg-elev-1: rgb(255, 255, 255);
+  --bg-elev-2: rgb(241, 245, 249);
+  --bg-elev-3: rgb(226, 232, 240);
+  --text: rgb(15, 23, 42);
+  --text-strong: rgb(2, 6, 23);
+  --text-muted: rgb(100, 116, 139);
+  --text-soft: rgb(51, 65, 85);
+  --border: rgb(226, 232, 240);
+  --border-soft: rgba(15, 23, 42, 0.06);
+
+  --font-sans: 'DM Sans', 'Google Sans', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --radius: 14px;
+
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --bg: rgb(15, 18, 21);
+  --bg-elev-1: rgb(24, 26, 28);
+  --bg-elev-2: rgb(31, 34, 37);
+  --bg-elev-3: rgb(40, 42, 45);
+  --text: rgb(241, 245, 249);
+  --text-strong: rgb(248, 250, 252);
+  --text-muted: rgb(148, 163, 184);
+  --text-soft: rgb(203, 213, 225);
+  --border: rgb(40, 42, 45);
+  --border-soft: rgba(241, 245, 249, 0.06);
+
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font: inherit; }
+
+/* ── Banner ───────────────────────────────────────────────── */
+.adm-banner {
+  position: sticky; top: 0; z-index: 30;
+  background: rgb(8, 12, 28);
+  color: rgba(255, 255, 255, 0.92);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 0 24px; height: 56px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.adm-banner__brand { display: inline-flex; align-items: center; gap: 10px; }
+.adm-banner__glyph {
+  width: 28px; height: 28px; border-radius: 7px;
+  background: var(--gradient-gold);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: rgb(3, 8, 9); font-weight: 700; font-size: 13px;
+}
+.adm-banner__name { font-weight: 700; font-size: 14px; line-height: 1.1; }
+.adm-banner__sub { font-size: 11px; color: rgba(255, 255, 255, 0.5); line-height: 1.2; }
+.adm-banner__right { display: flex; align-items: center; gap: 14px; font-size: 12.5px; }
+.adm-banner__right a, .adm-banner__right span { color: rgba(255, 255, 255, 0.72); }
+.adm-banner__ok { color: rgb(110, 219, 165); }
+.adm-banner__avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--gradient-gold); color: rgb(3, 8, 9);
+  font-weight: 700; font-size: 11px;
+}
+
+/* ── Shell ────────────────────────────────────────────────── */
+.adm-shell { max-width: 1680px; margin: 0 auto; padding: 18px 24px 64px; }
+.adm-crumbs { font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px; }
+.adm-crumbs a { color: var(--gold-deep); }
+.adm-crumbs a:hover { text-decoration: underline; }
+.adm-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--text-soft); font-size: 13px; margin-bottom: 16px;
+}
+.adm-back:hover { color: var(--text); }
+
+/* ── KPI ──────────────────────────────────────────────────── */
+.adm-kpis {
+  display: grid; gap: 16px; margin-bottom: 22px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+.adm-kpi {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-elev-1); padding: 14px 18px 16px;
+}
+.adm-kpi__label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+.adm-kpi__value {
+  font-size: 26px; font-weight: 700; letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums; line-height: 1.15;
+}
+.adm-kpi__value--emerald { color: var(--emerald); }
+.adm-kpi__value--rose { color: var(--rose); }
+
+/* ── Card ─────────────────────────────────────────────────── */
+.adm-card {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-elev-1); margin-bottom: 16px; overflow: hidden;
+}
+.adm-card__head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border);
+}
+.adm-card__title {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.adm-card__body { padding: 18px; }
+.adm-card__body--flush { padding: 0; }
+
+/* ── Tabela ───────────────────────────────────────────────── */
+.adm-table-wrap {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-elev-1); overflow-x: auto;
+}
+.adm-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.adm-table thead th {
+  text-align: left; padding: 12px 16px; background: var(--bg-elev-1);
+  color: var(--text-muted); font-weight: 500; font-size: 12px;
+  border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.adm-table tbody td {
+  padding: 12px 16px; border-bottom: 1px solid var(--border-soft); color: var(--text);
+}
+.adm-table tbody tr:last-child td { border-bottom: 0; }
+.adm-table tbody tr:hover { background: var(--bg-elev-2); }
+.adm-table__link { font-weight: 600; color: var(--text-strong); }
+.adm-table__link:hover { color: var(--gold-deep); }
+.adm-table__sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.adm-table__muted { color: var(--text-muted); }
+.adm-table__num { font-variant-numeric: tabular-nums; }
+
+/* ── Chips de status ──────────────────────────────────────── */
+.adm-chip {
+  display: inline-flex; align-items: center;
+  padding: 3px 10px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 600; white-space: nowrap;
+}
+.adm-chip--green { background: rgba(31, 138, 91, 0.12); color: rgb(22, 110, 72); }
+.adm-chip--blue { background: rgba(60, 100, 165, 0.12); color: rgb(47, 84, 145); }
+.adm-chip--rose { background: rgba(217, 82, 87, 0.12); color: rgb(185, 57, 62); }
+.adm-chip--gold { background: rgba(197, 165, 102, 0.16); color: var(--gold-deep); }
+.adm-chip--slate { background: var(--bg-elev-2); color: var(--text-muted); }
+.adm-chip--violet { background: rgba(110, 78, 168, 0.13); color: var(--violet); }
+
+/* ── Pipeline (bolinhas) ──────────────────────────────────── */
+.adm-pipeline { display: inline-flex; gap: 4px; }
+.adm-pipeline__dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--bg-elev-3);
+}
+.adm-pipeline__dot--on { background: var(--gold-deep); }
+
+/* ── Tabs ─────────────────────────────────────────────────── */
+.adm-tabs {
+  display: flex; align-items: stretch; gap: 0;
+  border-bottom: 1px solid var(--border); margin-bottom: 20px;
+  overflow-x: auto;
+}
+.adm-tab {
+  position: relative; white-space: nowrap; cursor: pointer;
+  background: transparent; border: 0; padding: 14px 16px;
+  font-size: 13.5px; color: var(--text-muted);
+  display: inline-flex; align-items: center; gap: 7px;
+}
+.adm-tab:hover { color: var(--text); }
+.adm-tab--on { color: var(--text); font-weight: 500; }
+.adm-tab--on::after {
+  content: ''; position: absolute; bottom: -1px; left: 12px; right: 12px;
+  height: 2px; border-radius: 2px 2px 0 0; background: var(--gold);
+}
+.adm-tab__count {
+  border-radius: 999px; padding: 1px 7px; font-size: 11px; font-weight: 400;
+  background: var(--bg-elev-2); color: var(--text-muted);
+}
+.adm-tab--on .adm-tab__count { background: rgba(197, 165, 102, 0.16); color: var(--gold-deep); }
+
+/* ── Jornada ──────────────────────────────────────────────── */
+.adm-step {
+  display: flex; align-items: center; gap: 14px;
+  padding: 13px 18px; border-bottom: 1px solid var(--border-soft);
+}
+.adm-step:last-child { border-bottom: 0; }
+.adm-step__mark {
+  width: 18px; height: 18px; border-radius: 50%; flex: none;
+  border: 1.5px solid var(--border); background: var(--bg-elev-1);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: transparent; cursor: pointer; padding: 0;
+}
+.adm-step__mark--on {
+  border-color: var(--emerald); background: var(--emerald); color: white;
+}
+.adm-step__label { flex: 1; font-size: 13.5px; }
+.adm-step__state { font-size: 12.5px; color: var(--text-muted); white-space: nowrap; }
+.adm-step__state--on { color: var(--emerald); }
+
+/* ── Ficha (label + valor) ────────────────────────────────── */
+.adm-grid { display: grid; gap: 14px 18px; }
+.adm-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.adm-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 900px) {
+  .adm-grid--3, .adm-grid--2 { grid-template-columns: 1fr; }
+}
+.adm-fieldlabel { font-size: 11.5px; color: var(--text-muted); margin-bottom: 3px; }
+.adm-fieldvalue { font-size: 13.5px; color: var(--text); word-break: break-word; }
+.adm-fieldvalue--empty { color: var(--text-muted); }
+.adm-section {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-muted);
+  margin: 20px 0 12px;
+}
+.adm-section:first-child { margin-top: 0; }
+
+/* ── Header do registro ───────────────────────────────────── */
+.adm-record {
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 18px; flex-wrap: wrap;
+}
+.adm-record__avatar {
+  width: 44px; height: 44px; border-radius: 12px; flex: none;
+  background: rgba(197, 165, 102, 0.18); color: var(--gold-deep);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px;
+}
+.adm-record__name { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+.adm-record__sub { font-size: 13px; color: var(--text-muted); margin-top: 1px; }
+.adm-record__spacer { flex: 1; }
+
+/* ── Estados ──────────────────────────────────────────────── */
+.adm-empty {
+  padding: 48px 18px; text-align: center; color: var(--text-muted); font-size: 13.5px;
+}
+.adm-loading { padding: 48px 18px; text-align: center; color: var(--text-muted); }
+.adm-error {
+  border: 1px solid rgba(217, 82, 87, 0.3); background: rgba(217, 82, 87, 0.06);
+  color: rgb(150, 45, 50); border-radius: var(--radius);
+  padding: 14px 18px; margin-bottom: 16px; font-size: 13.5px;
+}
+.adm-ok {
+  border: 1px solid rgba(16, 150, 100, 0.3); background: rgba(16, 150, 100, 0.07);
+  color: rgb(14, 110, 74); border-radius: var(--radius);
+  padding: 14px 18px; margin-bottom: 16px; font-size: 13.5px;
+}
+.adm-perfil { max-width: 820px; margin: 0 auto; }
+.adm-perfil .adm-card { margin-bottom: 18px; }
+
+/* ── Busca e botões ───────────────────────────────────────── */
+.adm-toolbar {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 14px; flex-wrap: wrap;
+}
+.adm-toolbar__title {
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.adm-toolbar__spacer { flex: 1; }
+/* A barra de filtros mora dentro da toolbar e encolhe antes dos botões: num
+   monitor estreito quem some é a largura da busca, não o "+ Adicionar". */
+.adm-filtros {
+  display: flex; align-items: center; gap: 8px;
+  flex: 0 1 auto; min-width: 0; flex-wrap: wrap;
+}
+.adm-filtros .adm-input { height: 32px; font-size: 13px; }
+.adm-filtros__busca { flex: 1 1 200px; min-width: 140px; max-width: 260px; }
+/* O X nativo do type="search" vem em cinza-chumbo do sistema e destoa. */
+.adm-filtros__busca::-webkit-search-cancel-button {
+  -webkit-appearance: none; appearance: none;
+  height: 12px; width: 12px; cursor: pointer;
+  background: var(--text-muted);
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M2 2l8 8M10 2l-8 8' stroke='black' stroke-width='2' stroke-linecap='round'/></svg>") center / contain no-repeat;
+}
+.adm-toolbar__alerta {
+  font-size: 12.5px; font-weight: 600; color: var(--gold-deep);
+  background: rgba(197, 165, 102, 0.16);
+  border: 1px solid rgba(197, 165, 102, 0.34);
+  border-radius: 999px; padding: 4px 12px;
+}
+.adm-input {
+  border: 1px solid var(--border); border-radius: 9px;
+  background: var(--bg-elev-1); color: var(--text);
+  padding: 8px 12px; font-size: 13px; min-width: 240px;
+}
+.adm-input:focus { outline: 2px solid rgba(197, 165, 102, 0.4); outline-offset: 1px; }
+.adm-btn {
+  border: 1px solid var(--border); border-radius: 9px;
+  background: var(--bg-elev-1); color: var(--text);
+  padding: 8px 14px; font-size: 13px; cursor: pointer;
+}
+.adm-btn:hover { background: var(--bg-elev-2); }
+.adm-btn--primary {
+  background: var(--gradient-gold); border-color: transparent;
+  color: rgb(3, 8, 9); font-weight: 600;
+}
+.adm-btn--primary:hover { filter: brightness(0.96); background: var(--gradient-gold); }
+
+.adm-banner__sair {
+  background: transparent; cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.8);
+  border-radius: 8px; padding: 6px 12px; font-size: 12.5px;
+}
+.adm-banner__sair:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+
+.adm-card__edit {
+  background: transparent; border: 0; cursor: pointer;
+  color: var(--gold-deep); font-size: 12.5px; font-weight: 600;
+  padding: 2px 4px; border-radius: 6px;
+}
+.adm-card__edit:hover { background: rgba(197, 165, 102, 0.12); }
+
+/* ── Etapas em cards ──────────────────────────────────────── */
+.adm-etapas {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  padding: 18px;
+}
+.adm-etapa {
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--bg-elev-1); padding: 14px 16px 12px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.adm-etapa--on { border-color: rgba(31, 138, 91, 0.35); background: rgba(31, 138, 91, 0.04); }
+.adm-etapa__head { display: flex; align-items: center; gap: 10px; }
+.adm-etapa__ordem {
+  font-size: 11px; font-weight: 700; color: var(--text-muted);
+  background: var(--bg-elev-2); border-radius: 6px; padding: 2px 7px;
+  font-variant-numeric: tabular-nums;
+}
+.adm-etapa__nome { font-size: 13.5px; font-weight: 600; line-height: 1.3; }
+.adm-etapa__linha { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.adm-etapa__linha .adm-fieldlabel { margin: 0; }
+.adm-input--data { min-width: 0; width: 148px; padding: 5px 9px; font-size: 12.5px; }
+/* Obrigatória / Opcional: duas opções lado a lado, a escolhida em dourado. */
+.adm-exigencia { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.adm-segmentado {
+  display: inline-flex; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--bg-elev-2); padding: 2px;
+}
+.adm-segmentado__opcao {
+  border: 0; background: transparent; cursor: pointer; border-radius: 999px;
+  padding: 4px 10px; font-size: 12px; color: var(--text-muted); font-family: inherit;
+}
+.adm-segmentado__opcao:hover:not(:disabled) { color: var(--text); }
+.adm-segmentado__opcao--on {
+  background: var(--bg-elev-1); color: var(--gold-deep); font-weight: 600;
+  box-shadow: var(--sombra-1);
+}
+.adm-link-botao {
+  border: 0; background: transparent; cursor: pointer; padding: 2px 4px; border-radius: 6px;
+  color: var(--gold-deep); font-size: 12px; font-weight: 600; font-family: inherit;
+}
+.adm-link-botao:hover:not(:disabled) { background: rgba(197, 165, 102, 0.12); }
+.adm-link-botao:disabled, .adm-segmentado__opcao:disabled { opacity: 0.55; cursor: default; }
+.adm-etapa__nota-texto {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  background: var(--bg-elev-2); border: 1px dashed var(--border);
+  border-radius: 9px; padding: 8px 10px; font-size: 12.5px;
+  color: var(--text-soft); line-height: 1.5;
+}
+.adm-etapa__nota-texto:hover { border-color: var(--gold); color: var(--text); }
+.adm-etapa__lista { margin: 0 0 8px; padding-left: 16px; font-size: 12.5px; }
+.adm-etapa__lista a { color: var(--gold-deep); }
+.adm-etapa__lista a:hover { text-decoration: underline; }
+.adm-etapa__anexos .adm-btn { padding: 5px 10px; font-size: 12.5px; }
+.adm-etapa__rodape { margin-top: auto; padding-top: 4px; }
+
+/* ── Modal ────────────────────────────────────────────────── */
+/* O modal herda a cor de onde foi montado, e o de foto nasce dentro do banner
+   escuro: sem fixar, o título saía branco sobre a caixa branca. Modal é uma
+   camada por cima da tela, não um filho de quem o abriu. */
+.adm-modal {
+  color: var(--text);
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(8, 12, 28, 0.45);
+  display: grid; place-items: start center;
+  padding: 40px 16px; overflow-y: auto;
+}
+.adm-modal__caixa {
+  width: 100%; max-width: 720px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-elev-1);
+}
+.adm-kpi--on { border-color: var(--gold); background: rgba(197, 165, 102, 0.08); }
+button.adm-kpi { cursor: pointer; text-align: left; font: inherit; }
+
+.adm-banner__nav { display: flex; align-items: center; gap: 4px; margin-left: auto; margin-right: 12px; }
+.adm-banner__link {
+  color: rgba(255, 255, 255, 0.66); font-size: 12.5px;
+  padding: 7px 12px; border-radius: 8px; white-space: nowrap;
+}
+.adm-banner__link:hover { color: #fff; background: rgba(255, 255, 255, 0.07); }
+.adm-banner__link--on { color: rgb(3, 8, 9); background: var(--gradient-gold); font-weight: 600; }
+@media (max-width: 780px) {
+  .adm-banner { height: auto; padding: 10px 16px; flex-wrap: wrap; gap: 10px; }
+  .adm-banner__nav { margin: 0; width: 100%; overflow-x: auto; }
+}
+
+/* ── Profundidade ─────────────────────────────────────────── */
+:root {
+  --sombra-1: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+  --sombra-2: 0 2px 4px rgba(15, 23, 42, 0.04), 0 6px 16px rgba(15, 23, 42, 0.08);
+  --sombra-3: 0 8px 24px rgba(15, 23, 42, 0.10), 0 24px 48px rgba(15, 23, 42, 0.10);
+  --sombra-gold: 0 6px 18px rgba(163, 109, 49, 0.24);
+}
+:root[data-theme='dark'] {
+  --sombra-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --sombra-2: 0 2px 4px rgba(0, 0, 0, 0.4), 0 6px 16px rgba(0, 0, 0, 0.34);
+  --sombra-3: 0 8px 24px rgba(0, 0, 0, 0.5), 0 24px 48px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Onboarding ───────────────────────────────────────────── */
+.adm-wizard { max-width: 940px; margin: 0 auto; }
+.adm-wizard__topo { text-align: center; margin-bottom: 26px; }
+.adm-wizard__titulo {
+  font-size: 26px; font-weight: 700; letter-spacing: -0.6px; margin-bottom: 6px;
+}
+.adm-wizard__sub { color: var(--text-muted); font-size: 13.5px; }
+
+.adm-passos { display: flex; align-items: flex-start; gap: 0; margin-bottom: 28px; }
+.adm-passo { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; position: relative; }
+.adm-passo::before {
+  content: ''; position: absolute; top: 15px; left: -50%; right: 50%;
+  height: 2px; background: var(--bg-elev-3); z-index: 0;
+}
+.adm-passo:first-child::before { display: none; }
+.adm-passo--feito::before, .adm-passo--atual::before { background: var(--gold); }
+.adm-passo__bolha {
+  position: relative; z-index: 1;
+  width: 32px; height: 32px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700;
+  background: var(--bg-elev-1); color: var(--text-muted);
+  border: 2px solid var(--bg-elev-3);
+  transition: transform 180ms cubic-bezier(.2,.7,.2,1), box-shadow 180ms, background 180ms;
+}
+.adm-passo--atual .adm-passo__bolha {
+  background: var(--gradient-gold); color: rgb(3, 8, 9);
+  border-color: transparent; box-shadow: var(--sombra-gold);
+  transform: scale(1.08);
+}
+.adm-passo--feito .adm-passo__bolha {
+  background: var(--emerald); color: #fff; border-color: transparent;
+}
+.adm-passo__nome { font-size: 12px; color: var(--text-muted); text-align: center; }
+.adm-passo--atual .adm-passo__nome { color: var(--text); font-weight: 600; }
+
+.adm-painel {
+  border: 1px solid var(--border); border-radius: 18px;
+  background: var(--bg-elev-1); box-shadow: var(--sombra-2);
+  padding: 26px 28px; margin-bottom: 18px;
+  animation: adm-entrar 260ms cubic-bezier(.2,.7,.2,1);
+}
+@keyframes adm-entrar {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.adm-painel__titulo { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.adm-painel__ajuda { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
+
+.adm-wizard__rodape { display: flex; align-items: center; gap: 10px; }
+.adm-wizard__rodape .adm-btn { padding: 10px 18px; }
+
+.adm-nome-grande {
+  width: 100%; border: 0; background: transparent; color: var(--text);
+  font-size: 30px; font-weight: 700; letter-spacing: -0.7px;
+  padding: 10px 0; border-bottom: 2px solid var(--border);
+}
+.adm-nome-grande:focus { outline: none; border-bottom-color: var(--gold); }
+.adm-nome-grande::placeholder { color: var(--bg-elev-3); }
+
+.adm-resumo {
+  border: 1px solid var(--border); border-radius: 14px;
+  background: var(--bg-elev-2); padding: 16px 18px; box-shadow: var(--sombra-1);
+}
+.adm-resumo__linha {
+  display: flex; justify-content: space-between; gap: 16px;
+  padding: 7px 0; font-size: 13.5px;
+}
+.adm-resumo__linha + .adm-resumo__linha { border-top: 1px solid var(--border-soft); }
+.adm-resumo__rotulo { color: var(--text-muted); }
+.adm-resumo__valor { font-weight: 600; text-align: right; }
+.adm-resumo__destaque { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; }
+
+/* Profundidade nos elementos que já existiam */
+.adm-kpi, .adm-card, .adm-table-wrap, .adm-etapa { box-shadow: var(--sombra-1); }
+.adm-kpi--on { box-shadow: var(--sombra-2); }
+.adm-modal__caixa { box-shadow: var(--sombra-3); }
+.adm-btn--primary { box-shadow: var(--sombra-gold); }
+.adm-etapa { transition: box-shadow 180ms, transform 180ms cubic-bezier(.2,.7,.2,1); }
+.adm-etapa:hover { box-shadow: var(--sombra-2); transform: translateY(-1px); }
+
+/* ── Filtro da jornada ────────────────────────────────────── */
+.adm-etapas__barra {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+}
+.adm-filtros { display: flex; gap: 6px; flex-wrap: wrap; }
+.adm-filtro {
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: var(--bg-elev-1); color: var(--text-muted);
+  padding: 6px 12px; font-size: 12.5px;
+  transition: border-color 160ms, color 160ms, background 160ms, box-shadow 160ms;
+}
+.adm-filtro:hover { color: var(--text); border-color: var(--bg-elev-3); }
+.adm-filtro--on {
+  color: var(--gold-deep); border-color: rgba(197, 165, 102, 0.5);
+  background: rgba(197, 165, 102, 0.10); font-weight: 600;
+  box-shadow: var(--sombra-1);
+}
+.adm-filtro__icone { font-size: 12px; line-height: 1; }
+.adm-filtro__contador {
+  border-radius: 999px; padding: 1px 7px; font-size: 11px; font-weight: 400;
+  background: var(--bg-elev-2); color: var(--text-muted);
+}
+.adm-filtro--on .adm-filtro__contador {
+  background: rgba(197, 165, 102, 0.18); color: var(--gold-deep);
+}
+.adm-etapas__progresso { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.adm-etapas__barra-trilho {
+  width: 140px; height: 6px; border-radius: 999px;
+  background: var(--bg-elev-2); overflow: hidden;
+}
+.adm-etapas__barra-preenchida {
+  display: block; height: 100%; border-radius: 999px;
+  background: var(--gradient-gold);
+  transition: width 300ms cubic-bezier(.2, .7, .2, 1);
+}
+.adm-etapas__numero {
+  font-size: 12.5px; color: var(--text-muted);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .adm-etapas__progresso { margin-left: 0; width: 100%; }
+}
+
+.adm-btn--perigo {
+  color: var(--rose); border-color: rgba(217, 82, 87, 0.3);
+  background: var(--bg-elev-1); box-shadow: none;
+}
+.adm-btn--perigo:hover { background: rgba(217, 82, 87, 0.08); border-color: rgba(217, 82, 87, 0.5); }
+
+/* ── Alternar lista / cards ───────────────────────────────── */
+.adm-visao {
+  display: inline-flex; gap: 2px; padding: 2px;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: var(--bg-elev-2);
+}
+.adm-visao__btn {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  border: 0; background: transparent; border-radius: 999px;
+  padding: 5px 12px; font-size: 12.5px; color: var(--text-muted);
+}
+.adm-visao__btn:hover { color: var(--text); }
+.adm-visao__btn--on {
+  background: var(--bg-elev-1); color: var(--text-strong); font-weight: 600;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+/* ── Jornada em lista ─────────────────────────────────────── */
+.adm-etapalista__num {
+  width: 34px; color: var(--text-muted); font-variant-numeric: tabular-nums;
+}
+.adm-etapalista__nome { font-weight: 600; color: var(--text-strong); }
+.adm-etapalista__meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.adm-etapalista__check {
+  width: 18px; height: 18px; border-radius: 50%; cursor: pointer;
+  border: 1.5px solid var(--border); background: var(--bg-elev-1);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; color: transparent; padding: 0;
+}
+.adm-etapalista__check--on {
+  background: rgba(31, 138, 91, 0.14); border-color: var(--emerald); color: var(--emerald);
+}
+
+/* ── Coleção em cards ─────────────────────────────────────── */
+.adm-colecao {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+.adm-colecao__card {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-elev-1); padding: 16px 18px;
+}
+.adm-colecao__card:hover { border-color: rgba(197, 165, 102, 0.5); }
+.adm-colecao__nome {
+  font-size: 15px; font-weight: 700; color: var(--text-strong);
+  letter-spacing: -0.2px; display: block; margin-bottom: 2px;
+}
+.adm-colecao__sub { font-size: 12.5px; color: var(--text-muted); margin-bottom: 12px; }
+.adm-colecao__linhas { display: grid; gap: 7px; }
+.adm-colecao__linha {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; font-size: 13px;
+}
+.adm-colecao__rotulo { color: var(--text-muted); }
+.adm-colecao__topo {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 10px; margin-bottom: 10px;
+}
+
+/* ── Perfil ───────────────────────────────────────────────── */
+.adm-foto { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
+.adm-foto__moldura {
+  width: 112px; height: 112px; border-radius: 18px; flex: none;
+  border: 1px solid var(--border); background: var(--bg-elev-2);
+  display: inline-flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.adm-foto__img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.adm-foto__iniciais {
+  font-size: 30px; font-weight: 700; color: var(--gold-deep);
+  letter-spacing: 0.02em;
+}
+.adm-foto__acoes { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.adm-foto__dica { font-size: 12.5px; color: var(--text-muted); }
+
+.adm-obrigatorio { color: var(--rose); font-weight: 700; }
+.adm-opcional { color: var(--text-muted); font-weight: 400; text-transform: none; letter-spacing: 0; }
+.adm-input--erro { border-color: var(--rose); }
+.adm-input--erro:focus { outline-color: var(--rose); }
+.adm-campo__erro { font-size: 12.5px; color: var(--rose); margin-top: 4px; }
+.adm-salvo { font-size: 13px; color: var(--emerald); font-weight: 600; }
+
+/* ── Avatar de membro ─────────────────────────────────────── */
+:root {
+  --avatar-fundo: rgb(226, 232, 240);
+  --avatar-traco: rgb(148, 163, 184);
+}
+:root[data-theme='dark'] {
+  --avatar-fundo: rgb(40, 42, 45);
+  --avatar-traco: rgb(100, 116, 139);
+}
+
+.adm-avatar {
+  display: inline-flex; flex: none; overflow: hidden;
+  border-radius: 50%; background: var(--avatar-fundo);
+  border: 1px solid var(--border-soft);
+}
+.adm-avatar--linha { width: 30px; height: 30px; }
+.adm-avatar__iniciais {
+  display: grid; place-items: center; width: 100%; height: 100%;
+  border-radius: inherit; background: var(--gold-soft); color: var(--gold-deep);
+  font-weight: 700; letter-spacing: 0.02em; line-height: 1;
+}
+/* Tamanho pelo avatar, não pelo texto em volta: em "em" as iniciais herdavam
+   a fonte de quem as continha, e numa linha de 12px viravam um borrão. */
+.adm-avatar--linha .adm-avatar__iniciais { font-size: 11px; }
+.adm-avatar--card .adm-avatar__iniciais { font-size: 14px; }
+.adm-avatar--titulo .adm-avatar__iniciais { font-size: 18px; }
+.adm-step__autor .adm-avatar--linha .adm-avatar__iniciais { font-size: 9.5px; }
+.adm-avatar--card { width: 42px; height: 42px; }
+.adm-avatar--titulo { width: 52px; height: 52px; border-radius: 16px; }
+.adm-avatar__img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.adm-avatar__vazio { width: 100%; height: 100%; display: block; }
+
+.adm-membro { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.adm-membro__texto { display: flex; flex-direction: column; min-width: 0; }
+.adm-membro__nome { font-weight: 600; color: var(--text-strong); }
+.adm-membro__sub { font-size: 12px; color: var(--text-muted); }
+
+/* ── Filhos ───────────────────────────────────────────────── */
+.adm-filhos__topo {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin: 22px 0 10px;
+}
+.adm-secao {
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.adm-filhos__n {
+  margin-left: 7px; padding: 1px 7px; border-radius: 999px;
+  background: var(--bg-elev-2); color: var(--text-muted);
+  font-size: 11px; letter-spacing: 0;
+}
+.adm-btn--pequeno { padding: 5px 11px; font-size: 12.5px; }
+
+.adm-filhos { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.adm-filho {
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 13px; background: var(--bg-elev-1);
+  display: flex; flex-direction: column; gap: 2px; min-width: 0;
+}
+.adm-filho__nome { font-weight: 600; color: var(--text-strong); }
+.adm-filho__meta { font-size: 12px; color: var(--text-muted); }
+
+.adm-filhos__edicao { display: grid; gap: 8px; }
+.adm-filho__linha {
+  display: grid; gap: 8px; align-items: center;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 1fr) auto;
+}
+.adm-filho__linha--novo {
+  border-top: 1px dashed var(--border); padding-top: 12px; margin-top: 4px;
+}
+@media (max-width: 860px) {
+  .adm-filho__linha { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Pendências ───────────────────────────────────────────── */
+.adm-pendencias { display: grid; gap: 8px; margin-bottom: 14px; }
+.adm-pendencia {
+  display: grid; gap: 10px; align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) 9.5rem minmax(0, 8rem) auto;
+}
+.adm-pendencia--ok .adm-pendencia__texto {
+  color: var(--text-muted); text-decoration: line-through;
+}
+.adm-pendencia--nova { border-top: 1px dashed var(--border); padding-top: 14px; }
+.adm-pendencia__texto { width: 100%; min-width: 0; }
+.adm-pendencia__quando { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.adm-pendencias__resumo { font-size: 12.5px; color: var(--text-muted); margin-top: 12px; }
+
+.adm-check {
+  width: 22px; height: 22px; flex: none; cursor: pointer; padding: 0;
+  border-radius: 50%; border: 1.5px solid var(--border);
+  background: var(--bg-elev-1); color: transparent; font-size: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.adm-check:hover { border-color: var(--emerald); color: rgba(31, 138, 91, 0.4); }
+.adm-check--on {
+  background: rgba(31, 138, 91, 0.14); border-color: var(--emerald); color: var(--emerald);
+}
+.adm-check--vazio { border-style: dashed; cursor: default; }
+
+@media (max-width: 860px) {
+  .adm-pendencia { grid-template-columns: auto 1fr; }
+  .adm-pendencia__quando { display: none; }
+}
+
+/* ── Anotação no histórico ────────────────────────────────── */
+.adm-nota {
+  display: grid; gap: 10px; align-items: center;
+  grid-template-columns: minmax(0, 1fr) 9.5rem auto;
+  padding: 16px 18px; border-bottom: 1px solid var(--border);
+}
+.adm-nota__texto { width: 100%; min-width: 0; }
+.adm-step--nota { background: rgba(197, 165, 102, 0.06); }
+.adm-step__nota {
+  display: block; margin-top: 3px; color: var(--text);
+  font-size: 13.5px; line-height: 1.5;
+}
+@media (max-width: 720px) {
+  .adm-nota { grid-template-columns: 1fr 1fr; }
+  .adm-nota__texto { grid-column: 1 / -1; }
+}
+
+/* ── Status clicável ──────────────────────────────────────── */
+.adm-status__select { min-width: 9rem; padding: 4px 8px; font-size: 12.5px; }
+
+/* ── Cabeçalho: status e ação lado a lado ─────────────────── */
+.adm-record__acoes { display: flex; align-items: center; gap: 10px; }
+
+/* O chip com line-height 0 saía do alinhamento do botão vizinho: a caixa
+   colapsava e ele flutuava alguns pixels acima da linha. */
+.adm-status { display: inline-flex; align-items: center; }
+.adm-status--clicavel { border: 0; background: transparent; padding: 0; cursor: pointer; }
+.adm-status--clicavel:hover { box-shadow: 0 0 0 3px rgba(197, 165, 102, 0.22); }
+.adm-status--clicavel:disabled { opacity: 0.55; cursor: progress; }
+.adm-status--linha { border-radius: 999px; }
+
+/* No cabeçalho o status é um controle ao lado de outro, então veste a mesma
+   altura, o mesmo raio e a mesma tipografia do botão. */
+.adm-status--titulo { border-radius: 9px; }
+.adm-status--titulo .adm-chip {
+  padding: 8px 14px; font-size: 13px; border-radius: 9px;
+  border: 1px solid transparent;
+}
+.adm-status__select--titulo { padding: 8px 12px; font-size: 13px; border-radius: 9px; }
+
+/* ── Densidade da tabela ──────────────────────────────────── */
+/* Tudo a 11px menos o nome do registro: é por ele que se procura a linha, e
+   ele encolhido faz a tabela inteira virar um bloco cinza sem entrada. */
+.adm-table tbody td { font-size: 11px; }
+.adm-table thead th { font-size: 11px; }
+.adm-table__link { font-size: 13.5px; }
+.adm-table__sub { font-size: 11px; }
+.adm-table tbody td .adm-chip { font-size: 11px; padding: 2px 9px; }
+
+.adm-status__seta {
+  width: 11px; height: 11px; margin-left: 5px; margin-right: -2px;
+  opacity: 0.65; flex: none;
+}
+.adm-status--clicavel:hover .adm-status__seta { opacity: 1; }
+
+/* ── Campos de formulário ─────────────────────────────────── */
+/* Um desenho só para todo campo de formulário. Antes cada tela montava o seu,
+   e a mesma tela tinha três alturas diferentes e um select nativo sem borda. */
+.adm-campos { display: grid; gap: 14px 18px; margin-bottom: 14px; }
+.adm-campos--1 { grid-template-columns: 1fr; }
+.adm-campos--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.adm-campos--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 860px) {
+  .adm-campos--2, .adm-campos--3 { grid-template-columns: 1fr; }
+}
+
+/* Empacotado no topo: numa linha em que um campo tem dica e o vizinho não, a
+   célula mais baixa esticava e empurrava o próprio input para baixo, e os
+   inputs da mesma linha ficavam em alturas diferentes. */
+.adm-campo { display: grid; gap: 5px; min-width: 0; align-content: start; }
+.adm-campo__rotulo {
+  font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--text-soft); font-weight: 600;
+}
+/* min-width: 0 e width: 100% juntos: o .adm-input traz min-width 240px, que
+   dentro do grid estoura a coluna em vez de encolher. */
+.adm-campo__controle { width: 100%; min-width: 0; }
+.adm-campo__dica { font-size: 11px; color: var(--text-soft); line-height: 1.5; }
+
+.adm-campo__selecao { display: block; }
+
+.adm-campo--marcar {
+  grid-auto-flow: column; grid-template-columns: auto 1fr;
+  align-items: center; gap: 8px; cursor: pointer;
+  font-size: 12.5px; color: var(--text);
+}
+
+.adm-campos__acoes {
+  display: flex; align-items: center; gap: 10px;
+  justify-content: flex-end; margin: 4px 0 14px;
+}
+
+/* O select nativo desenha a própria seta, com a fonte e a cor do sistema — é o
+   que fazia o campo destoar do resto da tela. A regra é por elemento, e não por
+   uma classe nova, porque são mais de dez selects espalhados pelo app: corrigir
+   arquivo por arquivo deixaria o próximo nascer errado de novo. */
+select.adm-input {
+  appearance: none; -webkit-appearance: none;
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%23808a99' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  background-size: 10px 6px;
+}
+/* O status do cabeçalho tem seta própria, desenhada ao lado do chip. */
+select.adm-status__select { background-image: none; padding-right: 8px; }
+
+/* Célula de tabela que vira campo ao clicar. O tracejado é o que diz que dá
+   para clicar; sem ele a célula vazia parece só vazia. */
+.adm-editavel {
+  background: transparent; border: 0; padding: 0; cursor: pointer;
+  font: inherit; color: inherit; text-align: left;
+  border-bottom: 1px dashed var(--border);
+}
+.adm-editavel:hover { border-bottom-color: var(--gold); color: var(--text); }
+
+/* ── Foto: recorte e troca ────────────────────────────────── */
+.adm-recorte__caixa { max-width: 400px; }
+.adm-recorte__palco {
+  position: relative; margin: 0 auto 18px;
+  overflow: hidden; border-radius: 14px;
+  background: var(--avatar-fundo);
+  cursor: grab; touch-action: none; user-select: none;
+}
+.adm-recorte__palco:active { cursor: grabbing; }
+.adm-recorte__palco--redondo { border-radius: 50%; }
+.adm-recorte__img {
+  position: absolute; top: 0; left: 0;
+  max-width: none; transform-origin: top left;
+  -webkit-user-drag: none;
+}
+/* A máscara é só a borda por dentro: escurecer o que fica de fora exigiria um
+   segundo palco, e o palco JÁ é o recorte — o que se vê é o que sai. */
+.adm-recorte__mascara {
+  position: absolute; inset: 0; pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55),
+              inset 0 0 0 2px rgba(0, 0, 0, 0.08);
+}
+.adm-recorte__zoom { display: block; margin-bottom: 12px; }
+.adm-recorte__range {
+  width: 100%; margin-top: 6px; height: 4px; padding: 0;
+  appearance: none; -webkit-appearance: none;
+  background: var(--border); border-radius: 999px; outline: none;
+}
+.adm-recorte__range::-webkit-slider-thumb {
+  appearance: none; -webkit-appearance: none;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--gold-deep); border: 2px solid var(--bg-elev-1);
+  box-shadow: var(--sombra-1); cursor: pointer;
+}
+.adm-recorte__range::-moz-range-thumb {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--gold-deep); border: 2px solid var(--bg-elev-1);
+  box-shadow: var(--sombra-1); cursor: pointer;
+}
+.adm-recorte__dica {
+  margin: 0 0 14px; font-size: 12.5px; color: var(--text-muted); text-align: center;
+}
+
+.adm-trocarfoto { display: inline-flex; align-items: center; gap: 10px; }
+.adm-trocarfoto__alvo {
+  position: relative; display: inline-flex; padding: 0;
+  border: none; background: none; cursor: pointer;
+  /* Herdado pela capa e pelas iniciais: no cabeçalho do clube o avatar é
+     quadrado arredondado, e uma capa redonda sobrando nos cantos entrega. */
+  border-radius: 16px;
+}
+.adm-trocarfoto__alvo:disabled { cursor: default; }
+/* A capa só aparece no hover: um rótulo permanente sobre a foto cobre
+   justamente o rosto que a foto existe para mostrar. */
+.adm-trocarfoto__capa {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  border-radius: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+  color: #fff; background: rgba(0, 0, 0, 0.5);
+  opacity: 0; transition: opacity 0.14s ease;
+}
+.adm-trocarfoto__alvo:hover .adm-trocarfoto__capa,
+.adm-trocarfoto__alvo:focus-visible .adm-trocarfoto__capa,
+.adm-trocarfoto__alvo:disabled .adm-trocarfoto__capa { opacity: 1; }
+.adm-trocarfoto__remover {
+  border: none; background: none; padding: 0; cursor: pointer;
+  font-size: 12px; color: var(--text-muted); text-decoration: underline;
+}
+.adm-trocarfoto__remover:hover { color: var(--perigo); }
+
+/* ── Autor da linha do histórico ─────────────────────────── */
+.adm-step__autor {
+  display: inline-flex; align-items: center; gap: 8px;
+  flex-shrink: 0; white-space: nowrap;
+}
+.adm-step__quem { font-size: 12.5px; font-weight: 600; color: var(--text-soft); }
+.adm-step__quem--sem { font-weight: 500; font-style: italic; color: var(--text-muted); }
+.adm-step__autor .adm-avatar--linha { width: 24px; height: 24px; }
+.adm-step__autor .adm-step__state { margin-left: 4px; }
+
+/* ── Busca do painel ─────────────────────────────────────── */
+/* Alarga ao focar: o painel abaixo mostra foto, nome e e-mail, e um campo
+   estreito cortaria o próprio texto que a pessoa está digitando. */
+.adm-busca { position: relative; width: 280px; transition: width 0.18s ease; }
+.adm-busca--aberta { width: 420px; }
+@media (max-width: 860px) {
+  .adm-busca, .adm-busca--aberta { width: 100%; }
+}
+.adm-busca__campo { width: 100%; }
+.adm-busca__painel {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 40;
+  max-height: 440px; overflow-y: auto;
+  background: var(--bg-elev-1); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--sombra-3); padding: 6px;
+}
+.adm-busca__grupo {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 10px 4px; font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted);
+}
+.adm-busca__grupo span {
+  font-weight: 600; letter-spacing: 0; padding: 0 6px; border-radius: 999px;
+  background: var(--gold-soft); color: var(--gold-deep);
+}
+.adm-busca__lista { list-style: none; margin: 0; padding: 0; }
+.adm-busca__opcao {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px; border-radius: 10px; cursor: pointer;
+}
+.adm-busca__opcao--ativa { background: rgba(197, 165, 102, 0.12); }
+.adm-busca__texto { display: grid; min-width: 0; flex: 1; }
+.adm-busca__nome {
+  font-size: 13.5px; font-weight: 600; color: var(--text-strong);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.adm-busca__sub {
+  font-size: 12px; color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.adm-busca__tipo {
+  font-size: 10.5px; font-weight: 600; color: var(--text-muted);
+  border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px;
+}
+.adm-busca__vazio, .adm-busca__rodape {
+  padding: 12px 10px; font-size: 12.5px; color: var(--text-muted); text-align: center;
+}
+.adm-busca__rodape { border-top: 1px solid var(--border-soft); margin-top: 4px; }
+
+/* ── Grade de resultados da busca ────────────────────────── */
+.adm-resultados { margin-bottom: 26px; }
+.adm-resultados__titulo {
+  display: flex; align-items: center; gap: 8px; margin: 4px 0 12px;
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.adm-resultados__titulo span {
+  font-weight: 600; letter-spacing: 0; padding: 0 7px; border-radius: 999px;
+  background: var(--gold-soft); color: var(--gold-deep);
+}
+.adm-alunos {
+  display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+}
+.adm-aluno {
+  display: flex; align-items: center; gap: 12px; min-width: 0;
+  padding: 14px; border-radius: var(--radius);
+  background: var(--bg-elev-1); border: 1px solid var(--border);
+  box-shadow: var(--sombra-1); color: inherit; text-decoration: none;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+}
+.adm-aluno:hover, .adm-aluno:focus-visible {
+  transform: translateY(-1px); box-shadow: var(--sombra-2); border-color: var(--gold);
+}
+.adm-aluno__texto { display: grid; gap: 2px; min-width: 0; }
+.adm-aluno__nome {
+  font-size: 14px; font-weight: 600; color: var(--text-strong);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.adm-aluno__email, .adm-aluno__clube {
+  font-size: 12px; color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.adm-aluno__clube { color: var(--gold-deep); font-weight: 600; }
+
+/* ── Menu suspenso (Exportar) ─────────────────────────────── */
+.adm-menu-ancora { position: relative; display: inline-flex; align-items: center; }
+.adm-menu-fundo {
+  position: fixed; inset: 0; z-index: 29; border: 0; padding: 0;
+  background: transparent; cursor: default;
+}
+.adm-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30;
+  width: min(300px, calc(100vw - 32px));
+  background: var(--bg-elev-1); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: var(--sombra-2); padding: 6px;
+}
+.adm-menu__item {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  width: 100%; border: 0; background: transparent; cursor: pointer; text-align: left;
+  padding: 9px 10px; border-radius: 8px; font: inherit; font-size: 13.5px; color: var(--text);
+}
+.adm-menu__item span { font-size: 12px; color: var(--text-muted); }
+.adm-menu__item:hover { background: var(--bg-elev-2); }
+.adm-menu__nota { margin: 4px 10px 6px; font-size: 11.5px; line-height: 1.5; color: var(--text-muted); }
+.adm-menu__erro { margin-left: 8px; font-size: 12px; color: var(--rose); }

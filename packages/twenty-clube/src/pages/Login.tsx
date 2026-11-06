@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { ApiError, meta } from 'src/api/client';
 import { EXCHANGE_MUTATION, LOGIN_MUTATION } from 'src/api/queries';
+import { mensagemDeErroDeLogin } from 'src/ui/erroDeLogin';
 
 export const Login = ({ onEntrou }: { onEntrou: () => void }) => {
   const [email, setEmail] = useState('');
@@ -25,11 +26,7 @@ export const Login = ({ onEntrou }: { onEntrou: () => void }) => {
 
       onEntrou();
     } catch (causa) {
-      setErro(
-        causa instanceof ApiError && /credenc|password|senha/i.test(causa.message)
-          ? 'E-mail ou senha incorretos.'
-          : 'Não conseguimos entrar. Tente de novo em instantes.',
-      );
+      setErro(mensagemDeErroDeLogin(causa instanceof ApiError ? causa.message : null));
     } finally {
       setEnviando(false);
     }

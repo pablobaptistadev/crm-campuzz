@@ -67,6 +67,15 @@ import {
 } from 'src/metadata/types';
 import { hashPassword, verifyPassword } from 'src/auth/password';
 import { ErroDoPerfil, atualizarMeuNome, trocarMinhaSenha } from 'src/services/meu-perfil';
+import {
+  ErroDeAcesso,
+  LINK_DE_SENHA_INVALIDO,
+  conferirCodigoDeAcesso,
+  lerRedefinicaoDeSenha,
+  prepararCodigoDeAcesso,
+  prepararRedefinicaoDeSenha,
+  redefinirSenha,
+} from 'src/services/acesso-por-email';
 import { issueLoginToken, verifyLoginToken } from 'src/auth/login-token';
 import { issueUploadToken } from 'src/auth/upload-token';
 import { insertFile, markFileUploaded } from 'src/db/core/file-repository';
@@ -74,7 +83,7 @@ import {
   findRoles,
   loadRolePermissions,
 } from 'src/db/core/role-repository';
-import { buildInvitationEmail, sendEmail } from 'src/services/email';
+import { buildInvitationEmail, type EmailMessage, sendEmail } from 'src/services/email';
 import { tipoDoArquivo } from 'src/services/tipo-de-arquivo';
 import {
   consumeInvitation,
@@ -113,6 +122,10 @@ export type MetadataContext = {
   sessionContext: SessionContext | null;
   serverUrl: string;
   throttle: (key: string, limit: number, windowMs: number) => Promise<boolean>;
+  // O envio do e-mail roda depois da resposta: esperar por ele faria o pedido
+  // de um e-mail cadastrado demorar mais que o de um sem conta, e o tempo
+  // contaria quem existe.
+  runAfterResponse: (task: Promise<unknown>) => void;
   sessionUserId: string | null;
   sessionWorkspaceId: string | null;
   issueSession: (input: {
@@ -532,6 +545,10 @@ type AuthTokenPair {
 }
 
 type LoginTokenWrapper { loginToken: AuthToken! }
+type EmailPasswordResetLinkOutput { success: Boolean! }
+type ValidatePasswordResetTokenOutput { id: UUID! email: String! hasPassword: Boolean! }
+type InvalidatePasswordOutput { success: Boolean! }
+type SendLoginCodeOutput { success: Boolean! }
 type AuthTokensWrapper { tokens: AuthTokenPair! }
 
 type WorkspaceUrls { subdomainUrl: String! customUrl: String }
@@ -602,6 +619,7 @@ type SignInUpOutput {
 type Query {
   currentUser: User
   checkUserExists(email: String!, captchaToken: String): UserExists!
+  validatePasswordResetToken(passwordResetToken: String!): ValidatePasswordResetTokenOutput!
   getPublicWorkspaceDataByDomain(origin: String!): PublicWorkspaceData!
   objects(paging: PagingInput): ObjectConnection!
   object(id: UUID!): Object
@@ -1123,6 +1141,12 @@ type Mutation {
   # há como apontar para a conta de outra pessoa.
   updateMyProfile(firstName: String!, lastName: String!): Boolean!
   changeMyPassword(currentPassword: String!, newPassword: String!): Boolean!
+  # Sem sessão, por e-mail. Os dois pedidos respondem success mesmo para e-mail
+  # sem conta: a resposta não pode servir para descobrir quem está cadastrado.
+  emailPasswordResetLink(email: String!, workspaceId: UUID, captchaToken: String): EmailPasswordResetLinkOutput!
+  updatePasswordViaResetToken(passwordResetToken: String!, newPassword: String!): InvalidatePasswordOutput!
+  sendLoginCodeByEmail(email: String!): SendLoginCodeOutput!
+  getLoginTokenFromEmailCode(email: String!, code: String!): LoginTokenWrapper!
   trackAnalytics(type: AnalyticsType!, event: String, name: String, properties: JSON): Analytics!
   createFileUpload(filename: String!, size: Float!, fileFolder: FileFolder!, fieldMetadataId: String): FileUploadTarget!
   completeFileUpload(fileId: String!): FileWithSignedUrl!
@@ -2018,6 +2042,27 @@ export const METADATA_RESOLVERS = {
           availableWorkspacesForSignUp: [],
         },
         userVars: {},
+      };
+    },
+
+    validatePasswordResetToken: async (
+      _parent: unknown,
+      args: { passwordResetToken: string },
+      context: MetadataContext,
+    ) => {
+      const redefinicao = await lerRedefinicaoDeSenha({
+        client: context.client,
+        token: args.passwordResetToken,
+      });
+
+      if (redefinicao === null) {
+        throw new UserFacingError(LINK_DE_SENHA_INVALIDO);
+      }
+
+      return {
+        id: redefinicao.userId,
+        email: redefinicao.email,
+        hasPassword: redefinicao.hasPassword,
       };
     },
 
@@ -3830,11 +3875,129 @@ export const METADATA_RESOLVERS = {
 
       return true;
     },
+
+    emailPasswordResetLink: async (
+      _parent: unknown,
+      args: { email: string },
+      context: MetadataContext,
+    ) => {
+      await exigirLimiteDeEnvio(context, `redefinir-senha:${args.email.trim()}`);
+
+      const mensagem = await prepararRedefinicaoDeSenha({
+        client: context.client,
+        email: args.email,
+        serverUrl: context.serverUrl,
+      });
+
+      enviarDepoisDaResposta(context, mensagem);
+
+      return { success: true };
+    },
+
+    updatePasswordViaResetToken: async (
+      _parent: unknown,
+      args: { passwordResetToken: string; newPassword: string },
+      context: MetadataContext,
+    ) => {
+      try {
+        await redefinirSenha({
+          client: context.client,
+          token: args.passwordResetToken,
+          novaSenha: args.newPassword,
+        });
+      } catch (causa) {
+        throw causa instanceof ErroDeAcesso ? new UserFacingError(causa.message) : causa;
+      }
+
+      return { success: true };
+    },
+
+    sendLoginCodeByEmail: async (
+      _parent: unknown,
+      args: { email: string },
+      context: MetadataContext,
+    ) => {
+      await exigirLimiteDeEnvio(context, `codigo-de-acesso:${args.email.trim()}`);
+
+      const mensagem = await prepararCodigoDeAcesso({
+        client: context.client,
+        appSecret: context.appSecret,
+        email: args.email,
+      });
+
+      enviarDepoisDaResposta(context, mensagem);
+
+      return { success: true };
+    },
+
+    getLoginTokenFromEmailCode: async (
+      _parent: unknown,
+      args: { email: string; code: string },
+      context: MetadataContext,
+    ) => {
+      // O mesmo balde do login por senha: quem chuta código e senha ao mesmo
+      // tempo não ganha o dobro de tentativas.
+      const dentroDoLimite = await context.throttle(
+        `login:${args.email.trim()}`,
+        LOGIN_ATTEMPT_LIMIT,
+        LOGIN_ATTEMPT_WINDOW_MS,
+      );
+
+      if (!dentroDoLimite) {
+        throw new UserFacingError('TOO_MANY_ATTEMPTS');
+      }
+
+      const userId = await conferirCodigoDeAcesso({
+        client: context.client,
+        appSecret: context.appSecret,
+        email: args.email,
+        codigo: args.code,
+      });
+
+      if (userId === null) {
+        throw new UserFacingError('INVALID_LOGIN_CODE');
+      }
+
+      return {
+        loginToken: await issueLoginToken({ appSecret: context.appSecret, userId }),
+      };
+    },
   },
 };
 
 const LOGIN_ATTEMPT_LIMIT = 10;
 const LOGIN_ATTEMPT_WINDOW_MS = 10 * 60 * 1000;
+// Cada pedido manda um e-mail de verdade, então o teto é baixo: sem ele, o
+// formulário vira um jeito de lotar a caixa de alguém.
+const EMAIL_REQUEST_LIMIT = 3;
+const EMAIL_REQUEST_WINDOW_MS = 10 * 60 * 1000;
+
+const exigirLimiteDeEnvio = async (context: MetadataContext, chave: string) => {
+  if (!(await context.throttle(chave, EMAIL_REQUEST_LIMIT, EMAIL_REQUEST_WINDOW_MS))) {
+    throw new UserFacingError('TOO_MANY_ATTEMPTS');
+  }
+};
+
+const enviarDepoisDaResposta = (
+  context: MetadataContext,
+  mensagem: EmailMessage | null,
+) => {
+  if (mensagem === null) {
+    return;
+  }
+
+  context.runAfterResponse(
+    sendEmail({ bindings: context.bindings, message: mensagem })
+      .then((resultado) => {
+        if (!resultado.delivered) {
+          console.error(`E-mail de acesso não enviado: ${resultado.reason}`);
+        }
+      })
+      .catch((causa: unknown) => {
+        console.error('E-mail de acesso não enviado', causa);
+      }),
+  );
+};
 
 const authenticate = async (
   context: MetadataContext,

@@ -1182,3 +1182,42 @@ describe('URL do workspace', () => {
     ).toBe('https://clubes.campuzz.com.br');
   });
 });
+
+describe('twenty-front password reset documents', () => {
+  it('validates the reset link, token check and new password documents', () => {
+    expectValid(`
+      mutation EmailPasswordResetLink(
+        $email: String!
+        $workspaceId: UUID
+        $captchaToken: String
+      ) {
+        emailPasswordResetLink(
+          email: $email
+          workspaceId: $workspaceId
+          captchaToken: $captchaToken
+        ) {
+          success
+        }
+      }
+    `);
+    expectValid(`
+      query ValidatePasswordResetToken($token: String!) {
+        validatePasswordResetToken(passwordResetToken: $token) {
+          id
+          email
+          hasPassword
+        }
+      }
+    `);
+    expectValid(`
+      mutation UpdatePasswordViaResetToken($token: String!, $newPassword: String!) {
+        updatePasswordViaResetToken(
+          passwordResetToken: $token
+          newPassword: $newPassword
+        ) {
+          success
+        }
+      }
+    `);
+  });
+});

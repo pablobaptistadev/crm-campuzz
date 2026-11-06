@@ -13,6 +13,12 @@ describe('mensagemDeErroDeLogin', () => {
     );
   });
 
+  it('código errado ou vencido manda conferir o último e-mail', () => {
+    expect(mensagemDeErroDeLogin('INVALID_LOGIN_CODE')).toBe(
+      'Código incorreto ou vencido. Confira o último e-mail ou peça outro código.',
+    );
+  });
+
   it('sem resposta do servidor, fica o aviso genérico', () => {
     expect(mensagemDeErroDeLogin(null)).toBe('Não conseguimos entrar. Tente de novo em instantes.');
     expect(mensagemDeErroDeLogin('A resposta veio sem dados.')).toBe(

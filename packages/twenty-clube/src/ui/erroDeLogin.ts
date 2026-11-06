@@ -6,6 +6,10 @@ export const mensagemDeErroDeLogin = (mensagemDoServidor: string | null): string
     return 'E-mail ou senha incorretos.';
   }
 
+  if (mensagemDoServidor !== null && /invalid_login_code/i.test(mensagemDoServidor)) {
+    return 'Código incorreto ou vencido. Confira o último e-mail ou peça outro código.';
+  }
+
   if (mensagemDoServidor !== null && /too_many_attempts|tentativas/i.test(mensagemDoServidor)) {
     return 'Muitas tentativas seguidas com este e-mail. Espere 10 minutos e tente de novo.';
   }

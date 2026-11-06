@@ -85,6 +85,7 @@ export const metadataRoute = new Hono<AppEnv>().all('/', async (context) => {
 
         return attempts <= limit;
       },
+      runAfterResponse: (task) => context.executionCtx.waitUntil(task),
       sessionContext,
       sessionUserId: sessionContext?.user.id ?? null,
       sessionWorkspaceId: sessionContext?.membership?.workspace.id ?? null,

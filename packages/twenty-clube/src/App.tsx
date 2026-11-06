@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Navigate, NavLink, Route, Routes, useNavigate } from 'react-router-dom';
+import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import { ApiError, meta } from 'src/api/client';
 import { CURRENT_USER_QUERY, OBJETOS_QUERY, SAIR_MUTATION } from 'src/api/queries';
@@ -11,6 +11,7 @@ import { NovoClube } from 'src/pages/NovoClube';
 import { Pendencias } from 'src/pages/Pendencias';
 import { Radar } from 'src/pages/Radar';
 import { Login } from 'src/pages/Login';
+import { RedefinirSenha } from 'src/pages/RedefinirSenha';
 import { MembroDetalhe } from 'src/pages/MembroDetalhe';
 import { MeuPerfil } from 'src/pages/MeuPerfil';
 import { TrocarFoto } from 'src/modules/perfil/ui/TrocarFoto';
@@ -32,6 +33,7 @@ type Usuario = {
 export const App = () => {
   const [usuario, setUsuario] = useState<Usuario | null | undefined>(undefined);
   const navegar = useNavigate();
+  const local = useLocation();
   const [temClubes, setTemClubes] = useState<boolean | undefined>(undefined);
 
   const sair = useCallback(async () => {
@@ -67,6 +69,20 @@ export const App = () => {
   useEffect(() => {
     void carregarUsuario();
   }, [carregarUsuario]);
+
+  // O link do e-mail abre esta tela com ou sem sessão: quem esqueceu a senha
+  // não está logado, e quem está logado pode querer trocá-la por aqui também.
+  if (local.pathname === '/redefinir-senha') {
+    return (
+      <RedefinirSenha
+        token={new URLSearchParams(local.search).get('token') ?? ''}
+        onIrParaLogin={() => {
+          navegar('/', { replace: true });
+          void carregarUsuario();
+        }}
+      />
+    );
+  }
 
   if (usuario === undefined) {
     return <div className="adm-loading">Carregando…</div>;

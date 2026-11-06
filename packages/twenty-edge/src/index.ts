@@ -2,6 +2,11 @@ import { type Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
 
 import { isApiPath } from 'src/api-paths';
+import {
+  CLUBE_HOSTNAME,
+  CLUBE_HOSTNAME_ANTIGO,
+  isClubeHostname,
+} from 'src/clube-hosts';
 import { type AppEnv, type Bindings } from 'src/env';
 import { clientConfigRoute } from 'src/routes/client-config';
 import { filesRoute } from 'src/routes/files';
@@ -15,11 +20,6 @@ import { varrerLembretes } from 'src/services/lembretes';
 
 const app = new Hono<AppEnv>();
 
-const CLUBE_HOSTNAME = 'clubes.campuzz.com.br';
-// The app answered on the singular first. Bookmarks, the login e-mail and the
-// photo URLs already stored point there, so it stays served and redirects
-// instead of breaking.
-const CLUBE_HOSTNAME_ANTIGO = 'clube.campuzz.com.br';
 const CLUBE_BASE = '/clube';
 
 
@@ -132,8 +132,7 @@ app.all('/internal/*', (context) => context.notFound());
 // in the same bundle. Serving it by Host keeps it on one origin with the API,
 // so the session cookie works without any cross-site exception.
 const isClubeRequest = (url: URL): boolean =>
-  url.hostname === CLUBE_HOSTNAME ||
-  url.hostname === CLUBE_HOSTNAME_ANTIGO ||
+  isClubeHostname(url.hostname) ||
   url.pathname === CLUBE_BASE ||
   url.pathname.startsWith(`${CLUBE_BASE}/`);
 

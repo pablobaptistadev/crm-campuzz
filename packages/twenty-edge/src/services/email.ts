@@ -129,3 +129,66 @@ export const buildInvitationEmail = ({
 </body></html>`,
   };
 };
+
+const saudacao = (nome: string | null): string =>
+  nome === null || nome.trim().length === 0 ? 'Olá.' : `Olá, ${nome.trim()}.`;
+
+export const buildPasswordResetEmail = ({
+  to,
+  firstName,
+  link,
+}: {
+  to: string;
+  firstName: string | null;
+  link: string;
+}): EmailMessage => ({
+  to,
+  subject: 'Redefinir sua senha do CRM Campuzz',
+  text: [
+    saudacao(firstName),
+    '',
+    `Recebemos um pedido para redefinir a senha da conta ${to}.`,
+    '',
+    `Para criar uma senha nova, acesse: ${link}`,
+    '',
+    'O link vale por 1 hora e só funciona uma vez.',
+    'Se não foi você que pediu, pode ignorar esta mensagem: sua senha continua a mesma.',
+  ].join('\n'),
+  html: `<!doctype html>
+<html lang="pt-BR"><body style="font-family: ui-sans-serif, system-ui, sans-serif; line-height: 1.6; color: #1b1b1b">
+  <p>${escapeHtml(saudacao(firstName))}</p>
+  <p>Recebemos um pedido para redefinir a senha da conta <strong>${escapeHtml(to)}</strong>.</p>
+  <p><a href="${escapeHtml(link)}" style="display: inline-block; padding: 10px 18px; background: #1b1b1b; color: #fff; border-radius: 6px; text-decoration: none">Criar senha nova</a></p>
+  <p style="color: #6b6b6b; font-size: 13px">O link vale por 1 hora e só funciona uma vez. Se não foi você que pediu, pode ignorar esta mensagem: sua senha continua a mesma.</p>
+</body></html>`,
+});
+
+export const buildLoginCodeEmail = ({
+  to,
+  firstName,
+  code,
+}: {
+  to: string;
+  firstName: string | null;
+  code: string;
+}): EmailMessage => ({
+  to,
+  // O código vai no assunto: no celular, a notificação já mostra o número e a
+  // pessoa não precisa abrir o e-mail para copiá-lo.
+  subject: `${code} é o seu código de acesso ao CRM Campuzz`,
+  text: [
+    saudacao(firstName),
+    '',
+    `Seu código de acesso é ${code}.`,
+    '',
+    'Ele vale por 10 minutos e só funciona uma vez.',
+    'Se não foi você que pediu, pode ignorar esta mensagem: ninguém entra sem esse código.',
+  ].join('\n'),
+  html: `<!doctype html>
+<html lang="pt-BR"><body style="font-family: ui-sans-serif, system-ui, sans-serif; line-height: 1.6; color: #1b1b1b">
+  <p>${escapeHtml(saudacao(firstName))}</p>
+  <p>Seu código de acesso é:</p>
+  <p style="font-size: 28px; font-weight: 700; letter-spacing: 6px; margin: 8px 0 16px">${escapeHtml(code)}</p>
+  <p style="color: #6b6b6b; font-size: 13px">Ele vale por 10 minutos e só funciona uma vez. Se não foi você que pediu, pode ignorar esta mensagem: ninguém entra sem esse código.</p>
+</body></html>`,
+});

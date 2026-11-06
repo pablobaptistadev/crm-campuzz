@@ -212,6 +212,38 @@ export const EXCHANGE_MUTATION = `
   }
 `;
 
+export const ENVIAR_CODIGO_MUTATION = `
+  mutation EnviarCodigo($email: String!) {
+    sendLoginCodeByEmail(email: $email) { success }
+  }
+`;
+
+export const ENTRAR_COM_CODIGO_MUTATION = `
+  mutation EntrarComCodigo($email: String!, $code: String!) {
+    getLoginTokenFromEmailCode(email: $email, code: $code) {
+      loginToken { token }
+    }
+  }
+`;
+
+export const ESQUECI_A_SENHA_MUTATION = `
+  mutation EsqueciASenha($email: String!) {
+    emailPasswordResetLink(email: $email) { success }
+  }
+`;
+
+export const CONFERIR_LINK_DE_SENHA_QUERY = `
+  query ConferirLinkDeSenha($token: String!) {
+    validatePasswordResetToken(passwordResetToken: $token) { email }
+  }
+`;
+
+export const REDEFINIR_SENHA_MUTATION = `
+  mutation RedefinirSenha($token: String!, $newPassword: String!) {
+    updatePasswordViaResetToken(passwordResetToken: $token, newPassword: $newPassword) { success }
+  }
+`;
+
 export const ATUALIZAR_ETAPA = `
   mutation AtualizarEtapa($id: UUID!, $data: EtapaJornadaUpdateInput!) {
     updateEtapaJornada(id: $id, data: $data) { ${ETAPA} }

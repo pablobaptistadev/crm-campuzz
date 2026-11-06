@@ -69,6 +69,20 @@ describe('sendEmail', () => {
     fetchMock.mockRestore();
   });
 
+  it('sends links as written, without the http click-tracking redirect', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(null, { status: 202 }));
+
+    await sendEmail({ bindings: bindings(), message });
+
+    const body = JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body));
+
+    expect(body.tracking_settings.click_tracking).toEqual({ enable: false, enable_text: false });
+
+    fetchMock.mockRestore();
+  });
+
   // 202, not 200 — treating only 200 as success would report every delivered
   // message as failed.
   it('accepts 202 as delivered', async () => {

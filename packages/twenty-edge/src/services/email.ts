@@ -77,6 +77,12 @@ export const sendEmail = async ({
         { type: 'text/plain', value: message.text },
         { type: 'text/html', value: message.html },
       ],
+      // O rastreio de clique troca cada link por um redirecionamento do domínio
+      // de tracking, que responde em http puro. Convite, código e redefinição
+      // de senha levam token no link, e o token não pode trafegar sem TLS.
+      tracking_settings: {
+        click_tracking: { enable: false, enable_text: false },
+      },
     }),
   });
 

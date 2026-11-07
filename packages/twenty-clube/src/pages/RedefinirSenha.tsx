@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ApiError, meta } from 'src/api/client';
 import { CONFERIR_LINK_DE_SENHA_QUERY, REDEFINIR_SENHA_MUTATION } from 'src/api/queries';
 import { AcoesSecundarias, CampoDeAcesso, CartaoDeAcesso } from 'src/ui/CartaoDeAcesso';
+import { CampoDeSenha } from 'src/ui/CampoDeSenha';
 
 type Estado =
   | { etapa: 'conferindo' }
@@ -100,28 +101,20 @@ export const RedefinirSenha = ({
       <input type="email" autoComplete="username" value={estado.email} readOnly hidden />
 
       <CampoDeAcesso rotulo="Nova senha">
-        <input
-          className="adm-input"
-          style={{ width: '100%', minWidth: 0 }}
-          type="password"
+        <CampoDeSenha
+          valor={novaSenha}
+          onChange={setNovaSenha}
           autoComplete="new-password"
           minLength={8}
-          required
-          value={novaSenha}
-          onChange={(evento) => setNovaSenha(evento.target.value)}
         />
       </CampoDeAcesso>
 
       <CampoDeAcesso rotulo="Confirmar nova senha">
-        <input
-          className="adm-input"
-          style={{ width: '100%', minWidth: 0 }}
-          type="password"
+        <CampoDeSenha
+          valor={confirmacao}
+          onChange={setConfirmacao}
           autoComplete="new-password"
           minLength={8}
-          required
-          value={confirmacao}
-          onChange={(evento) => setConfirmacao(evento.target.value)}
         />
       </CampoDeAcesso>
 

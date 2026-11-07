@@ -9,6 +9,7 @@ import {
   LOGIN_MUTATION,
 } from 'src/api/queries';
 import { AcoesSecundarias, CampoDeAcesso, CartaoDeAcesso } from 'src/ui/CartaoDeAcesso';
+import { CampoDeSenha } from 'src/ui/CampoDeSenha';
 import { mensagemDeErroDeLogin } from 'src/ui/erroDeLogin';
 
 type Modo = 'senha' | 'codigo' | 'esqueci';
@@ -163,15 +164,7 @@ export const Login = ({ onEntrou }: { onEntrou: () => void }) => {
             </button>
           }
         >
-          <input
-            className="adm-input"
-            style={{ width: '100%', minWidth: 0 }}
-            type="password"
-            autoComplete="current-password"
-            required
-            value={senha}
-            onChange={(evento) => setSenha(evento.target.value)}
-          />
+          <CampoDeSenha valor={senha} onChange={setSenha} autoComplete="current-password" />
         </CampoDeAcesso>
       )}
 

@@ -306,6 +306,18 @@ button { font: inherit; }
   padding: 8px 12px; font-size: 13px; min-width: 240px;
 }
 .adm-input:focus { outline: 2px solid rgba(197, 165, 102, 0.4); outline-offset: 1px; }
+/* Senha com o olho para mostrar: o botão fica dentro do campo, à direita. */
+.adm-senha { position: relative; }
+.adm-senha__campo { width: 100%; min-width: 0; padding-right: 44px; }
+.adm-senha__olho {
+  position: absolute; top: 50%; right: 4px; transform: translateY(-50%);
+  width: 36px; height: 32px; display: grid; place-items: center;
+  border: 0; border-radius: 7px; background: transparent; cursor: pointer;
+  color: var(--text-muted); transition: color 0.15s ease, background 0.15s ease;
+}
+.adm-senha__olho:hover { color: var(--gold-deep); background: rgba(197, 165, 102, 0.12); }
+.adm-senha__olho:focus-visible { outline: 2px solid rgba(197, 165, 102, 0.5); outline-offset: 0; color: var(--gold-deep); }
+.adm-senha__olho[aria-pressed='true'] { color: var(--gold-deep); }
 .adm-btn {
   border: 1px solid var(--border); border-radius: 9px;
   background: var(--bg-elev-1); color: var(--text);

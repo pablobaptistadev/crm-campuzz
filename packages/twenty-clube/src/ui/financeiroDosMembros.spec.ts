@@ -2,8 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { agruparFinanceiro } from 'src/ui/financeiroDosMembros';
 import { estaEmAtraso } from 'src/ui/FiltrosDeMembro';
+import { hojeLocal } from 'src/ui/datas';
 
-const ONTEM = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+// Ontem pelo dia de São Paulo, que é o que o atraso usa: em UTC, entre 21h e
+// meia-noite de Brasília, "ontem" ainda é hoje.
+const ONTEM = new Date(Date.parse(`${hojeLocal()}T00:00:00Z`) - 86_400_000)
+  .toISOString()
+  .slice(0, 10);
 
 describe('agrupar o financeiro achatado por membro', () => {
   const agrupado = agruparFinanceiro({

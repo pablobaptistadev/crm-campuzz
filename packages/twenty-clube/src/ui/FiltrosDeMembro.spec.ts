@@ -6,12 +6,15 @@ import {
   filtrarMembros,
   type MembroFiltravel,
 } from 'src/ui/FiltrosDeMembro';
+import { hojeLocal } from 'src/ui/datas';
 
-const HOJE = new Date().toISOString().slice(0, 10);
-const ONTEM = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
-const DAQUI_A_UM_MES = new Date(Date.now() + 30 * 86_400_000)
-  .toISOString()
-  .slice(0, 10);
+// O atraso conta pelo dia de São Paulo; montar estas datas em UTC quebrava os
+// testes todo dia entre 21h e meia-noite de Brasília.
+const HOJE = hojeLocal();
+const diaAPartirDeHoje = (dias: number) =>
+  new Date(Date.parse(`${HOJE}T00:00:00Z`) + dias * 86_400_000).toISOString().slice(0, 10);
+const ONTEM = diaAPartirDeHoje(-1);
+const DAQUI_A_UM_MES = diaAPartirDeHoje(30);
 
 const membro = (dados: Partial<MembroFiltravel>): MembroFiltravel => ({
   name: 'Fulano',

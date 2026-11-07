@@ -1604,35 +1604,35 @@ msgstr "添加 SSO 身份提供者"
 msgid "Add test input for evaluation (e.g., \"Find all customers in NY\")"
 msgstr ""
 
-#. js-lingui-id: FKGcEL
+#. js-lingui-id: h2UQVK
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty MCP server as a remote context server in Zed."
-msgstr "在 Zed 中將 Twenty MCP 伺服器新增為遠端內容伺服器。"
+msgid "Add the CRM Campuzz MCP server as a remote context server in Zed."
+msgstr "在 Zed 中將 CRM Campuzz MCP 伺服器新增為遠端內容伺服器。"
 
-#. js-lingui-id: iA2nHX
+#. js-lingui-id: UklFHd
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty MCP server from Augment Code settings."
-msgstr "在 Augment Code 設定中新增 Twenty MCP 伺服器。"
+msgid "Add the CRM Campuzz MCP server from Augment Code settings."
+msgstr "在 Augment Code 設定中新增 CRM Campuzz MCP 伺服器。"
 
-#. js-lingui-id: l+NzAk
+#. js-lingui-id: mN1+/F
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty MCP server from Raycast's MCP commands or settings."
-msgstr "透過 Raycast 的 MCP 指令或設定新增 Twenty MCP 伺服器。"
+msgid "Add the CRM Campuzz MCP server from Raycast's MCP commands or settings."
+msgstr "透過 Raycast 的 MCP 指令或設定新增 CRM Campuzz MCP 伺服器。"
 
-#. js-lingui-id: j6G/yI
+#. js-lingui-id: 57Etpp
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty MCP server in Gemini CLI settings."
-msgstr "在 Gemini CLI 設定中新增 Twenty MCP 伺服器。"
+msgid "Add the CRM Campuzz MCP server in Gemini CLI settings."
+msgstr "在 Gemini CLI 設定中新增 CRM Campuzz MCP 伺服器。"
 
-#. js-lingui-id: /OyhlM
+#. js-lingui-id: bPre4P
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty MCP server to your LibreChat configuration file."
-msgstr "將 Twenty MCP 伺服器新增到您的 LibreChat 設定檔。"
+msgid "Add the CRM Campuzz MCP server to your LibreChat configuration file."
+msgstr "將 CRM Campuzz MCP 伺服器新增到您的 LibreChat 設定檔。"
 
-#. js-lingui-id: K0DXoj
+#. js-lingui-id: OmUrpX
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add the Twenty remote server with LM Studio's install link."
-msgstr "使用 LM Studio 的安裝連結新增 Twenty 遠端伺服器。"
+msgid "Add the CRM Campuzz remote server with LM Studio's install link."
+msgstr "使用 LM Studio 的安裝連結新增 CRM Campuzz 遠端伺服器。"
 
 #. js-lingui-id: 5+ttxv
 #: src/modules/settings/accounts/components/SettingsAccountsBlocklistInput.tsx
@@ -1649,10 +1649,10 @@ msgstr "添加到收藏夾"
 msgid "Add topic"
 msgstr "新增主題"
 
-#. js-lingui-id: 4D/zWv
+#. js-lingui-id: EI/noC
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Add Twenty as a Streamable HTTP extension in Goose."
-msgstr "在 Goose 中將 Twenty 新增為可串流的 HTTP 擴充功能。"
+msgid "Add CRM Campuzz as a Streamable HTTP extension in Goose."
+msgstr "在 Goose 中將 CRM Campuzz 新增為可串流的 HTTP 擴充功能。"
 
 #. js-lingui-id: XnwceV
 #: src/pages/settings/applications/components/SettingsApplicationRegistrationRedirectURIsInput.tsx
@@ -3300,10 +3300,10 @@ msgstr "計費間隔"
 msgid "Billing period"
 msgstr "計費期間"
 
-#. js-lingui-id: xF/NXI
+#. js-lingui-id: NjURf2
 #: src/modules/settings/billing/hooks/useBillingPortalSession.ts
-msgid "Billing portal session error. Please retry or contact Twenty team"
-msgstr "帳務入口會話錯誤。請重試或聯絡 Twenty 團隊"
+msgid "Billing portal session error. Please retry or contact CRM Campuzz team"
+msgstr "帳務入口會話錯誤。請重試或聯絡 CRM Campuzz 團隊"
 
 #. js-lingui-id: 8kIU+G
 #: src/modules/advanced-text-editor/constants/AdvancedTextEditorBlockCatalog.ts
@@ -3491,10 +3491,10 @@ msgstr "按鈕"
 msgid "by {author}"
 msgstr "由 {author}"
 
-#. js-lingui-id: 8Pfllj
+#. js-lingui-id: dXVowt
 #: src/modules/auth/sign-in-up/components/FooterNote.tsx
-msgid "By using Twenty, you agree to the"
-msgstr "使用 Twenty 即表示您同意"
+msgid "By using CRM Campuzz, you agree to the"
+msgstr "使用 CRM Campuzz 即表示您同意"
 
 #. js-lingui-id: Yx41df
 #: src/modules/auth/sign-in-up/components/FooterNote.tsx
@@ -4026,11 +4026,11 @@ msgstr "檢查您的電子郵件"
 msgid "Check your inbox to verify your new email address."
 msgstr "請檢查您的收件匣以驗證新的電子郵件地址。"
 
-#. js-lingui-id: SxwQE8
+#. js-lingui-id: A0AJpe
 #: src/modules/settings/billing/hooks/useHandleCheckoutSession.ts
 #: src/modules/settings/billing/hooks/useHandleCheckoutSession.ts
-msgid "Checkout session error. Please retry or contact Twenty team"
-msgstr "結賬會話錯誤。請重試或聯繫 Twenty 團隊"
+msgid "Checkout session error. Please retry or contact CRM Campuzz team"
+msgstr "結賬會話錯誤。請重試或聯繫 CRM Campuzz 團隊"
 
 #. js-lingui-id: SviKkE
 #: src/localization/hooks/useLocaleOptions.ts
@@ -4698,15 +4698,15 @@ msgstr "透過 Warp 的代理程式設定來設定遠端 MCP 伺服器。"
 msgid "Configure the remote server in Amazon Q Developer's MCP settings."
 msgstr "在 Amazon Q Developer 的 MCP 設定中設定遠端伺服器。"
 
-#. js-lingui-id: g1/8jH
+#. js-lingui-id: lZiA2W
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Configure the Twenty MCP server manually in Cascade."
-msgstr "在 Cascade 中手動設定 Twenty MCP 伺服器。"
+msgid "Configure the CRM Campuzz MCP server manually in Cascade."
+msgstr "在 Cascade 中手動設定 CRM Campuzz MCP 伺服器。"
 
-#. js-lingui-id: XiyvRh
+#. js-lingui-id: 0oL9Jq
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Configure the Twenty MCP server manually in Cline."
-msgstr "在 Cline 中手動設定 Twenty MCP 伺服器。"
+msgid "Configure the CRM Campuzz MCP server manually in Cline."
+msgstr "在 Cline 中手動設定 CRM Campuzz MCP 伺服器。"
 
 #. js-lingui-id: qA9AGQ
 #: src/modules/settings/domains/components/SettingsDomainRecords.tsx
@@ -8257,10 +8257,10 @@ msgstr "取消時間間隔切換時出現錯誤。"
 msgid "Error while cancelling plan switching."
 msgstr "取消方案切換時出現錯誤。"
 
-#. js-lingui-id: QmR+2U
+#. js-lingui-id: ft1OT/
 #: src/modules/settings/billing/hooks/useEndSubscriptionTrialPeriod.ts
-msgid "Error while ending trial period. Please contact Twenty team."
-msgstr "結束試用期時發生錯誤。請聯繫Twenty團隊。"
+msgid "Error while ending trial period. Please contact CRM Campuzz team."
+msgstr "結束試用期時發生錯誤。請聯繫CRM Campuzz團隊。"
 
 #. js-lingui-id: 5g78zo
 #: src/pages/settings/members/SettingsWorkspaceMember.tsx
@@ -10125,10 +10125,10 @@ msgstr "隱藏標籤"
 msgid "Hide system indexes"
 msgstr "隱藏系統索引"
 
-#. js-lingui-id: 1ETc0T
+#. js-lingui-id: dh2bZ9
 #: src/pages/settings/community/SettingsCommunity.tsx
-msgid "Hire a partner to help you implement and customize Twenty."
-msgstr "聘請合作夥伴協助你導入並自訂 Twenty。"
+msgid "Hire a partner to help you implement and customize CRM Campuzz."
+msgstr "聘請合作夥伴協助你導入並自訂 CRM Campuzz。"
 
 #. js-lingui-id: i0qMbr
 #: src/modules/navigation/hooks/useMobileNavigationBarItems.ts
@@ -14502,10 +14502,10 @@ msgstr "入門獎勵"
 msgid "One or more filters reference deactivated or deleted fields and will be automatically removed on save."
 msgstr "一或多個篩選器參照了已停用或已刪除的欄位，儲存時會自動移除。"
 
-#. js-lingui-id: 2l4SGU
+#. js-lingui-id: q15w7v
 #: src/pages/settings/enterprise/SettingsEnterprise.tsx
-msgid "One subscription provides one enterprise key that powers one production instance and one potential staging or test instance. To run a staging or test environment, install Twenty on a second server, activate it with this same enterprise key, then register that server as a development instance. Development instances unlock enterprise features without extra billing and do not count toward your production seats."
-msgstr "一份訂閱提供一組企業金鑰，可供一個正式環境執行個體與一個潛在的預備或測試執行個體使用。若要執行預備或測試環境，請在第二台伺服器上安裝 Twenty，使用相同的企業金鑰啟用，然後將該伺服器註冊為開發環境執行個體。開發環境執行個體可在不額外收費的情況下啟用企業功能，且不會計入您的正式環境席次數量。"
+msgid "One subscription provides one enterprise key that powers one production instance and one potential staging or test instance. To run a staging or test environment, install CRM Campuzz on a second server, activate it with this same enterprise key, then register that server as a development instance. Development instances unlock enterprise features without extra billing and do not count toward your production seats."
+msgstr "一份訂閱提供一組企業金鑰，可供一個正式環境執行個體與一個潛在的預備或測試執行個體使用。若要執行預備或測試環境，請在第二台伺服器上安裝 CRM Campuzz，使用相同的企業金鑰啟用，然後將該伺服器註冊為開發環境執行個體。開發環境執行個體可在不額外收費的情況下啟用企業功能，且不會計入您的正式環境席次數量。"
 
 #. js-lingui-id: oFTo3P
 #: src/modules/settings/event-logs/components/SettingsLogs.tsx
@@ -14598,15 +14598,15 @@ msgstr "開啟電子郵件編輯器以編輯區塊設定。"
 msgid "Open as link"
 msgstr "作為連結開啟"
 
-#. js-lingui-id: n0vVgf
+#. js-lingui-id: mjsk6x
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Open Claude with the Twenty connector name and MCP URL prefilled."
-msgstr "開啟 Claude，並預先填入 Twenty 連接器名稱與 MCP URL。"
+msgid "Open Claude with the CRM Campuzz connector name and MCP URL prefilled."
+msgstr "開啟 Claude，並預先填入 CRM Campuzz 連接器名稱與 MCP URL。"
 
-#. js-lingui-id: +n2jpB
+#. js-lingui-id: fOEAq8
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Open Cursor's MCP installer with the Twenty remote server config."
-msgstr "使用 Twenty 的遠端伺服器設定開啟 Cursor 的 MCP 安裝程式。"
+msgid "Open Cursor's MCP installer with the CRM Campuzz remote server config."
+msgstr "使用 CRM Campuzz 的遠端伺服器設定開啟 Cursor 的 MCP 安裝程式。"
 
 #. js-lingui-id: pZZH4Q
 #: src/modules/auth/sign-in-up/components/EmailVerificationSent.tsx
@@ -14660,15 +14660,15 @@ msgstr "開啟記錄的方式"
 msgid "Open records on a dedicated page"
 msgstr "在專用頁面開啟記錄"
 
-#. js-lingui-id: q170S2
+#. js-lingui-id: FT9wOr
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Open Replit with the Twenty remote server config."
-msgstr "使用 Twenty 的遠端伺服器設定開啟 Replit。"
+msgid "Open Replit with the CRM Campuzz remote server config."
+msgstr "使用 CRM Campuzz 的遠端伺服器設定開啟 Replit。"
 
-#. js-lingui-id: sBd/cl
+#. js-lingui-id: qK1DPM
 #: src/modules/settings/mcp-and-apis/utils/buildMcpSetupCategories.tsx
-msgid "Open Twenty's official ChatGPT integration for your workspace."
-msgstr "為您的工作區開啟 Twenty 官方的 ChatGPT 整合。"
+msgid "Open CRM Campuzz's official ChatGPT integration for your workspace."
+msgstr "為您的工作區開啟 CRM Campuzz 官方的 ChatGPT 整合。"
 
 #. js-lingui-id: OV5wZZ
 #: src/modules/navigation-menu-item/display/sections/components/NavigationDrawerOpenedSection.tsx
@@ -14973,10 +14973,10 @@ msgstr "頁面佈局"
 msgid "Page name"
 msgstr "頁面名稱"
 
-#. js-lingui-id: NRvxzv
+#. js-lingui-id: 2HG7qd
 #: src/pages/not-found/NotFound.tsx
-msgid "Page Not Found | Twenty"
-msgstr "找不到頁面 | Twenty"
+msgid "Page Not Found | CRM Campuzz"
+msgstr "找不到頁面 | CRM Campuzz"
 
 #. js-lingui-id: oIhFvf
 #: src/modules/side-panel/pages/email-block-settings/components/EmailPageStyleSection.tsx
@@ -18813,8 +18813,8 @@ msgstr "訂閱已啟動。"
 #: src/modules/settings/billing/components/AddPaymentMethodForm.tsx
 #: src/modules/settings/billing/hooks/useSubmitSubscriptionPayment.ts
 #: src/modules/settings/billing/hooks/useSubmitSubscriptionPayment.ts
-msgid "Subscription error. Please retry or contact Twenty team"
-msgstr "訂閱錯誤。請重試或聯繫 Twenty 團隊"
+msgid "Subscription error. Please retry or contact CRM Campuzz team"
+msgstr "訂閱錯誤。請重試或聯繫 CRM Campuzz 團隊"
 
 #. js-lingui-id: FooJUj
 #. placeholder {0}: getTargetPlanLabel(targetPlanKey)
@@ -19378,10 +19378,10 @@ msgstr "收件人在您的地址旁邊看到的名稱。此名稱會在建立頻
 msgid "The page you're seeking is either gone or never was. Let's get you back on track"
 msgstr "您正在尋找的頁面已經消失或從未存在。讓我們幫助您回到正軌"
 
-#. js-lingui-id: Ya1wb4
+#. js-lingui-id: Kyrlx4
 #: src/pages/settings/legal/SettingsLegalDpaNew.tsx
-msgid "The PDF is pre-signed by Twenty and executed with your legal entity and authorized signatory."
-msgstr "此 PDF 已由 Twenty 預先簽署，並與您的法人實體與授權簽署人共同生效。"
+msgid "The PDF is pre-signed by CRM Campuzz and executed with your legal entity and authorized signatory."
+msgstr "此 PDF 已由 CRM Campuzz 預先簽署，並與您的法人實體與授權簽署人共同生效。"
 
 #. js-lingui-id: Ir4tSJ
 #: src/modules/page-layout/widgets/call-recording/utils/getCallRecordingStatusDisplayConfiguration.ts
@@ -20375,10 +20375,10 @@ msgstr ""
 msgid "Turquoise"
 msgstr "綠松石色"
 
-#. js-lingui-id: JnaRPe
+#. js-lingui-id: AdT7fk
 #: src/modules/spreadsheet-import/steps/components/MatchColumnsStep/components/ColumnGrid.tsx
-msgid "Twenty fields"
-msgstr "Twenty 欄位"
+msgid "CRM Campuzz fields"
+msgstr "CRM Campuzz 欄位"
 
 #. js-lingui-id: YIjS4q
 #: src/modules/ai/components/SettingsAgentModelCapabilities.tsx
@@ -21976,10 +21976,10 @@ msgstr ""
 msgid "Weight"
 msgstr "權重"
 
-#. js-lingui-id: nTuObL
+#. js-lingui-id: CGpYFe
 #: src/pages/auth/SignInUp.tsx
-msgid "Welcome to Twenty"
-msgstr "歡迎來到 Twenty"
+msgid "Welcome to CRM Campuzz"
+msgstr "歡迎來到 CRM Campuzz"
 
 #. js-lingui-id: t8ZvkC
 #: src/modules/onboarding/constants/WelcomeTitleMessage.ts
